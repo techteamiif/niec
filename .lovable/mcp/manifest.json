@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "sdk_version": "0.28.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://idaewweqmkpbrnxiyhza.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "niec-connect",
+      "version": "0.1.0",
+      "title": "NIEC Connect"
+    },
+    "tools": [
+      {
+        "name": "list_communities_of_practice",
+        "title": "List Communities of Practice",
+        "description": "List the NIEC Communities of Practice (CoPs) with their slugs and descriptions.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_posts",
+        "title": "List community posts",
+        "description": "List recent NIEC community feed posts, optionally filtered by Community of Practice slug or post type.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "cop": {
+              "type": "string",
+              "description": "Community of Practice slug, e.g. 'niiric'."
+            },
+            "post_type": {
+              "type": "string",
+              "enum": [
+                "discussion",
+                "opportunity",
+                "event",
+                "knowledge",
+                "announcement"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_post",
+        "title": "Create a community post",
+        "description": "Publish a post to the NIEC community feed as the signed-in member.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 200
+            },
+            "content": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cop": {
+              "type": "string",
+              "enum": [
+                "giis-inclusive-impact",
+                "climate-green-finance",
+                "niiric",
+                "policy-acii",
+                "capital-deals",
+                "eso-collaborative",
+                "general"
+              ],
+              "default": "general"
+            },
+            "post_type": {
+              "type": "string",
+              "enum": [
+                "discussion",
+                "opportunity",
+                "event",
+                "knowledge",
+                "announcement"
+              ],
+              "default": "discussion"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "maxItems": 10
+            }
+          },
+          "required": [
+            "title",
+            "content"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_events",
+        "title": "List events",
+        "description": "List NIEC events. Defaults to upcoming events; set past=true for events that already happened.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "past": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "rsvp_event",
+        "title": "RSVP to an event",
+        "description": "Register the signed-in member for a NIEC event. Tier restrictions still apply.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "event_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_knowledge_resources",
+        "title": "List knowledge resources",
+        "description": "List reports, toolkits and other resources in the NIEC knowledge hub.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Match against title and description."
+            },
+            "cop": {
+              "type": "string"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_deal_opportunities",
+        "title": "List deal opportunities",
+        "description": "List Deal Room opportunities visible to the signed-in member's membership tier.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "under_review",
+                "matched",
+                "closed"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_my_profile",
+        "title": "Get my member profile",
+        "description": "Return the signed-in member's NIEC profile, membership tier and status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_notifications",
+        "title": "List my notifications",
+        "description": "List the signed-in member's in-app notifications, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "unread_only": {
+              "type": "boolean",
+              "default": false
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
