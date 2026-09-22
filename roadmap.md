@@ -8,3 +8,6 @@
  
 Deploy to Azure 
 Build Pipeline for Dev and Prod
+
+# Test
+Test on dev and Prod
