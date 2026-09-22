@@ -4,4 +4,17 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+   // ...
+   "vars": {
+    "SUPABASE_PROJECT_ID": "azure-instance",
+    "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkwMDM1MzI2LCJleHAiO",
+    "SUPABASE_URL": "https://server.impactinvestorsfoundation.org",
+    "VITE_SUPABASE_PROJECT_ID": "azure-instance",
+    "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkwMDM1MzI2LCJleHAiO",
+    "VITE_SUPABASE_URL": "https://server.impactinvestorsfoundation.org"
+  },
+  // ...
 }
+
+
+
