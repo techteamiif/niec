@@ -14,6 +14,11 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [],
   },
+  nitro: {
+    preset: "netlify",
+  },
+  
 });
+
