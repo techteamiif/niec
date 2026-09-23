@@ -11,3 +11,6 @@ Build Pipeline for Dev and Prod
 
 # Test
 Test on dev and Production
+
+# Test for deployment
+Now using VITE to run build
