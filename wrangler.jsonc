@@ -6,9 +6,11 @@
   "main": "src/server.ts",
    // ...
    "vars": {
+    "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
     "SUPABASE_PROJECT_ID": "azure-instance",
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkwMDM1MzI2LCJleHAiO",
     "SUPABASE_URL": "https://server.impactinvestorsfoundation.org",
+    "VITE_SITE_URL": "https://niec.techteam-315.workers.dev/",
     "VITE_SUPABASE_PROJECT_ID": "azure-instance",
     "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkwMDM1MzI2LCJleHAiO",
     "VITE_SUPABASE_URL": "https://server.impactinvestorsfoundation.org"
