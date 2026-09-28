@@ -6,6 +6,7 @@ import { NiecLogo } from "@/components/brand/NiecLogo";
 import iifLogo from "@/assets/iif-logo.png.asset.json";
 import gsgLogo from "@/assets/gsg-logo.png.asset.json";
 import nabiiLogo from "@/assets/nabii-logo.png.asset.json";
+import landingHeroImage from "../assets/landing_hero_image.png"
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,7 +47,7 @@ function ImpactLanding() {
               <Menu className="h-6 w-6" />
             </button>
             <Link to="/apply"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]">
+              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]">
               Join NIEC
             </Link>
           </div>
@@ -69,33 +70,41 @@ function ImpactLanding() {
       </header>
 
       {/* Hero — the only deep-toned band, sets brand mood */}
-      <section className="relative overflow-hidden text-white">
-        <div className="absolute inset-0 bg-hero" />
-        <div className="absolute inset-0 grain opacity-30" />
-        <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-32">
-          <div className="max-w-4xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/90">
-              <Sparkles className="h-3 w-3 text-gold" /> Powered by the Impact Investors Foundation
-            </div>
-            <h1 className="font-display text-6xl leading-[1.02] tracking-tight text-balance md:text-8xl">
-              Nigeria's <span className="text-gold italic">impact economy</span>,<br className="hidden md:block" /> in one community.
-            </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/85">
-              NIEC is the connective tissue for investors, enterprises, DFIs and policymakers
-              catalysing measurable capital across all 17 SDGs.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link to="/apply"
-                className="group inline-flex items-center gap-2 rounded-full bg-gold-gradient px-7 py-3.5 text-sm font-semibold text-foreground shadow-gold-glow transition hover:scale-[1.02]">
-                Apply for membership <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              </Link>
-              <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
-                Member sign in
-              </Link>
-            </div>
+<section className="relative overflow-hidden text-white">
+      {/* Background image loaded from src/assets */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+        style={{ backgroundImage: `url(${landingHeroImage})` }} 
+      />
+      
+      {/* Dark overlay to preserve white text readability */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      <div className="absolute inset-0 grain opacity-30" />
+      <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-32">
+        <div className="max-w-4xl">
+          {/* <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/90">
+            <Sparkles className="h-3 w-3 text-gold" /> Powered by the Impact Investors Foundation
+          </div> */}
+          <h1 className="font-display text-6xl leading-[1.02] tracking-tight text-balance md:text-8xl">
+            Nigeria's <span className="text-gold italic">impact economy</span>,<br className="hidden md:block" /> in one community.
+          </h1>
+          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/85">
+            NIEC is the connective tissue for investors, enterprises, DFIs and policymakers
+            catalysing measurable capital across all 17 SDGs.
+          </p>
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link to="/apply"
+              className="group inline-flex items-center gap-2 rounded-full bg-gold-gradient px-7 py-3.5 text-sm font-semibold text-foreground shadow-gold-glow transition hover:scale-[1.02]">
+              Apply for membership <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </Link>
+            <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
+              Member sign in
+            </Link>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
       {/* Impact stats */}
       <section id="impact" className="border-t border-border bg-cream/40">
