@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { EOI_URL } from "@/lib/niec";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 
 function safeNext(v: unknown): string | undefined {
   return typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : undefined;
