@@ -3,10 +3,11 @@ import { useState } from "react";
 import { COPS } from "@/lib/niec";
 import { ArrowRight, Globe, TrendingUp, Users, Calendar, Sparkles, Menu, X } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
-import iifLogo from "@/assets/iif-logo.png.asset.json";
-import gsgLogo from "@/assets/gsg-logo.png.asset.json";
-import nabiiLogo from "@/assets/nabii-logo.png.asset.json";
-import landingHeroImage from "../assets/landing_hero_image.png"
+// Import image files directly from src/assets/
+import iifLogo from "@/assets/iif-logo.png";
+import gsgLogo from "@/assets/gsg-logo.png";
+import nabiiLogo from "@/assets/nabii-logo.png";
+import landingHeroImage from "@/assets/landing_hero_image.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -192,17 +193,17 @@ function ImpactLanding() {
           </div>
           <div className="grid items-center gap-6 sm:grid-cols-3">
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={iifLogo.url} alt="Impact Investors Foundation" className="h-24 w-auto object-contain" />
+              <img src={iifLogo} alt="Impact Investors Foundation" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Convener</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Impact Investors Foundation</div>
             </div>
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={gsgLogo.url} alt="GSG National Partner" className="h-24 w-auto object-contain" />
+              <img src={gsgLogo} alt="GSG National Partner" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Global affiliation</div>
               <div className="mt-1 text-sm font-semibold text-foreground">GSG National Partner — Nigeria</div>
             </div>
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={nabiiLogo.url} alt="Nigerian NABII" className="h-24 w-auto object-contain" />
+              <img src={nabiiLogo} alt="Nigerian NABII" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Anchoring body</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Nigerian NABII</div>
             </div>
