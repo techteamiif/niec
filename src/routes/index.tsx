@@ -71,7 +71,7 @@ function ImpactLanding() {
       </header>
 
       {/* Hero — the only deep-toned band, sets brand mood */}
-<section className="relative overflow-hidden text-white">
+      <section className="relative overflow-hidden text-white">
       {/* Background image loaded from src/assets */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
@@ -105,7 +105,7 @@ function ImpactLanding() {
           </div>
         </div>
       </div>
-    </section>
+      </section>
 
       {/* Impact stats */}
       <section id="impact" className="border-t border-border bg-cream/40">
@@ -138,9 +138,9 @@ function ImpactLanding() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {COPS.map((c) => (
               <div key={c.key} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-soft transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-elegant">
-                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 blur-2xl transition group-hover:opacity-40" style={{ background: c.color }} />
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 blur-2xl transition group-hover:opacity-40" />
                 <div className="relative">
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: c.color }} />
+                  <span className="inline-block h-2 w-2 rounded-full" />
                   <h3 className="mt-4 font-display text-xl text-foreground">{c.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
                 </div>
