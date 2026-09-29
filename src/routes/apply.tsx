@@ -5,6 +5,7 @@ import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { toast } from "sonner";
 import { Check, ChevronRight, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { PublicHeader } from "@/components/PublicHeader";
 
 
 
@@ -21,10 +22,10 @@ export const Route = createFileRoute("/apply")({
 // const [password, setPassword] = useState();
 
 const TIERS = [
-  { key: "observer",          label: "Observer",          fee: "Free" },
-  { key: "contributor",       label: "Enterprise",        fee: "₦100k – ₦250k / yr" },
-  { key: "growth_partner",    label: "Growth Partner",    fee: "₦500k / yr" },
-  { key: "anchor",            label: "Anchor Partner",    fee: "₦1.5M / yr" },
+  { key: "observer", label: "Observer", fee: "Free" },
+  { key: "contributor", label: "Enterprise", fee: "₦100k – ₦250k / yr" },
+  { key: "growth_partner", label: "Growth Partner", fee: "₦500k / yr" },
+  { key: "anchor", label: "Anchor Partner", fee: "₦1.5M / yr" },
   { key: "strategic_partner", label: "Strategic Partner", fee: "Negotiated" },
 ] as const;
 
@@ -49,14 +50,14 @@ const ORG_TYPES: { key: string; label: string }[] = [
 const AUM_OPTS = ["Under ₦50M", "₦50M – ₦500M", "₦500M – ₦5B", "₦5B – ₦50B", "Above ₦50B", "Not applicable"];
 const STAGE_OPTS = ["Seed / early stage", "Growth stage", "Scale / expansion", "Debt / blended finance", "Grant / catalytic capital", "Multiple stages"];
 
-const SDGS = ["SDG 1 — No poverty","SDG 2 — Zero hunger","SDG 3 — Good health","SDG 4 — Quality education","SDG 5 — Gender equality","SDG 7 — Clean energy","SDG 8 — Decent work","SDG 9 — Industry & innovation","SDG 10 — Reduced inequality","SDG 11 — Sustainable cities","SDG 13 — Climate action","SDG 17 — Partnerships"];
-const SECTORS = ["Agri-food systems","Fintech / financial inclusion","Healthcare","EdTech","Clean energy / climate","Housing / real estate","Digital infrastructure","Creative economy","Gender lens investing","Supply chain / logistics"];
-const GOALS = ["Deal flow & co-investment","Policy influence & advocacy","Capacity building & training","Impact data & market intelligence","Network & partnerships","Event access (GIIS, Summit, ACII)","Visibility & brand profile","ESG / SDG reporting support"];
-const CONTRIBUTIONS = ["Capital / investment","Technical expertise","Market access / networks","Research & data","Policy knowledge","Mentorship & advisory"];
-const EVENTS = ["GIIS 2026 (Sept, Lagos)","Africa Impact Summit 2026 (June, Nairobi)","ACII 2026 (November, Abuja)","Creative Economy Roundtable"];
-const HEARD = ["Referral","LinkedIn","IIF event","Website","Media / press","Other"];
-const COMMS = ["Email","WhatsApp","Phone call","In-person"];
-const ROLES = ["Attendee","Speaker / panellist","Sponsor","Exhibitor","Partner organisation"];
+const SDGS = ["SDG 1 — No poverty", "SDG 2 — Zero hunger", "SDG 3 — Good health", "SDG 4 — Quality education", "SDG 5 — Gender equality", "SDG 7 — Clean energy", "SDG 8 — Decent work", "SDG 9 — Industry & innovation", "SDG 10 — Reduced inequality", "SDG 11 — Sustainable cities", "SDG 13 — Climate action", "SDG 17 — Partnerships"];
+const SECTORS = ["Agri-food systems", "Fintech / financial inclusion", "Healthcare", "EdTech", "Clean energy / climate", "Housing / real estate", "Digital infrastructure", "Creative economy", "Gender lens investing", "Supply chain / logistics"];
+const GOALS = ["Deal flow & co-investment", "Policy influence & advocacy", "Capacity building & training", "Impact data & market intelligence", "Network & partnerships", "Event access (GIIS, Summit, ACII)", "Visibility & brand profile", "ESG / SDG reporting support"];
+const CONTRIBUTIONS = ["Capital / investment", "Technical expertise", "Market access / networks", "Research & data", "Policy knowledge", "Mentorship & advisory"];
+const EVENTS = ["GIIS 2026 (Sept, Lagos)", "Africa Impact Summit 2026 (June, Nairobi)", "ACII 2026 (November, Abuja)", "Creative Economy Roundtable"];
+const HEARD = ["Referral", "LinkedIn", "IIF event", "Website", "Media / press", "Other"];
+const COMMS = ["Email", "WhatsApp", "Phone call", "In-person"];
+const ROLES = ["Attendee", "Speaker / panellist", "Sponsor", "Exhibitor", "Partner organisation"];
 
 const CONSENTS = [
   "I confirm that the information provided is accurate and I am authorised to represent my organisation.",
@@ -97,7 +98,7 @@ function ApplyPage() {
   const [consents, setConsents] = useState<boolean[]>([false, false, false]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  
+
   const progress = useMemo(() => {
     const required = [orgName, orgType, city, firstName, lastName, jobTitle, email, password, tier];
     const filled = required.filter(Boolean).length;
@@ -241,7 +242,7 @@ function ApplyPage() {
   if (done) {
     return (
       <div className="min-h-screen bg-[#F7FBFA]">
-        <Header />
+        <PublicHeader />
         <div className="mx-auto max-w-xl px-6 py-20 text-center">
           <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary/10">
             <Check className="h-10 w-10 text-primary" />
@@ -271,18 +272,18 @@ function ApplyPage() {
 
   return (
     <div className="min-h-screen bg-[#F7FBFA]">
-      <Header />
+      <PublicHeader />
 
       {/* Hero */}
       <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
           <h1 className="font-display text-3xl md:text-5xl">Join the <span className="text-gold">NIEC</span> Community</h1>
           <p className="mt-4 text-white/75">Apply for membership in Nigeria's premier impact economy network — connecting capital, conviction, and community for Africa's new economy.</p>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {/* <div className="mt-5 flex flex-wrap justify-center gap-2">
             {["Deal Flow","Policy Influence","GIIS · Summit · ACII","SDG Reporting","Market Intelligence"].map(p => (
               <span key={p} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs">{p}</span>
             ))}
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -315,7 +316,7 @@ function ApplyPage() {
           <Row>
             <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
             <Field label="Organisation type *">
-              <Select value={orgType} onChange={setOrgType} options={[{key:"",label:"Select type"}, ...ORG_TYPES]} />
+              <Select value={orgType} onChange={setOrgType} options={[{ key: "", label: "Select type" }, ...ORG_TYPES]} />
             </Field>
           </Row>
           <Row>
@@ -324,10 +325,10 @@ function ApplyPage() {
           </Row>
           <Row>
             <Field label="AUM / Annual budget">
-              <Select value={aum} onChange={setAum} options={[{key:"",label:"Select range"}, ...AUM_OPTS.map(o=>({key:o,label:o}))]} />
+              <Select value={aum} onChange={setAum} options={[{ key: "", label: "Select range" }, ...AUM_OPTS.map(o => ({ key: o, label: o }))]} />
             </Field>
             <Field label="Investment stage focus">
-              <Select value={stage} onChange={setStage} options={[{key:"",label:"Select stage"}, ...STAGE_OPTS.map(o=>({key:o,label:o}))]} />
+              <Select value={stage} onChange={setStage} options={[{ key: "", label: "Select stage" }, ...STAGE_OPTS.map(o => ({ key: o, label: o }))]} />
             </Field>
           </Row>
         </Section>
@@ -347,11 +348,11 @@ function ApplyPage() {
           </Row>
           <Field label="Set a password * (min 8 characters)">
             <div className="relative">
-              <Input 
-                value={password} 
-                onChange={setPassword} 
-                type={showPassword ? "text" : "password"} 
-                placeholder="Choose a strong password" 
+              <Input
+                value={password}
+                onChange={setPassword}
+                type={showPassword ? "text" : "password"}
+                placeholder="Choose a strong password"
                 className="pr-10" // Extra right padding so text doesn't overlap the button
               />
               <button
@@ -434,23 +435,6 @@ function ApplyPage() {
 
 /* ─── building blocks ────────────────────────────────────────────────── */
 
-function Header() {
-  return (
-    <header className="sticky top-0 z-30 border-b-[3px] border-gold bg-primary text-white">
-      <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-3">
-        <div className="grid h-9 w-9 place-items-center rounded-md border-2 border-gold">
-          <span className="font-display text-base text-gold">N</span>
-        </div>
-        <div className="leading-tight">
-          <div className="font-display text-sm">Impact Investors Foundation</div>
-          <div className="text-[10px] uppercase tracking-widest text-white/55">Nigeria Impact Economy Community</div>
-        </div>
-        <span className="ml-auto rounded-full bg-gold px-3 py-1 text-[10px] font-medium text-[#3a2500]">NIEC 2026</span>
-      </div>
-    </header>
-  );
-}
-
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border bg-white p-6 shadow-sm md:p-8">
@@ -471,10 +455,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-function Input({ value, onChange, type = "text", placeholder, className = ""  }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string; }) {
+function Input({ value, onChange, type = "text", placeholder, className = "" }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string; }) {
   return (
     <input value={value} onChange={(e) => onChange(e.target.value)} type={type} placeholder={placeholder}
-      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary ${className}`}  />
+      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary ${className}`} />
   );
 }
 function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { NiecLogo } from "@/components/brand/NiecLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
@@ -37,11 +37,9 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="grid min-h-screen place-items-center bg-background p-6">
-      <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Link to="/"><NiecLogo variant="horizontal" theme="light" size={40} withTagline /></Link>
-        </div>
+    <div className="min-h-screen bg-[#F7FBFA]">
+      <PublicHeader />
+      <div className="mx-auto max-w-md px-6 py-16">
         <div className="rounded-xl border bg-card p-8">
           <h1 className="font-display text-2xl">Set a new password</h1>
           <p className="mt-1 text-sm text-muted-foreground">

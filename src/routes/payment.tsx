@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Check, CreditCard, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { initMembershipPayment, verifyMembershipPayment } from "@/lib/payments.functions";
+import { PublicHeader } from "@/components/PublicHeader";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -217,12 +218,7 @@ function PaymentPage() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#F7FBFA]">
-      <div className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link to="/" className="font-display text-lg text-primary">NIEC</Link>
-          <Link to="/apply" className="text-sm text-muted-foreground hover:text-primary">Membership</Link>
-        </div>
-      </div>
+      <PublicHeader />
       <main className="px-6 py-16">{children}</main>
     </div>
   );
