@@ -1,0 +1,42 @@
+name: Capture Dev Schema Changes
+
+on:
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+  schedule:
+    - cron: '0 0 * * *' # Optional: Runs daily, or remove this if you only want manual triggers
+
+jobs:
+  capture-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit changes back to the repo
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: development # Target your dev branch
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link to Dev Project
+        run: supabase link --project-ref ${{ secrets.DEV_PROJECT_ID }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Generate Schema Dump
+        run: |
+          mkdir -p supabase/migrations
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          supabase db dump --linked -f supabase/migrations/${TIMESTAMP}_dev_sync.sql
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Commit and Push to Dev Branch
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-sync schema changes from Dev Supabase"
+          branch: development
