@@ -4,6 +4,10 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - development
+      - main
     paths:
       - 'supabase/migrations/**'
 
@@ -21,15 +25,11 @@ jobs:
           version: latest
 
       - name: Start Local Supabase (Shadow Test)
-        run: |
-          # Starts a temporary local Supabase instance inside the GitHub runner for testing
-          supabase start
+        run: supabase start
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Verify Migration Health
-        run: |
-          # Applies migrations to the local test instance to check for errors
-          supabase db push
+        run: supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

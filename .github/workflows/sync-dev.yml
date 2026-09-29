@@ -1,15 +1,18 @@
 name: Capture Dev Schema Changes
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * *'
+  workflow_dispatch: # Allows manual run button in GitHub UI
+  push:
+    branches:
+      - development
+    paths:
+      - 'supabase/migrations/**'
 
 jobs:
   capture-dev:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Required to push committed migration files back to the repository
 
     steps:
       - name: Checkout Code
@@ -35,7 +38,7 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Commit and Push to Dev Branch
+      - name: Commit and Push to Development Branch
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: auto-sync schema changes from Dev Supabase"
