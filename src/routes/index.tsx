@@ -3,9 +3,11 @@ import { useState } from "react";
 import { COPS } from "@/lib/niec";
 import { ArrowRight, Globe, TrendingUp, Users, Calendar, Sparkles, Menu, X } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
-import iifLogo from "@/assets/iif-logo.png.asset.json";
-import gsgLogo from "@/assets/gsg-logo.png.asset.json";
-import nabiiLogo from "@/assets/nabii-logo.png.asset.json";
+// Import image files directly from src/assets/
+import iifLogo from "@/assets/iif-logo.png";
+import gsgLogo from "@/assets/gsg-logo.png";
+import nabiiLogo from "@/assets/nabii-logo.png";
+import landingHeroImage from "@/assets/landing_hero_image.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,7 +48,7 @@ function ImpactLanding() {
               <Menu className="h-6 w-6" />
             </button>
             <Link to="/apply"
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]">
+              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]">
               Join NIEC
             </Link>
           </div>
@@ -70,31 +72,39 @@ function ImpactLanding() {
 
       {/* Hero — the only deep-toned band, sets brand mood */}
       <section className="relative overflow-hidden text-white">
-        <div className="absolute inset-0 bg-hero" />
-        <div className="absolute inset-0 grain opacity-30" />
-        <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-32">
-          <div className="max-w-4xl">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/90">
-              <Sparkles className="h-3 w-3 text-gold" /> Powered by the Impact Investors Foundation
-            </div>
-            <h1 className="font-display text-6xl leading-[1.02] tracking-tight text-balance md:text-8xl">
-              Nigeria's <span className="text-gold italic">impact economy</span>,<br className="hidden md:block" /> in one community.
-            </h1>
-            <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/85">
-              NIEC is the connective tissue for investors, enterprises, DFIs and policymakers
-              catalysing measurable capital across all 17 SDGs.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Link to="/apply"
-                className="group inline-flex items-center gap-2 rounded-full bg-gold-gradient px-7 py-3.5 text-sm font-semibold text-foreground shadow-gold-glow transition hover:scale-[1.02]">
-                Apply for membership <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-              </Link>
-              <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
-                Member sign in
-              </Link>
-            </div>
+      {/* Background image loaded from src/assets */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+        style={{ backgroundImage: `url(${landingHeroImage})` }} 
+      />
+      
+      {/* Dark overlay to preserve white text readability */}
+      <div className="absolute inset-0 bg-black/40" />
+
+      <div className="absolute inset-0 grain opacity-30" />
+      <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-32">
+        <div className="max-w-4xl">
+          {/* <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/90">
+            <Sparkles className="h-3 w-3 text-gold" /> Powered by the Impact Investors Foundation
+          </div> */}
+          <h1 className="font-display text-6xl leading-[1.02] tracking-tight text-balance md:text-8xl">
+            Nigeria's <span className="text-gold italic">impact economy</span>,<br className="hidden md:block" /> in one community.
+          </h1>
+          <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/85">
+            NIEC is the connective tissue for investors, enterprises, DFIs and policymakers
+            catalysing measurable capital across all 17 SDGs.
+          </p>
+          <div className="mt-10 flex flex-wrap gap-3">
+            <Link to="/apply"
+              className="group inline-flex items-center gap-2 rounded-full bg-gold-gradient px-7 py-3.5 text-sm font-semibold text-foreground shadow-gold-glow transition hover:scale-[1.02]">
+              Apply for membership <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </Link>
+            <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
+              Member sign in
+            </Link>
           </div>
         </div>
+      </div>
       </section>
 
       {/* Impact stats */}
@@ -128,9 +138,9 @@ function ImpactLanding() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {COPS.map((c) => (
               <div key={c.key} className="group relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-soft transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-elegant">
-                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 blur-2xl transition group-hover:opacity-40" style={{ background: c.color }} />
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-20 blur-2xl transition group-hover:opacity-40" />
                 <div className="relative">
-                  <span className="inline-block h-2 w-2 rounded-full" style={{ background: c.color }} />
+                  <span className="inline-block h-2 w-2 rounded-full" />
                   <h3 className="mt-4 font-display text-xl text-foreground">{c.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
                 </div>
@@ -183,17 +193,17 @@ function ImpactLanding() {
           </div>
           <div className="grid items-center gap-6 sm:grid-cols-3">
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={iifLogo.url} alt="Impact Investors Foundation" className="h-24 w-auto object-contain" />
+              <img src={iifLogo} alt="Impact Investors Foundation" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Convener</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Impact Investors Foundation</div>
             </div>
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={gsgLogo.url} alt="GSG National Partner" className="h-24 w-auto object-contain" />
+              <img src={gsgLogo} alt="GSG National Partner" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Global affiliation</div>
               <div className="mt-1 text-sm font-semibold text-foreground">GSG National Partner — Nigeria</div>
             </div>
             <div className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:border-primary/40 hover:shadow-elegant">
-              <img src={nabiiLogo.url} alt="Nigerian NABII" className="h-24 w-auto object-contain" />
+              <img src={nabiiLogo} alt="Nigerian NABII" className="h-24 w-auto object-contain" />
               <div className="mt-5 text-[10px] uppercase tracking-[0.22em] text-primary">Anchoring body</div>
               <div className="mt-1 text-sm font-semibold text-foreground">Nigerian NABII</div>
             </div>

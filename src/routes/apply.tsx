@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { toast } from "sonner";
-import { Check, ChevronRight, ShieldCheck } from "lucide-react";
+import { Check, ChevronRight, ShieldCheck, Eye, EyeOff } from "lucide-react";
+
+
 
 export const Route = createFileRoute("/apply")({
   head: () => ({
@@ -15,6 +17,8 @@ export const Route = createFileRoute("/apply")({
   }),
   component: ApplyPage,
 });
+
+// const [password, setPassword] = useState();
 
 const TIERS = [
   { key: "observer",          label: "Observer",          fee: "Free" },
@@ -80,6 +84,7 @@ function ApplyPage() {
   const [phone, setPhone] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [commPref, setCommPref] = useState("Email");
   const [sdgs, setSdgs] = useState<string[]>([]);
   const [sectors, setSectors] = useState<string[]>([]);
@@ -92,7 +97,7 @@ function ApplyPage() {
   const [consents, setConsents] = useState<boolean[]>([false, false, false]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-
+  
   const progress = useMemo(() => {
     const required = [orgName, orgType, city, firstName, lastName, jobTitle, email, password, tier];
     const filled = required.filter(Boolean).length;
@@ -341,7 +346,27 @@ function ApplyPage() {
             <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
           </Row>
           <Field label="Set a password * (min 8 characters)">
-            <Input value={password} onChange={setPassword} type="password" placeholder="Choose a strong password" />
+            <div className="relative">
+              <Input 
+                value={password} 
+                onChange={setPassword} 
+                type={showPassword ? "text" : "password"} 
+                placeholder="Choose a strong password" 
+                className="pr-10" // Extra right padding so text doesn't overlap the button
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </Field>
           <Field label="Preferred communication channel">
             <PillRow options={COMMS} value={commPref} onChange={setCommPref} />
@@ -446,16 +471,16 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </div>
   );
 }
-function Input({ value, onChange, type = "text", placeholder }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+function Input({ value, onChange, type = "text", placeholder, className = ""  }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string; }) {
   return (
     <input value={value} onChange={(e) => onChange(e.target.value)} type={type} placeholder={placeholder}
-      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary" />
+      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary ${className}`}  />
   );
 }
 function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
-      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary">
+      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary`} >
       {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
     </select>
   );
