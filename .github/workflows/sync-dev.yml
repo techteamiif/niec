@@ -1,21 +1,21 @@
 name: Capture Dev Schema Changes
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *' # Optional: Runs daily, or remove this if you only want manual triggers
+    - cron: '0 0 * * *'
 
 jobs:
   capture-dev:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Needed to commit changes back to the repo
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: development # Target your dev branch
+          ref: development
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
