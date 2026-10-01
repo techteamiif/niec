@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { COPS } from "@/lib/niec";
-import { ArrowRight, Globe, TrendingUp, Users, Calendar, Sparkles, Menu, X } from "lucide-react";
+import { ArrowRight, Globe, TrendingUp, Users, Calendar, Sparkles } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
+import { PublicHeader } from "@/components/PublicHeader";
 // Import image files directly from src/assets/
 import iifLogo from "@/assets/iif-logo.png";
 import gsgLogo from "@/assets/gsg-logo.png";
@@ -31,44 +31,9 @@ function Stat({ label, value, suffix }: { label: string; value: string; suffix?:
 }
 
 function ImpactLanding() {
-  const [mobileNav, setMobileNav] = useState(false);
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/"><NiecLogo variant="horizontal" theme="light" size={38} withTagline /></Link>
-          <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
-            <a href="#about" className="transition hover:text-foreground">About</a>
-            <a href="#cops" className="transition hover:text-foreground">Communities</a>
-            <a href="#impact" className="transition hover:text-foreground">Impact</a>
-            <Link to="/login" className="transition hover:text-foreground">Sign in</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setMobileNav(true)} className="md:hidden text-muted-foreground hover:text-foreground" aria-label="Open menu">
-              <Menu className="h-6 w-6" />
-            </button>
-            <Link to="/apply"
-              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]">
-              Join NIEC
-            </Link>
-          </div>
-        </div>
-        {mobileNav && (
-          <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg md:hidden">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <span className="text-sm uppercase tracking-widest text-muted-foreground">Menu</span>
-              <button onClick={() => setMobileNav(false)} aria-label="Close menu" className="text-muted-foreground"><X className="h-6 w-6" /></button>
-            </div>
-            <nav className="flex flex-col gap-1 p-6 text-lg">
-              <a href="#about" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">About</a>
-              <a href="#cops" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Communities</a>
-              <a href="#impact" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Impact</a>
-              <Link to="/login" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Sign in</Link>
-              <Link to="/apply" onClick={() => setMobileNav(false)} className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground">Join NIEC</Link>
-            </nav>
-          </div>
-        )}
-      </header>
+      <PublicHeader />
 
       {/* Hero — the only deep-toned band, sets brand mood */}
       <section className="relative overflow-hidden text-white">

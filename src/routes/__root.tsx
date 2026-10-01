@@ -1,11 +1,23 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts,
+  Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts, type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth";
 
+import ogImage from "@/assets/niec-opengraph.JPG";
 import appCss from "../styles.css?url";
+
+const siteUrl = (
+  (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+  import.meta.env?.VITE_SITE_URL ||
+  "https://niec-connect.dextrus.workers.dev"
+).replace(/\/+$/, "");
+
+const ogImageUrl =
+  typeof ogImage === "string" && ogImage.startsWith("http")
+    ? ogImage
+    : `${siteUrl}${typeof ogImage === "string" && ogImage.startsWith("/") ? "" : "/"}${typeof ogImage === "string" ? ogImage : "niec-opengraph.jpg"}`;
 
 function NotFoundComponent() {
   return (
@@ -24,14 +36,15 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
+  const errorMessage = error instanceof Error ? error.message : String(error ?? "An unexpected error occurred");
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">Something went wrong</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
         <div className="mt-6 flex justify-center gap-2">
           <button
             onClick={() => { router.invalidate(); reset(); }}
@@ -51,14 +64,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "NIEC — Nigeria Impact Economy Community" },
       { name: "description", content: "The membership community for Nigeria's impact investing ecosystem, powered by the Impact Investors Foundation." },
+      { property: "og:site_name", content: "NIEC Connect" },
       { property: "og:title", content: "NIEC — Nigeria Impact Economy Community" },
       { property: "og:description", content: "The membership community for Nigeria's impact investing ecosystem, powered by the Impact Investors Foundation." },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: ogImageUrl },
+      { property: "og:image:secure_url", content: ogImageUrl },
+      { property: "og:image:type", content: "image/jpeg" },
+      { property: "og:image:width", content: "1355" },
+      { property: "og:image:height", content: "463" },
+      { property: "og:image:alt", content: "NIEC — Nigeria Impact Economy Community" },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "NIEC — Nigeria Impact Economy Community" },
       { name: "twitter:description", content: "The membership community for Nigeria's impact investing ecosystem, powered by the Impact Investors Foundation." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a3859fd0-f739-48b2-bb10-193978957561" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/a3859fd0-f739-48b2-bb10-193978957561" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: ogImageUrl },
+      { name: "twitter:image:alt", content: "NIEC — Nigeria Impact Economy Community" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

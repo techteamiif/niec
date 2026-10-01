@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { EOI_URL } from "@/lib/niec";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { PublicHeader } from "@/components/PublicHeader";
 
 function safeNext(v: unknown): string | undefined {
   return typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : undefined;
@@ -32,6 +33,7 @@ function LoginPage() {
   const [mode, setMode] = useState<"signin" | "magic">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
 
@@ -75,18 +77,7 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#F7FBFA]">
-      <header className="sticky top-0 z-30 border-b-[3px] border-gold bg-primary text-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-6 py-3">
-          <Link to="/" className="grid h-9 w-9 place-items-center rounded-md border-2 border-gold">
-            <span className="font-display text-base text-gold">N</span>
-          </Link>
-          <div className="leading-tight">
-            <div className="font-display text-sm">Impact Investors Foundation</div>
-            <div className="text-[10px] uppercase tracking-widest text-white/55">Nigeria Impact Economy Community</div>
-          </div>
-          <span className="ml-auto rounded-full bg-gold px-3 py-1 text-[10px] font-medium text-[#3a2500]">NIEC 2026</span>
-        </div>
-      </header>
+      <PublicHeader />
 
       <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
@@ -117,8 +108,28 @@ function LoginPage() {
                     {resetting ? "Sending…" : "Forgot password?"}
                   </button>
                 </div>
-                <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary" />
+                <div className="relative mt-1.5">
+                  <input
+                    required
+                    type={showPassword ? "text" : "password"}
+                    minLength={8}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 pr-10 text-sm outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
             )}
             <button disabled={busy} type="submit"

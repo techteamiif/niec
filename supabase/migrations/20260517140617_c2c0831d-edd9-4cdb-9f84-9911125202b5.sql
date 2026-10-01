@@ -1,21 +1,98 @@
 
 -- ============ ENUMS ============
-CREATE TYPE public.app_role AS ENUM ('member', 'admin', 'super_admin');
-CREATE TYPE public.org_type AS ENUM ('investor','dfi','social_enterprise','government','foundation','accelerator','research','corporate','other');
-CREATE TYPE public.membership_tier AS ENUM ('observer','contributor','growth_partner','anchor','strategic_partner');
-CREATE TYPE public.membership_status AS ENUM ('pending','active','lapsed','suspended');
-CREATE TYPE public.post_type AS ENUM ('discussion','opportunity','event','knowledge','announcement');
-CREATE TYPE public.cop_type AS ENUM ('gender_inclusive','climate_green','data_measurement','policy_advocacy','digital_fintech','creative_economy','general');
-CREATE TYPE public.post_visibility AS ENUM ('all_members','contributor_plus','growth_partner_plus','anchor_plus');
-CREATE TYPE public.event_type AS ENUM ('convening','deal_room','cop_meeting','webinar','boot_camp','policy_roundtable');
-CREATE TYPE public.registration_status AS ENUM ('registered','attended','cancelled');
-CREATE TYPE public.instrument_type AS ENUM ('equity','debt','grant','blended','convertible_note','revenue_share');
-CREATE TYPE public.deal_status AS ENUM ('open','under_review','matched','closed');
-CREATE TYPE public.resource_type AS ENUM ('report','case_study','policy_brief','dataset','presentation','toolkit');
-CREATE TYPE public.notification_type AS ENUM ('welcome','post_reply','event_reminder','deal_match','admin_message','tier_upgrade');
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+    CREATE TYPE public.app_role AS ENUM ('member', 'admin', 'super_admin');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'org_type') THEN
+    CREATE TYPE public.org_type AS ENUM ('investor','dfi','social_enterprise','government','foundation','accelerator','research','corporate','other');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'membership_tier') THEN
+    CREATE TYPE public.membership_tier AS ENUM ('observer','contributor','growth_partner','anchor','strategic_partner');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'membership_status') THEN
+    CREATE TYPE public.membership_status AS ENUM ('pending','active','lapsed','suspended');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'post_type') THEN
+    CREATE TYPE public.post_type AS ENUM ('discussion','opportunity','event','knowledge','announcement');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'cop_type') THEN
+    CREATE TYPE public.cop_type AS ENUM ('gender_inclusive','climate_green','data_measurement','policy_advocacy','digital_fintech','creative_economy','general');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'post_visibility') THEN
+    CREATE TYPE public.post_visibility AS ENUM ('all_members','contributor_plus','growth_partner_plus','anchor_plus');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_type') THEN
+    CREATE TYPE public.event_type AS ENUM ('convening','deal_room','cop_meeting','webinar','boot_camp','policy_roundtable');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'registration_status') THEN
+    CREATE TYPE public.registration_status AS ENUM ('registered','attended','cancelled');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'instrument_type') THEN
+    CREATE TYPE public.instrument_type AS ENUM ('equity','debt','grant','blended','convertible_note','revenue_share');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'deal_status') THEN
+    CREATE TYPE public.deal_status AS ENUM ('open','under_review','matched','closed');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'resource_type') THEN
+    CREATE TYPE public.resource_type AS ENUM ('report','case_study','policy_brief','dataset','presentation','toolkit');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_type') THEN
+    CREATE TYPE public.notification_type AS ENUM ('welcome','post_reply','event_reminder','deal_match','admin_message','tier_upgrade');
+  END IF;
+END $$;
 
 -- ============ PROFILES ============
-CREATE TABLE public.profiles (
+CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name text NOT NULL DEFAULT '',
   email text NOT NULL,
@@ -39,7 +116,7 @@ CREATE TABLE public.profiles (
 );
 
 -- ============ USER ROLES (separate table for safe checks) ============
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   role public.app_role NOT NULL,
@@ -77,7 +154,7 @@ RETURNS integer LANGUAGE sql IMMUTABLE AS $$
 $$;
 
 -- ============ COMMUNITY POSTS ============
-CREATE TABLE public.community_posts (
+CREATE TABLE IF NOT EXISTS public.community_posts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   author_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   title text NOT NULL,
@@ -93,7 +170,7 @@ CREATE TABLE public.community_posts (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.comments (
+CREATE TABLE IF NOT EXISTS public.comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id uuid NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
   author_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -103,7 +180,7 @@ CREATE TABLE public.comments (
 );
 
 -- ============ EVENTS ============
-CREATE TABLE public.events (
+CREATE TABLE IF NOT EXISTS public.events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   description text NOT NULL DEFAULT '',
@@ -119,7 +196,7 @@ CREATE TABLE public.events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.event_registrations (
+CREATE TABLE IF NOT EXISTS public.event_registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id uuid NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
   member_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -129,7 +206,7 @@ CREATE TABLE public.event_registrations (
 );
 
 -- ============ DEAL ROOM ============
-CREATE TABLE public.deal_opportunities (
+CREATE TABLE IF NOT EXISTS public.deal_opportunities (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   enterprise_name text NOT NULL,
@@ -146,7 +223,7 @@ CREATE TABLE public.deal_opportunities (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE public.deal_interests (
+CREATE TABLE IF NOT EXISTS public.deal_interests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   deal_id uuid NOT NULL REFERENCES public.deal_opportunities(id) ON DELETE CASCADE,
   investor_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -156,7 +233,7 @@ CREATE TABLE public.deal_interests (
 );
 
 -- ============ KNOWLEDGE ============
-CREATE TABLE public.knowledge_resources (
+CREATE TABLE IF NOT EXISTS public.knowledge_resources (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   description text NOT NULL DEFAULT '',
@@ -170,7 +247,7 @@ CREATE TABLE public.knowledge_resources (
 );
 
 -- ============ COP MEMBERSHIPS ============
-CREATE TABLE public.cop_memberships (
+CREATE TABLE IF NOT EXISTS public.cop_memberships (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   member_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   cop public.cop_type NOT NULL,
@@ -179,7 +256,7 @@ CREATE TABLE public.cop_memberships (
 );
 
 -- ============ NOTIFICATIONS ============
-CREATE TABLE public.notifications (
+CREATE TABLE IF NOT EXISTS public.notifications (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   recipient_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   type public.notification_type NOT NULL,
@@ -205,6 +282,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -214,6 +292,7 @@ CREATE OR REPLACE FUNCTION public.touch_updated_at()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$;
+DROP TRIGGER IF EXISTS posts_touch ON public.community_posts;
 CREATE TRIGGER posts_touch BEFORE UPDATE ON public.community_posts
 FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
 
@@ -229,6 +308,7 @@ BEGIN
   RETURN COALESCE(NEW, OLD);
 END;
 $$;
+DROP TRIGGER IF EXISTS comments_count_trg ON public.comments;
 CREATE TRIGGER comments_count_trg
 AFTER INSERT OR DELETE ON public.comments
 FOR EACH ROW EXECUTE FUNCTION public.bump_comment_count();
