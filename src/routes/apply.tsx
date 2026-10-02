@@ -98,6 +98,31 @@ function ApplyPage() {
   const [consents, setConsents] = useState<boolean[]>([false, false, false]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const [step, setStep] = useState(1);
+
+  const nextStep = () => {
+    if (step === 1) {
+      if (!orgName || !orgType || !city || !firstName || !lastName || !jobTitle || !email || !password) {
+        toast.error("Please complete all required fields.");
+        return;
+      }
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters.");
+        return;
+      }
+    }
+    if (step === 2 && !tier) {
+      toast.error("Please select a membership tier first.");
+      return;
+    }
+    setStep(s => Math.min(s + 1, 4));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const prevStep = () => {
+    setStep(s => Math.max(s - 1, 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const progress = useMemo(() => {
     const required = [orgName, orgType, city, firstName, lastName, jobTitle, email, password, tier];
@@ -290,7 +315,7 @@ function ApplyPage() {
       {/* Progress */}
       <div className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Application progress</span>
+          <span className="text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Step {step} of 4</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
           </div>
@@ -300,6 +325,7 @@ function ApplyPage() {
 
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
 
+        {step === 2 && (
         <Section title="Membership tier" desc="Select the tier that best reflects your organisation's capacity and engagement level.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {TIERS.map((t) => (
@@ -311,7 +337,10 @@ function ApplyPage() {
             ))}
           </div>
         </Section>
+        )}
 
+        {step === 1 && (
+          <>
         <Section title="Organisation details">
           <Row>
             <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
@@ -373,7 +402,11 @@ function ApplyPage() {
             <PillRow options={COMMS} value={commPref} onChange={setCommPref} />
           </Field>
         </Section>
+        </>
+        )}
 
+        {step === 3 && (
+          <>
         <Section title="SDG focus areas" desc="Select all Sustainable Development Goals your organisation actively works on.">
           <ChipGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
           <Divider>Investment sectors</Divider>
@@ -393,7 +426,11 @@ function ApplyPage() {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
           </Field>
         </Section>
+        </>
+        )}
 
+        {step === 4 && (
+          <>
         <Section title="IIF 2026 events" desc="Which flagship events would your organisation like to attend or sponsor?">
           <CheckGrid options={EVENTS} selected={eventsInterested} onToggle={(v) => setEventsInterested(toggle(eventsInterested, v))} />
           <Divider>Your participation role</Divider>
@@ -413,14 +450,33 @@ function ApplyPage() {
             ))}
           </div>
         </Section>
+        </>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button onClick={submit} disabled={busy}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-            {busy ? "Submitting…" : "Submit application"} <ChevronRight className="h-4 w-4" />
-          </button>
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary">Already a member? Sign in →</Link>
-          <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          {step > 1 && (
+            <button onClick={prevStep} type="button"
+              className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
+              Previous
+            </button>
+          )}
+          
+          {step < 4 ? (
+            <button onClick={nextStep} type="button"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+              Next <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button onClick={submit} disabled={busy} type="button"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+              {busy ? "Submitting…" : "Submit application"} <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-auto">Already a member? Sign in →</Link>
+        </div>
+        <div className="flex justify-center pt-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Reviewed by IIF within 5 business days
           </span>
         </div>

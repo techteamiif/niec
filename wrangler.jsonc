@@ -6,6 +6,7 @@
   "main": "src/server.ts",
 
   "vars": {
+    "PAYSTACK_PUBLIC_KEY": "pk_live_e7241a5ca882fb4a33a32a6de06a970d6c19abbc",
     "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
     "SUPABASE_PROJECT_ID": "mowjubtfponizxufrxem",
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vd2p1YnRmcG9uaXp4dWZyeGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MjY1MjUsImV4cCI6MjEwNjIwMjUyNX0.6q0f3BkXzcfgE8FMsWq73wKpA_ruw0AkVAIg0PInSrw",

@@ -327,25 +327,32 @@ ALTER TABLE public.cop_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- profiles: own row + active members visible to active members; staff full
+DROP POLICY IF EXISTS "profiles self read" ON public.profiles;
 CREATE POLICY "profiles self read" ON public.profiles FOR SELECT TO authenticated
 USING (id = auth.uid() OR public.is_staff(auth.uid())
        OR (membership_status = 'active' AND EXISTS (
             SELECT 1 FROM public.profiles p2 WHERE p2.id = auth.uid() AND p2.membership_status = 'active')));
+DROP POLICY IF EXISTS "profiles self update" ON public.profiles;
 CREATE POLICY "profiles self update" ON public.profiles FOR UPDATE TO authenticated
 USING (id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "profiles staff insert" ON public.profiles;
 CREATE POLICY "profiles staff insert" ON public.profiles FOR INSERT TO authenticated
 WITH CHECK (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "profiles staff delete" ON public.profiles;
 CREATE POLICY "profiles staff delete" ON public.profiles FOR DELETE TO authenticated
 USING (public.is_staff(auth.uid()));
 
 -- user_roles: user reads own; super_admin manages
+DROP POLICY IF EXISTS "roles self read" ON public.user_roles;
 CREATE POLICY "roles self read" ON public.user_roles FOR SELECT TO authenticated
 USING (user_id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "roles super admin manage" ON public.user_roles;
 CREATE POLICY "roles super admin manage" ON public.user_roles FOR ALL TO authenticated
 USING (public.has_role(auth.uid(), 'super_admin'))
 WITH CHECK (public.has_role(auth.uid(), 'super_admin'));
 
 -- community_posts: active members can read posts at their tier or below; staff all
+DROP POLICY IF EXISTS "posts read" ON public.community_posts;
 CREATE POLICY "posts read" ON public.community_posts FOR SELECT TO authenticated
 USING (
   public.is_staff(auth.uid()) OR (
@@ -358,71 +365,127 @@ USING (
     )
   )
 );
+DROP POLICY IF EXISTS "posts insert own" ON public.community_posts;
 CREATE POLICY "posts insert own" ON public.community_posts FOR INSERT TO authenticated
 WITH CHECK (author_id = auth.uid()
             AND EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND membership_status = 'active'));
+DROP POLICY IF EXISTS "posts update own or staff" ON public.community_posts;
 CREATE POLICY "posts update own or staff" ON public.community_posts FOR UPDATE TO authenticated
 USING (author_id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "posts delete own or staff" ON public.community_posts;
 CREATE POLICY "posts delete own or staff" ON public.community_posts FOR DELETE TO authenticated
 USING (author_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- comments
+DROP POLICY IF EXISTS "comments read" ON public.comments;
 CREATE POLICY "comments read" ON public.comments FOR SELECT TO authenticated
 USING (EXISTS (SELECT 1 FROM public.community_posts p WHERE p.id = post_id));
+DROP POLICY IF EXISTS "comments insert own" ON public.comments;
 CREATE POLICY "comments insert own" ON public.comments FOR INSERT TO authenticated
 WITH CHECK (author_id = auth.uid());
+DROP POLICY IF EXISTS "comments update own" ON public.comments;
 CREATE POLICY "comments update own" ON public.comments FOR UPDATE TO authenticated
 USING (author_id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "comments delete own or staff" ON public.comments;
 CREATE POLICY "comments delete own or staff" ON public.comments FOR DELETE TO authenticated
 USING (author_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- events: active members read; staff write
+DROP POLICY IF EXISTS "events read" ON public.events;
 CREATE POLICY "events read" ON public.events FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "events staff write" ON public.events;
 CREATE POLICY "events staff write" ON public.events FOR INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "events staff update" ON public.events;
 CREATE POLICY "events staff update" ON public.events FOR UPDATE TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "events staff delete" ON public.events;
 CREATE POLICY "events staff delete" ON public.events FOR DELETE TO authenticated USING (public.is_staff(auth.uid()));
 
 -- registrations
+DROP POLICY IF EXISTS "regs read" ON public.event_registrations;
 CREATE POLICY "regs read" ON public.event_registrations FOR SELECT TO authenticated
 USING (member_id = auth.uid() OR public.is_staff(auth.uid())
        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND membership_status = 'active'));
+DROP POLICY IF EXISTS "regs insert own" ON public.event_registrations;
 CREATE POLICY "regs insert own" ON public.event_registrations FOR INSERT TO authenticated WITH CHECK (member_id = auth.uid());
+DROP POLICY IF EXISTS "regs update own" ON public.event_registrations;
 CREATE POLICY "regs update own" ON public.event_registrations FOR UPDATE TO authenticated USING (member_id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "regs delete own" ON public.event_registrations;
 CREATE POLICY "regs delete own" ON public.event_registrations FOR DELETE TO authenticated USING (member_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- deals: tier gating
+DROP POLICY IF EXISTS "deals read tier" ON public.deal_opportunities;
 CREATE POLICY "deals read tier" ON public.deal_opportunities FOR SELECT TO authenticated
 USING (public.is_staff(auth.uid()) OR public.tier_rank(public.current_tier(auth.uid())) >= public.tier_rank(min_tier_required));
+DROP POLICY IF EXISTS "deals staff write" ON public.deal_opportunities;
 CREATE POLICY "deals staff write" ON public.deal_opportunities FOR INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "deals staff update" ON public.deal_opportunities;
 CREATE POLICY "deals staff update" ON public.deal_opportunities FOR UPDATE TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "deals staff delete" ON public.deal_opportunities;
 CREATE POLICY "deals staff delete" ON public.deal_opportunities FOR DELETE TO authenticated USING (public.is_staff(auth.uid()));
 
+DROP POLICY IF EXISTS "deal_interests read" ON public.deal_interests;
 CREATE POLICY "deal_interests read" ON public.deal_interests FOR SELECT TO authenticated
 USING (investor_id = auth.uid() OR public.is_staff(auth.uid())
        OR public.tier_rank(public.current_tier(auth.uid())) >= 4);
+DROP POLICY IF EXISTS "deal_interests insert own" ON public.deal_interests;
 CREATE POLICY "deal_interests insert own" ON public.deal_interests FOR INSERT TO authenticated
 WITH CHECK (investor_id = auth.uid()
             AND public.tier_rank(public.current_tier(auth.uid())) >= 3);
+DROP POLICY IF EXISTS "deal_interests delete own" ON public.deal_interests;
 CREATE POLICY "deal_interests delete own" ON public.deal_interests FOR DELETE TO authenticated USING (investor_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- knowledge
+DROP POLICY IF EXISTS "knowledge read tier" ON public.knowledge_resources;
 CREATE POLICY "knowledge read tier" ON public.knowledge_resources FOR SELECT TO authenticated
 USING (public.is_staff(auth.uid()) OR public.tier_rank(public.current_tier(auth.uid())) >= public.tier_rank(min_tier_required));
+DROP POLICY IF EXISTS "knowledge staff write" ON public.knowledge_resources;
 CREATE POLICY "knowledge staff write" ON public.knowledge_resources FOR INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "knowledge staff update" ON public.knowledge_resources;
 CREATE POLICY "knowledge staff update" ON public.knowledge_resources FOR UPDATE TO authenticated USING (public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "knowledge staff delete" ON public.knowledge_resources;
 CREATE POLICY "knowledge staff delete" ON public.knowledge_resources FOR DELETE TO authenticated USING (public.is_staff(auth.uid()));
 
 -- cop memberships
+DROP POLICY IF EXISTS "cop read" ON public.cop_memberships;
 CREATE POLICY "cop read" ON public.cop_memberships FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "cop insert own" ON public.cop_memberships;
 CREATE POLICY "cop insert own" ON public.cop_memberships FOR INSERT TO authenticated WITH CHECK (member_id = auth.uid());
+DROP POLICY IF EXISTS "cop delete own" ON public.cop_memberships;
 CREATE POLICY "cop delete own" ON public.cop_memberships FOR DELETE TO authenticated USING (member_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- notifications
+DROP POLICY IF EXISTS "notif read own" ON public.notifications;
 CREATE POLICY "notif read own" ON public.notifications FOR SELECT TO authenticated USING (recipient_id = auth.uid() OR public.is_staff(auth.uid()));
+DROP POLICY IF EXISTS "notif update own" ON public.notifications;
 CREATE POLICY "notif update own" ON public.notifications FOR UPDATE TO authenticated USING (recipient_id = auth.uid());
+DROP POLICY IF EXISTS "notif staff insert" ON public.notifications;
 CREATE POLICY "notif staff insert" ON public.notifications FOR INSERT TO authenticated WITH CHECK (public.is_staff(auth.uid()) OR recipient_id = auth.uid());
+DROP POLICY IF EXISTS "notif delete own" ON public.notifications;
 CREATE POLICY "notif delete own" ON public.notifications FOR DELETE TO authenticated USING (recipient_id = auth.uid() OR public.is_staff(auth.uid()));
 
 -- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.community_posts;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'notifications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'community_posts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.community_posts;
+  END IF;
+END $$;
