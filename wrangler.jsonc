@@ -4,6 +4,9 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  "observability": {
+    "enabled": true
+  },
 
   "vars": {
     "PAYSTACK_PUBLIC_KEY": "pk_live_e7241a5ca882fb4a33a32a6de06a970d6c19abbc",
