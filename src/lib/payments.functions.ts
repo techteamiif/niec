@@ -14,7 +14,13 @@ function secretKey() {
     process.env["PAYSTACK_SECRET_KEY"] ??
     process.env["STRIPE_LIVE_API_KEY"] ??
     "";
-  if (!key) throw new Error("Payment provider is not configured.");
+  if (!key) {
+    console.log({
+      secret: Boolean(process.env["PAYSTACK_SECRET_KEY"]),
+      pub: Boolean(process.env["PAYSTACK_PUBLIC_KEY"]),
+    });
+    throw new Error("Payment provider is not configured.");
+  }
   return key;
 }
 
