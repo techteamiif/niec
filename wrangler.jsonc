@@ -16,17 +16,17 @@
     "VITE_SUPABASE_URL": "https://mowjubtfponizxufrxem.supabase.co"
     },
     "previews": {
-    "vars": {
-      "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
-      "SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
-      "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
-      "SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co",
-      "VITE_SITE_URL": "https://development-niec.techteam-315.workers.dev",
-      "VITE_SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
-      "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
-      "VITE_SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co"
-      
-    }
+      "vars": {
+        "PAYSTACK_PUBLIC_KEY": "pk_live_e7241a5ca882fb4a33a32a6de06a970d6c19abbc",
+        "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
+        "SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
+        "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
+        "SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co",
+        "VITE_SITE_URL": "https://development-niec.techteam-315.workers.dev",
+        "VITE_SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
+        "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
+        "VITE_SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co"
+      },
 
   }
   
