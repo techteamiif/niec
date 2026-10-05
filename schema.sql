@@ -2319,7 +2319,7 @@ CREATE POLICY "wg insert chair/staff" ON "public"."working_groups" FOR INSERT TO
 
 
 
-CREATE POLICY "wg read" ON "public"."working_groups" FOR SELECT TO "authenticated" USING (("public"."is_active_member"("auth"."uid"()) OR "public"."is_staff"("auth"."uid"())));
+CREATE POLICY "wg read" ON "public"."working_groups" FOR SELECT TO "authenticated" USING (("public"."is_active_member"("auth"."uid"()) OR "public"."is_staff"("auth"."uid"()) OR "public"."is_cop_chair"("auth"."uid"(), "cop")));
 
 
 
@@ -3096,7 +3096,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 
