@@ -823,7 +823,7 @@ CREATE OR REPLACE FUNCTION "public"."notify_event_registration"() RETURNS "trigg
     AS $$
 DECLARE _title text; _starts timestamptz;
 BEGIN
-  SELECT title, starts_at INTO _title, _starts FROM public.events WHERE id = NEW.event_id;
+  SELECT title, start_date INTO _title, _starts FROM public.events WHERE id = NEW.event_id;
   INSERT INTO public.notifications (recipient_id, type, title, message, link)
   VALUES (NEW.member_id, 'event_reminder',
           'You''re registered for ' || COALESCE(_title,'an event'),
@@ -3096,7 +3096,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 
