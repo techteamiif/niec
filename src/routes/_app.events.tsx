@@ -38,6 +38,11 @@ function downloadICS(ev: any) {
   URL.revokeObjectURL(url);
 }
 
+function formatEventType(eventType: string) {
+  const label = eventType.replace(/_/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function EventsPage() {
   const { user, profile, isStaff } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
@@ -128,7 +133,7 @@ function EventsPage() {
                 {ev.is_virtual
                   ? <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Virtual</span>
                   : <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {ev.location}</span>}
-                <span className="rounded bg-muted px-2 py-0.5 uppercase tracking-wider">{ev.event_type.replace(/_/g, " ")}</span>
+                <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
                 {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">Cap: {ev.max_attendees}</span>}
               </div>
               <div className="mt-4 flex items-center justify-between gap-2">
@@ -173,11 +178,26 @@ function EventsPage() {
   );
 }
 
-function CreateEvent({ onClose, onCreated, userId }: { onClose: () => void; onCreated: () => void; userId: string }) {
+function CreateEvent({
+  onClose,
+  onCreated,
+  userId,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  userId: string;
+}) {
   const [form, setForm] = useState({
-    title: "", description: "", event_type: "convening",
-    start_date: "", end_date: "", location: "", is_virtual: false, virtual_link: "",
-    min_tier_required: "observer", max_attendees: "",
+    title: "",
+    description: "",
+    event_type: "convening",
+    start_date: "",
+    end_date: "",
+    location: "",
+    is_virtual: false,
+    virtual_link: "",
+    min_tier_required: "observer",
+    max_attendees: "",
   });
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,30 +218,158 @@ function CreateEvent({ onClose, onCreated, userId }: { onClose: () => void; onCr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form onSubmit={submit} className="w-full max-w-xl space-y-3 rounded-2xl border bg-card p-6">
         <h2 className="font-display text-xl">New event</h2>
-        <input required placeholder="Title" value={form.title} onChange={(e) => set("title", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-        <textarea placeholder="Description" value={form.description} onChange={(e) => set("description", e.target.value)} rows={4} className="w-full rounded-md border bg-background p-3 text-sm" />
-        <div className="grid grid-cols-2 gap-3">
-          <input required type="datetime-local" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
-          <input type="datetime-local" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
+        <div className="space-y-1.5">
+          <label htmlFor="event-title" className="block text-sm font-medium">
+            Title
+          </label>
+          <input
+            id="event-title"
+            required
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => set("title", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="event-description" className="block text-sm font-medium">
+            Description
+          </label>
+          <textarea
+            id="event-description"
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            rows={1}
+            className="w-full rounded-md border bg-background p-3 text-sm"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <select value={form.event_type} onChange={(e) => set("event_type", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {["convening","deal_room","cop_meeting","webinar","boot_camp","policy_roundtable"].map((t) => <option key={t}>{t}</option>)}
-          </select>
-          <select value={form.min_tier_required} onChange={(e) => set("min_tier_required", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {Object.entries(TIER_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          <div className="space-y-1.5">
+            <label htmlFor="event-start-date" className="block text-sm font-medium">
+              Start date
+            </label>
+            <input
+              id="event-start-date"
+              required
+              type="datetime-local"
+              value={form.start_date}
+              onChange={(e) => set("start_date", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="event-end-date" className="block text-sm font-medium">
+              End date
+            </label>
+            <input
+              id="event-end-date"
+              type="datetime-local"
+              value={form.end_date}
+              onChange={(e) => set("end_date", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.is_virtual} onChange={(e) => set("is_virtual", e.target.checked)} /> Virtual event
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="event-type" className="block text-sm font-medium">
+              Event type
+            </label>
+            <select
+              id="event-type"
+              value={form.event_type}
+              onChange={(e) => set("event_type", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              {[
+                "convening",
+                "deal_room",
+                "cop_meeting",
+                "webinar",
+                "boot_camp",
+                "policy_roundtable",
+              ].map((t) => (
+                <option key={t} value={t}>
+                  {formatEventType(t)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="event-min-tier" className="block text-sm font-medium">
+              Category (Membership Tier)
+            </label>
+            <select
+              id="event-min-tier"
+              value={form.min_tier_required}
+              onChange={(e) => set("min_tier_required", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              {Object.entries(TIER_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <label htmlFor="event-is-virtual" className="flex items-center gap-2 text-sm">
+          <input
+            id="event-is-virtual"
+            type="checkbox"
+            checked={form.is_virtual}
+            onChange={(e) => set("is_virtual", e.target.checked)}
+          />{" "}
+          Virtual event
         </label>
-        {form.is_virtual
-          ? <input placeholder="Virtual link" value={form.virtual_link} onChange={(e) => set("virtual_link", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-          : <input placeholder="Location" value={form.location} onChange={(e) => set("location", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />}
-        <input type="number" placeholder="Max attendees (optional)" value={form.max_attendees} onChange={(e) => set("max_attendees", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
+        {form.is_virtual ? (
+          <div className="space-y-1.5">
+            <label htmlFor="event-virtual-link" className="block text-sm font-medium">
+              Virtual link
+            </label>
+            <input
+              id="event-virtual-link"
+              placeholder="Virtual link"
+              value={form.virtual_link}
+              onChange={(e) => set("virtual_link", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label htmlFor="event-location" className="block text-sm font-medium">
+              Location
+            </label>
+            <input
+              id="event-location"
+              placeholder="Location"
+              value={form.location}
+              onChange={(e) => set("location", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <label htmlFor="event-max-attendees" className="block text-sm font-medium">
+            Maximum attendees (optional)
+          </label>
+          <input
+            id="event-max-attendees"
+            type="number"
+            placeholder="Maximum attendees"
+            value={form.max_attendees}
+            onChange={(e) => set("max_attendees", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Create</button>
+          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">
+            Cancel
+          </button>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            Create
+          </button>
         </div>
       </form>
     </div>
