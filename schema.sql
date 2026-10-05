@@ -769,7 +769,7 @@ BEGIN
   SELECT full_name INTO _name FROM public.profiles WHERE id = NEW.author_id;
   INSERT INTO public.notifications (recipient_id, type, title, message, link)
   VALUES (_author, 'post_reply', 'New comment on your post',
-          COALESCE(_name,'A member') || ' commented: ' || LEFT(NEW.body, 140),
+          COALESCE(_name,'A member') || ' commented: ' || LEFT(NEW.content, 140),
           '/community');
   RETURN NEW;
 END $$;
@@ -3096,7 +3096,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 
