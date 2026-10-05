@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PublicHeader } from "@/components/PublicHeader";
@@ -13,6 +14,8 @@ function ResetPasswordPage() {
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -48,15 +51,35 @@ function ResetPasswordPage() {
           <form onSubmit={submit} className="mt-6 space-y-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground">New password</label>
-              <input required type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
-                disabled={!ready}
-                className="mt-1.5 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary disabled:opacity-50" />
+              <div className="relative mt-1.5">
+                <input required type={showPassword ? "text" : "password"} minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
+                  disabled={!ready}
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm outline-none focus:border-primary disabled:opacity-50" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Confirm password</label>
-              <input required type="password" minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)}
-                disabled={!ready}
-                className="mt-1.5 h-11 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-primary disabled:opacity-50" />
+              <div className="relative mt-1.5">
+                <input required type={showConfirm ? "text" : "password"} minLength={8} value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                  disabled={!ready}
+                  className="h-11 w-full rounded-lg border border-input bg-background px-3 pr-10 text-sm outline-none focus:border-primary disabled:opacity-50" />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                >
+                  {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <button disabled={busy || !ready} className="h-11 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
               {busy ? "Updating…" : "Update password"}
