@@ -68,7 +68,9 @@ function CopsIndex() {
                 <h3 className="font-display text-xl">{c.name}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{c.description}</p>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{counts[c.key] ?? 0} members</span>
+                  <span className="text-xs text-muted-foreground">
+                    {counts[c.key] ?? 0} {(counts[c.key] ?? 0) > 1 ? "Members" : "Member"}
+                  </span>
                   <div className="flex items-center gap-2">
                     <button onClick={() => toggle(c.key)}
                       className={`rounded-md px-3 py-1.5 text-xs font-semibold ${isIn ? "border bg-background hover:bg-muted" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}>
