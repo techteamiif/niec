@@ -8,7 +8,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { COPS, POST_TYPE_COLOR, POST_TYPE_LABELS } from "@/lib/niec";
 import { can } from "@/lib/entitlements";
 import { toast } from "sonner";
-import { Pin, Plus, Heart, MessageCircle, Lock } from "lucide-react";
+import { Pin, Plus, Heart, MessageCircle, Lock, Image as ImageIcon, X } from "lucide-react";
 import { format } from "date-fns";
 
 export const Route = createFileRoute("/_app/community")({
@@ -144,6 +144,13 @@ function CommunityPage() {
             </div>
             <h3 className="mt-3 font-display text-lg">{p.title}</h3>
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{p.content}</p>
+            {p.image_url && (
+              <img
+                src={p.image_url}
+                alt={p.title}
+                className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
+              />
+            )}
             {p.tags?.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-1">
                 {p.tags.map((t: string) => <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">#{t}</span>)}
@@ -189,56 +196,243 @@ function Composer({ onClose, authorId, onCreated }: { onClose: () => void; autho
   const [cop, setCop] = useState("general");
   const [tags, setTags] = useState("");
   const [visibility, setVisibility] = useState("all_members");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const bodyOverflow = document.body.style.overflow;
+    const documentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = documentOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(imageFile);
+    setImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [imageFile]);
+
+  const selectImage = (file: File | undefined) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be 5 MB or smaller.");
+      return;
+    }
+    setImageFile(file);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
+    let imageUrl: string | null = null;
+    let imagePath: string | null = null;
+    if (imageFile) {
+      const extensionByType: Record<string, string> = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+      };
+      imagePath = `${authorId}/${crypto.randomUUID()}.${extensionByType[imageFile.type]}`;
+      const { error: uploadError } = await supabase.storage
+        .from("community-post-images")
+        .upload(imagePath, imageFile, { contentType: imageFile.type });
+      if (uploadError) {
+        setBusy(false);
+        return toast.error(`Could not upload image: ${uploadError.message}`);
+      }
+      imageUrl = supabase.storage.from("community-post-images").getPublicUrl(imagePath).data.publicUrl;
+    }
     const { error } = await supabase.from("community_posts").insert({
       author_id: authorId,
       title, content, post_type: postType as any, community_of_practice: cop as any,
       tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
       visibility: visibility as any,
+      image_url: imageUrl,
     });
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (imagePath) {
+        const { error: cleanupError } = await supabase.storage
+          .from("community-post-images")
+          .remove([imagePath]);
+        if (cleanupError) {
+          return toast.error(`Could not publish post: ${error.message}. Image cleanup also failed: ${cleanupError.message}`);
+        }
+      }
+      return toast.error(error.message);
+    }
     toast.success("Post published");
     onCreated();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={submit} className="w-full max-w-2xl rounded-2xl border bg-card p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
+      <form
+        onSubmit={submit}
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border bg-card shadow-xl"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
           <h2 className="font-display text-xl">Create post</h2>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            ✕
+          </button>
         </div>
-        <div className="space-y-3">
-          <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-          <textarea required value={content} onChange={(e) => setContent(e.target.value)} placeholder="Share an update, ask a question, post an opportunity…"
-            rows={8} className="w-full rounded-md border bg-background p-3 text-sm" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <select value={postType} onChange={(e) => setPostType(e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-              {Object.entries(POST_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <select value={cop} onChange={(e) => setCop(e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-              <option value="general">General</option>
-              {COPS.map((c) => <option key={c.key} value={c.key}>{c.name}</option>)}
-            </select>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label htmlFor="post-title" className="block text-sm font-medium">Title</label>
+              <input
+                id="post-title"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Title"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="post-content" className="block text-sm font-medium">Content</label>
+              <textarea
+                id="post-content"
+                required
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Share an update, ask a question, post an opportunity…"
+                rows={8}
+                className="w-full rounded-md border bg-background p-3 text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="post-image" className="block text-sm font-medium">
+                Image (optional)
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <label
+                  htmlFor="post-image"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted"
+                >
+                  <ImageIcon className="h-4 w-4" /> Choose image
+                </label>
+                <input
+                  id="post-image"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={(e) => {
+                    selectImage(e.currentTarget.files?.[0]);
+                    e.currentTarget.value = "";
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">
+                  JPEG, PNG, WebP, or GIF · max 5 MB
+                </span>
+                {imageFile && (
+                  <button
+                    type="button"
+                    onClick={() => setImageFile(null)}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" /> Remove image
+                  </button>
+                )}
+              </div>
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="Selected image preview"
+                  className="max-h-48 rounded-lg border object-contain"
+                />
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="post-type" className="block text-sm font-medium">Post type</label>
+                <select
+                  id="post-type"
+                  value={postType}
+                  onChange={(e) => setPostType(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                >
+                  {Object.entries(POST_TYPE_LABELS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="post-cop" className="block text-sm font-medium">Community of Practice</label>
+                <select
+                  id="post-cop"
+                  value={cop}
+                  onChange={(e) => setCop(e.target.value)}
+                  className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                >
+                  <option value="general">General</option>
+                  {COPS.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="post-tags" className="block text-sm font-medium">Tags</label>
+              <input
+                id="post-tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="Tags (comma-separated)"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="post-visibility" className="block text-sm font-medium">Visibility</label>
+              <select
+                id="post-visibility"
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value)}
+                className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="all_members">All members</option>
+                <option value="contributor_plus">Contributor and above</option>
+                <option value="growth_partner_plus">Growth Partner and above</option>
+                <option value="anchor_plus">Anchor and above</option>
+              </select>
+            </div>
           </div>
-          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags (comma-separated)"
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value)} className="h-10 w-full rounded-md border bg-background px-2 text-sm">
-            <option value="all_members">All members</option>
-            <option value="contributor_plus">Contributor and above</option>
-            <option value="growth_partner_plus">Growth Partner and above</option>
-            <option value="anchor_plus">Anchor and above</option>
-          </select>
         </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm hover:bg-muted">Cancel</button>
-          <button disabled={busy} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+        <div className="flex shrink-0 justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Cancel
+          </button>
+          <button
+            disabled={busy}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
             {busy ? "Publishing…" : "Publish"}
           </button>
         </div>

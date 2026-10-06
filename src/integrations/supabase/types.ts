@@ -101,6 +101,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           is_pinned: boolean
           likes_count: number
           pinned_in_cop: boolean
@@ -117,6 +118,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_pinned?: boolean
           likes_count?: number
           pinned_in_cop?: boolean
@@ -133,6 +135,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_pinned?: boolean
           likes_count?: number
           pinned_in_cop?: boolean

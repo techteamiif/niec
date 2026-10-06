@@ -543,6 +543,13 @@ function PostCard({ post, canManage, onPin }: { post: any; canManage: boolean; o
           </div>
           <div className="mt-1 font-medium">{post.title}</div>
           <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
+          {post.image_url && (
+            <img
+              src={post.image_url}
+              alt={post.title}
+              className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
+            />
+          )}
           <div className="mt-2 text-xs text-muted-foreground">
             {post.likes_count} likes · {post.comments_count} comments · {new Date(post.created_at).toLocaleDateString()}
           </div>
