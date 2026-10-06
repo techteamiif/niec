@@ -447,6 +447,8 @@ export type Database = {
           location: string | null
           max_attendees: number | null
           min_tier_required: Database["public"]["Enums"]["membership_tier"]
+          is_paid: boolean
+          registration_link: string | null
           start_date: string
           title: string
           virtual_link: string | null
@@ -463,6 +465,8 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
+          is_paid?: boolean
+          registration_link?: string | null
           start_date: string
           title: string
           virtual_link?: string | null
@@ -479,6 +483,8 @@ export type Database = {
           location?: string | null
           max_attendees?: number | null
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
+          is_paid?: boolean
+          registration_link?: string | null
           start_date?: string
           title?: string
           virtual_link?: string | null
@@ -1360,6 +1366,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["membership_tier"]
       }
       get_event_virtual_link: { Args: { _event_id: string }; Returns: string }
+      get_event_registration_link: { Args: { _event_id: string }; Returns: string | null }
       get_my_profile: {
         Args: never
         Returns: {
@@ -1478,6 +1485,9 @@ export type Database = {
         | "webinar"
         | "boot_camp"
         | "policy_roundtable"
+        | "onsite"
+        | "online"
+        | "hybrid"
       instrument_type:
         | "equity"
         | "debt"
@@ -1683,6 +1693,9 @@ export const Constants = {
         "webinar",
         "boot_camp",
         "policy_roundtable",
+        "onsite",
+        "online",
+        "hybrid",
       ],
       instrument_type: [
         "equity",

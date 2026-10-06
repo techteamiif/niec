@@ -46,7 +46,11 @@ function Dashboard() {
           .order("is_pinned", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(10),
-        supabase.from("events").select("*").gte("start_date", new Date().toISOString()).order("start_date").limit(3),
+        supabase.from("events")
+          .select("id, title, start_date, location, is_virtual, event_type")
+          .gte("start_date", new Date().toISOString())
+          .order("start_date")
+          .limit(3),
       ]);
       setStats({ members: m.count ?? 0, deals: d.count ?? 0, events: e.count ?? 0 });
       setPosts(p.data ?? []);
@@ -137,7 +141,15 @@ function Dashboard() {
                 <Link key={e.id} to="/events" className="block rounded-md border border-border/60 p-3 transition hover:border-primary">
                   <div className="text-xs text-primary">{format(new Date(e.start_date), "PPP")}</div>
                   <div className="mt-1 text-sm font-medium">{e.title}</div>
-                  <div className="text-xs text-muted-foreground">{e.is_virtual ? "Virtual" : e.location}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {e.event_type === "hybrid"
+                      ? `Hybrid${e.location ? ` · ${e.location}` : ""}`
+                      : e.event_type === "onsite"
+                        ? e.location || "Location to be announced"
+                      : e.is_virtual
+                        ? "Online"
+                        : e.location}
+                  </div>
                 </Link>
               ))}
             </div>

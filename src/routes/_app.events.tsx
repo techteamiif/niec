@@ -24,7 +24,11 @@ function EventsPage() {
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
 
   const load = async () => {
-    const { data } = await supabase.from("events").select("*").order("start_date");
+    const { data, error } = await supabase
+      .from("events")
+      .select("id, title, description, event_type, start_date, end_date, location, is_virtual, max_attendees, min_tier_required, is_paid")
+      .order("start_date");
+    if (error) toast.error(`Could not load events: ${error.message}`);
     setEvents(data ?? []);
     if (user) {
       const { data: r } = await supabase.from("event_registrations").select("event_id").eq("member_id", user.id);
@@ -48,7 +52,7 @@ function EventsPage() {
       <div className="mb-6 flex items-end justify-between">
         <div>
           <h1 className="font-display text-3xl">Events</h1>
-          <p className="text-sm text-muted-foreground">Convenings, deal rooms, CoP meetings, boot camps and policy roundtables.</p>
+          <p className="text-sm text-muted-foreground">Onsite, online, and hybrid events for NIEC members.</p>
         </div>
         {isStaff && (
           <button onClick={() => setShowCreate(true)} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
@@ -79,11 +83,17 @@ function EventsPage() {
               </div>
               <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{ev.description}</p>
-              <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
-                {ev.is_virtual
-                  ? <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Virtual</span>
-                  : <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {ev.location}</span>}
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                {ev.event_type === "onsite" ||
+                ev.event_type === "hybrid" ||
+                (!ev.is_virtual && ev.event_type !== "online") ? (
+                  <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {ev.location || "Location to be announced"}</span>
+                ) : null}
+                {ev.event_type === "online" || ev.event_type === "hybrid" || ev.is_virtual ? (
+                  <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Online</span>
+                ) : null}
                 <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
+                <span className="rounded bg-muted px-2 py-0.5">{ev.is_paid ? "Paid" : "Free"}</span>
                 {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">Cap: {ev.max_attendees}</span>}
               </div>
               <div className="mt-4 flex flex-col items-start gap-2">
@@ -122,12 +132,14 @@ function CreateEvent({
   const [form, setForm] = useState({
     title: "",
     description: "",
-    event_type: "convening",
+    event_type: "onsite",
     start_date: "",
     end_date: "",
     location: "",
     is_virtual: false,
     virtual_link: "",
+    registration_link: "",
+    is_paid: false,
     min_tier_required: "observer",
     max_attendees: "",
   });
@@ -136,7 +148,9 @@ function CreateEvent({
     const payload: any = {
       ...form,
       created_by: userId,
+      is_virtual: form.event_type === "online" || form.event_type === "hybrid",
       max_attendees: form.max_attendees ? Number(form.max_attendees) : null,
+      registration_link: form.registration_link || null,
       start_date: new Date(form.start_date).toISOString(),
       end_date: new Date(form.end_date || form.start_date).toISOString(),
     };
@@ -214,23 +228,14 @@ function CreateEvent({
               onChange={(e) => set("event_type", e.target.value)}
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
-              {[
-                "convening",
-                "deal_room",
-                "cop_meeting",
-                "webinar",
-                "boot_camp",
-                "policy_roundtable",
-              ].map((t) => (
-                <option key={t} value={t}>
-                  {formatEventType(t)}
-                </option>
-              ))}
+              <option value="onsite">Onsite</option>
+              <option value="online">Online</option>
+              <option value="hybrid">Hybrid</option>
             </select>
           </div>
           <div className="space-y-1.5">
             <label htmlFor="event-min-tier" className="block text-sm font-medium">
-              Category (Membership Tier)
+              Membership tier
             </label>
             <select
               id="event-min-tier"
@@ -246,19 +251,10 @@ function CreateEvent({
             </select>
           </div>
         </div>
-        <label htmlFor="event-is-virtual" className="flex items-center gap-2 text-sm">
-          <input
-            id="event-is-virtual"
-            type="checkbox"
-            checked={form.is_virtual}
-            onChange={(e) => set("is_virtual", e.target.checked)}
-          />{" "}
-          Virtual event
-        </label>
-        {form.is_virtual ? (
+        {form.event_type === "online" || form.event_type === "hybrid" ? (
           <div className="space-y-1.5">
             <label htmlFor="event-virtual-link" className="block text-sm font-medium">
-              Virtual link
+              Online event link
             </label>
             <input
               id="event-virtual-link"
@@ -268,7 +264,8 @@ function CreateEvent({
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             />
           </div>
-        ) : (
+        ) : null}
+        {form.event_type === "onsite" || form.event_type === "hybrid" ? (
           <div className="space-y-1.5">
             <label htmlFor="event-location" className="block text-sm font-medium">
               Location
@@ -281,7 +278,34 @@ function CreateEvent({
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             />
           </div>
-        )}
+        ) : null}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="event-registration-link" className="block text-sm font-medium">
+              Registration link (optional)
+            </label>
+            <input
+              id="event-registration-link"
+              type="url"
+              placeholder="https://example.com/register"
+              value={form.registration_link}
+              onChange={(e) => set("registration_link", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="event-amount" className="block text-sm font-medium">Amount</label>
+            <select
+              id="event-amount"
+              value={form.is_paid ? "paid" : "free"}
+              onChange={(e) => set("is_paid", e.target.value === "paid")}
+              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="free">Free</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+        </div>
         <div className="space-y-1.5">
           <label htmlFor="event-max-attendees" className="block text-sm font-medium">
             Maximum attendees (optional)

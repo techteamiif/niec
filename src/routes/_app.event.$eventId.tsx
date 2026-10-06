@@ -38,7 +38,12 @@ function downloadICS(event: EventRecord) {
       .replace(/\.\d{3}/, "");
   const escape = (value: string) =>
     value.replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-  const location = event.is_virtual ? (event.virtual_link ?? "Virtual") : (event.location ?? "");
+  const isOnline = event.event_type === "online" || event.event_type === "hybrid" || event.is_virtual;
+  const isOnsite = event.event_type === "onsite" || event.event_type === "hybrid" || !event.is_virtual;
+  const location = [
+    isOnsite ? event.location : null,
+    isOnline ? event.virtual_link : null,
+  ].filter(Boolean).join(" / ") || (isOnline ? "Virtual" : "");
   const contents = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -79,7 +84,7 @@ function EventDetailPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("events")
-      .select("*")
+      .select("id, title, description, event_type, start_date, end_date, location, is_virtual, max_attendees, min_tier_required, created_by, is_paid")
       .eq("id", eventId)
       .maybeSingle();
     if (error) {
@@ -88,7 +93,25 @@ function EventDetailPage() {
       setLoading(false);
       return;
     }
-    setEvent(data);
+    if (!data) {
+      setEvent(null);
+      setLoading(false);
+      return;
+    }
+    const [
+      { data: virtualLink, error: virtualLinkError },
+      { data: registrationLink, error: registrationLinkError },
+    ] = await Promise.all([
+      supabase.rpc("get_event_virtual_link", { _event_id: eventId }),
+      supabase.rpc("get_event_registration_link", { _event_id: eventId }),
+    ]);
+    if (virtualLinkError) toast.error(`Could not load online event link: ${virtualLinkError.message}`);
+    if (registrationLinkError) toast.error(`Could not load registration link: ${registrationLinkError.message}`);
+    setEvent({
+      ...data,
+      virtual_link: virtualLink ?? null,
+      registration_link: registrationLink ?? null,
+    });
 
     if (user) {
       const { data: registration, error: registrationError } = await supabase
@@ -112,7 +135,7 @@ function EventDetailPage() {
     if (countError) toast.error(`Could not load attendee count: ${countError.message}`);
     setAttendeeCount(count?.attendee_count ?? 0);
 
-    if (isStaff || data?.created_by === user?.id) {
+    if (isStaff || data.created_by === user?.id) {
       const { data: attendeeRows, error: attendeeError } = await supabase
         .from("event_attendees")
         .select("member_id, registered_at, profiles:member_id(full_name, avatar_url)")
@@ -228,7 +251,17 @@ function EventDetailPage() {
                 <h1 className="font-display text-3xl">{event.title}</h1>
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {event.is_virtual ? (
+                {event.event_type === "onsite" ||
+                event.event_type === "hybrid" ||
+                !event.is_virtual ? (
+                  <span className="inline-flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {event.location || "Location to be announced"}
+                  </span>
+                ) : null}
+                {event.event_type === "online" ||
+                event.event_type === "hybrid" ||
+                event.is_virtual ? (
                   <span className="inline-flex items-center gap-2">
                     <Video className="h-4 w-4" />
                     {event.virtual_link ? (
@@ -241,17 +274,15 @@ function EventDetailPage() {
                         Join virtual event
                       </a>
                     ) : (
-                      "Virtual event"
+                      "Online event"
                     )}
                   </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {event.location || "Location to be announced"}
-                  </span>
-                )}
+                ) : null}
                 <span className="rounded bg-muted px-2.5 py-1 text-xs">
                   {formatEventType(event.event_type)}
+                </span>
+                <span className="rounded bg-muted px-2.5 py-1 text-xs">
+                  {event.is_paid ? "Paid" : "Free"}
                 </span>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -289,6 +320,16 @@ function EventDetailPage() {
                 >
                   {allowed ? "Register" : "Tier locked"}
                 </button>
+              )}
+              {event.registration_link && (
+                <a
+                  href={event.registration_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+                >
+                  External registration
+                </a>
               )}
               {!ended && (
                 <button
@@ -352,33 +393,6 @@ function EventDetailPage() {
                     {event.description}
                   </p>
                 )}
-                {/* <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  {event.is_virtual ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Video className="h-4 w-4" />
-                      {event.virtual_link ? (
-                        <a
-                          className="text-primary underline"
-                          href={event.virtual_link}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Join virtual event
-                        </a>
-                      ) : (
-                        "Virtual event"
-                      )}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {event.location || "Location to be announced"}
-                    </span>
-                  )}
-                  <span className="rounded bg-muted px-2.5 py-1 text-xs">
-                    {formatEventType(event.event_type)}
-                  </span>
-                </div> */}
               </section>
 
               <aside className="space-y-4">
@@ -401,6 +415,12 @@ function EventDetailPage() {
                         Minimum membership tier
                       </dt>
                       <dd className="mt-1">{TIER_LABELS[event.min_tier_required]}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Amount
+                      </dt>
+                      <dd className="mt-1">{event.is_paid ? "Paid" : "Free"}</dd>
                     </div>
                     {event.max_attendees && (
                       <div>
