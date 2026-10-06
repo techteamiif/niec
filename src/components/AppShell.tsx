@@ -64,14 +64,14 @@ export function AppShell() {
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-4">
         <Link to="/dashboard" className="flex items-center">
           <NiecLogo variant="horizontal" theme="dark" size={36} withTagline />
         </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         {NAV.map(({ to, label, icon: Icon, badge }) => {
           const active = path === to || path.startsWith(to + "/");
           return (
@@ -107,7 +107,7 @@ export function AppShell() {
         )}
       </nav>
 
-      <div className="border-t border-sidebar-border p-3">
+      <div className="shrink-0 border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3 rounded-md px-2 py-2">
           <UserAvatar name={profile.full_name || profile.email} src={profile.avatar_url} size={36} />
           <div className="min-w-0 flex-1">
@@ -123,8 +123,8 @@ export function AppShell() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="hidden lg:block">{Sidebar}</div>
+    <div className="flex min-h-screen bg-background lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+      <div className="hidden lg:block lg:h-dvh lg:shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
@@ -132,8 +132,8 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur lg:px-8">
+      <main className="flex min-w-0 flex-1 flex-col lg:h-dvh lg:min-h-0 lg:overflow-y-auto">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-6 backdrop-blur lg:px-10">
           <button className="lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
           <form
             onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const q = String(fd.get("q") || "").trim(); navigate({ to: "/members", search: q ? { q } : {} }); }}
