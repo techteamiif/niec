@@ -336,6 +336,62 @@ export type Database = {
         }
         Relationships: []
       }
+      event_attendees: {
+        Row: {
+          event_id: string
+          member_id: string
+          registered_at: string
+        }
+        Insert: {
+          event_id: string
+          member_id: string
+          registered_at?: string
+        }
+        Update: {
+          event_id?: string
+          member_id?: string
+          registered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendees_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_attendee_counts: {
+        Row: {
+          attendee_count: number
+          event_id: string
+        }
+        Insert: {
+          attendee_count?: number
+          event_id: string
+        }
+        Update: {
+          attendee_count?: number
+          event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendee_counts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_registrations: {
         Row: {
           event_id: string

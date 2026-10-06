@@ -62,7 +62,7 @@ function CopWorkspace() {
       supabase.from("community_posts").select("*, profiles:author_id(full_name, avatar_url)").eq("community_of_practice", cop as any).order("pinned_in_cop", { ascending: false }).order("created_at", { ascending: false }).limit(50),
       supabase.from("events").select("*").gte("start_date", new Date().toISOString()).order("start_date").limit(20),
       supabase.from("knowledge_resources").select("*").eq("community_of_practice", cop as any).order("created_at", { ascending: false }).limit(50),
-      supabase.from("working_groups").select("*, profiles:lead_id(full_name, avatar_url)").eq("cop", cop as any).order("created_at", { ascending: false }),
+      supabase.from("working_groups").select("*").eq("cop", cop as any).order("created_at", { ascending: false }),
       supabase.from("polls").select("*").eq("cop", cop as any).order("created_at", { ascending: false }),
     ]);
     setMembers(mem.data ?? []);
@@ -70,7 +70,21 @@ function CopWorkspace() {
     setPosts(p.data ?? []);
     setEvents((e.data ?? []).filter((ev: any) => !ev.community_of_practice || ev.community_of_practice === cop));
     setResources(r.data ?? []);
-    setGroups(wg.data ?? []);
+    if (wg.error) {
+      toast.error(`Could not load working groups: ${wg.error.message}`);
+      setGroups([]);
+    } else {
+      const leadIds = [...new Set((wg.data ?? []).map((group) => group.lead_id))];
+      const { data: leads, error: leadsError } = leadIds.length
+        ? await supabase.from("profiles").select("id, full_name, avatar_url").in("id", leadIds)
+        : { data: [], error: null };
+      if (leadsError) toast.error(`Could not load working group leads: ${leadsError.message}`);
+      const leadsById = Object.fromEntries((leads ?? []).map((lead) => [lead.id, lead]));
+      setGroups((wg.data ?? []).map((group) => ({
+        ...group,
+        profiles: leadsById[group.lead_id] ?? null,
+      })));
+    }
     setPolls(pl.data ?? []);
     setJoined((mem.data ?? []).some((m: any) => m.member_id === user?.id));
 
@@ -96,7 +110,7 @@ function CopWorkspace() {
     }
 
     // group members
-    if ((wg.data ?? []).length) {
+    if (!wg.error && (wg.data ?? []).length) {
       const gids = wg.data!.map((g: any) => g.id);
       const { data: gm } = await supabase.from("working_group_members").select("group_id, user_id").in("group_id", gids);
       const map: Record<string, string[]> = {};
@@ -666,4 +680,3 @@ function DecideRfcDialog({ rfcId, onDecided }: { rfcId: string; onDecided: (s: "
     </Dialog>
   );
 }
-

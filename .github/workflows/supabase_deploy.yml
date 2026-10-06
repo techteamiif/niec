@@ -20,7 +20,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       - name: Start Local Supabase & Verify Migrations
         run: |
@@ -39,7 +39,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       - name: Deploy to Staging
         env:
@@ -60,7 +60,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.118.0
 
       - name: Deploy to Production
         env:

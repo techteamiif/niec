@@ -1,45 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Calendar, MapPin, Video, Download, X } from "lucide-react";
+import { Calendar, MapPin, Video, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
 });
 
-function toICS(ev: any) {
-  const dt = (s: string) => new Date(s).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const esc = (s: string) => (s ?? "").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-  const loc = ev.is_virtual ? (ev.virtual_link ?? "Virtual") : (ev.location ?? "");
-  return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NIEC//EN", "BEGIN:VEVENT",
-    `UID:${ev.id}@niec`,
-    `DTSTAMP:${dt(new Date().toISOString())}`,
-    `DTSTART:${dt(ev.start_date)}`,
-    `DTEND:${dt(ev.end_date ?? ev.start_date)}`,
-    `SUMMARY:${esc(ev.title)}`,
-    `DESCRIPTION:${esc(ev.description ?? "")}`,
-    `LOCATION:${esc(loc)}`,
-    "END:VEVENT", "END:VCALENDAR",
-  ].join("\r\n");
-}
-
-function downloadICS(ev: any) {
-  const blob = new Blob([toICS(ev)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${ev.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
+function formatEventType(eventType: string) {
+  const label = eventType.replace(/_/g, " ");
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function EventsPage() {
-  const { user, profile, isStaff } = useAuth();
+  const { user, isStaff } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [regs, setRegs] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
@@ -54,26 +32,6 @@ function EventsPage() {
     }
   };
   useEffect(() => { load(); }, [user]);
-
-  const register = async (ev: any) => {
-    if (!user) return;
-    if (!tierMeets(profile?.membership_tier, ev.min_tier_required)) {
-      toast.error(`Requires ${TIER_LABELS[ev.min_tier_required]} tier or above`);
-      return;
-    }
-    const { error } = await supabase.from("event_registrations").insert({ event_id: ev.id, member_id: user.id });
-    if (error) toast.error(error.message);
-    else { toast.success("You're registered"); load(); }
-  };
-
-  const cancel = async (ev: any) => {
-    if (!user) return;
-    if (!confirm(`Cancel your registration for "${ev.title}"?`)) return;
-    const { error } = await supabase.from("event_registrations")
-      .delete().eq("event_id", ev.id).eq("member_id", user.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Registration cancelled"); load(); }
-  };
 
   const now = Date.now();
   const filtered = useMemo(() => {
@@ -114,9 +72,6 @@ function EventsPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {filtered.map((ev) => {
-          const allowed = tierMeets(profile?.membership_tier, ev.min_tier_required);
-          const registered = regs.has(ev.id);
-          const ended = new Date(ev.end_date ?? ev.start_date).getTime() < now;
           return (
             <div key={ev.id} className="rounded-xl border bg-card p-6">
               <div className="flex items-center gap-2 text-xs text-primary">
@@ -128,33 +83,15 @@ function EventsPage() {
                 {ev.is_virtual
                   ? <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Virtual</span>
                   : <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {ev.location}</span>}
-                <span className="rounded bg-muted px-2 py-0.5 uppercase tracking-wider">{ev.event_type.replace(/_/g, " ")}</span>
+                <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
                 {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">Cap: {ev.max_attendees}</span>}
               </div>
-              <div className="mt-4 flex items-center justify-between gap-2">
+              <div className="mt-4 flex flex-col items-start gap-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min tier: {TIER_LABELS[ev.min_tier_required]}</div>
-                <div className="flex items-center gap-2">
-                  {registered && (
-                    <button onClick={() => downloadICS(ev)} title="Add to calendar"
-                      className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
-                      <Download className="h-3 w-3" /> .ics
-                    </button>
-                  )}
-                  {ended ? (
-                    <span className="rounded-md bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">Ended</span>
-                  ) : registered ? (
-                    <button onClick={() => cancel(ev)}
-                      className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10">
-                      <X className="h-3 w-3" /> Cancel
-                    </button>
-                  ) : (
-                    <button disabled={!allowed} onClick={() => register(ev)}
-                      title={allowed ? "" : "Upgrade your tier to register"}
-                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                      {allowed ? "Register" : "Tier locked"}
-                    </button>
-                  )}
-                </div>
+                <Link to="/event/$eventId" params={{ eventId: ev.id }}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                  See details <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </div>
           );
@@ -173,11 +110,26 @@ function EventsPage() {
   );
 }
 
-function CreateEvent({ onClose, onCreated, userId }: { onClose: () => void; onCreated: () => void; userId: string }) {
+function CreateEvent({
+  onClose,
+  onCreated,
+  userId,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  userId: string;
+}) {
   const [form, setForm] = useState({
-    title: "", description: "", event_type: "convening",
-    start_date: "", end_date: "", location: "", is_virtual: false, virtual_link: "",
-    min_tier_required: "observer", max_attendees: "",
+    title: "",
+    description: "",
+    event_type: "convening",
+    start_date: "",
+    end_date: "",
+    location: "",
+    is_virtual: false,
+    virtual_link: "",
+    min_tier_required: "observer",
+    max_attendees: "",
   });
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,30 +150,158 @@ function CreateEvent({ onClose, onCreated, userId }: { onClose: () => void; onCr
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form onSubmit={submit} className="w-full max-w-xl space-y-3 rounded-2xl border bg-card p-6">
         <h2 className="font-display text-xl">New event</h2>
-        <input required placeholder="Title" value={form.title} onChange={(e) => set("title", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-        <textarea placeholder="Description" value={form.description} onChange={(e) => set("description", e.target.value)} rows={4} className="w-full rounded-md border bg-background p-3 text-sm" />
-        <div className="grid grid-cols-2 gap-3">
-          <input required type="datetime-local" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
-          <input type="datetime-local" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
+        <div className="space-y-1.5">
+          <label htmlFor="event-title" className="block text-sm font-medium">
+            Title
+          </label>
+          <input
+            id="event-title"
+            required
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => set("title", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="event-description" className="block text-sm font-medium">
+            Description
+          </label>
+          <textarea
+            id="event-description"
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            rows={1}
+            className="w-full rounded-md border bg-background p-3 text-sm"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <select value={form.event_type} onChange={(e) => set("event_type", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {["convening","deal_room","cop_meeting","webinar","boot_camp","policy_roundtable"].map((t) => <option key={t}>{t}</option>)}
-          </select>
-          <select value={form.min_tier_required} onChange={(e) => set("min_tier_required", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {Object.entries(TIER_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+          <div className="space-y-1.5">
+            <label htmlFor="event-start-date" className="block text-sm font-medium">
+              Start date
+            </label>
+            <input
+              id="event-start-date"
+              required
+              type="datetime-local"
+              value={form.start_date}
+              onChange={(e) => set("start_date", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="event-end-date" className="block text-sm font-medium">
+              End date
+            </label>
+            <input
+              id="event-end-date"
+              type="datetime-local"
+              value={form.end_date}
+              onChange={(e) => set("end_date", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.is_virtual} onChange={(e) => set("is_virtual", e.target.checked)} /> Virtual event
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label htmlFor="event-type" className="block text-sm font-medium">
+              Event type
+            </label>
+            <select
+              id="event-type"
+              value={form.event_type}
+              onChange={(e) => set("event_type", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              {[
+                "convening",
+                "deal_room",
+                "cop_meeting",
+                "webinar",
+                "boot_camp",
+                "policy_roundtable",
+              ].map((t) => (
+                <option key={t} value={t}>
+                  {formatEventType(t)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="event-min-tier" className="block text-sm font-medium">
+              Category (Membership Tier)
+            </label>
+            <select
+              id="event-min-tier"
+              value={form.min_tier_required}
+              onChange={(e) => set("min_tier_required", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+            >
+              {Object.entries(TIER_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <label htmlFor="event-is-virtual" className="flex items-center gap-2 text-sm">
+          <input
+            id="event-is-virtual"
+            type="checkbox"
+            checked={form.is_virtual}
+            onChange={(e) => set("is_virtual", e.target.checked)}
+          />{" "}
+          Virtual event
         </label>
-        {form.is_virtual
-          ? <input placeholder="Virtual link" value={form.virtual_link} onChange={(e) => set("virtual_link", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
-          : <input placeholder="Location" value={form.location} onChange={(e) => set("location", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />}
-        <input type="number" placeholder="Max attendees (optional)" value={form.max_attendees} onChange={(e) => set("max_attendees", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
+        {form.is_virtual ? (
+          <div className="space-y-1.5">
+            <label htmlFor="event-virtual-link" className="block text-sm font-medium">
+              Virtual link
+            </label>
+            <input
+              id="event-virtual-link"
+              placeholder="Virtual link"
+              value={form.virtual_link}
+              onChange={(e) => set("virtual_link", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label htmlFor="event-location" className="block text-sm font-medium">
+              Location
+            </label>
+            <input
+              id="event-location"
+              placeholder="Location"
+              value={form.location}
+              onChange={(e) => set("location", e.target.value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <label htmlFor="event-max-attendees" className="block text-sm font-medium">
+            Maximum attendees (optional)
+          </label>
+          <input
+            id="event-max-attendees"
+            type="number"
+            placeholder="Maximum attendees"
+            value={form.max_attendees}
+            onChange={(e) => set("max_attendees", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">Cancel</button>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Create</button>
+          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">
+            Cancel
+          </button>
+          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
+            Create
+          </button>
         </div>
       </form>
     </div>

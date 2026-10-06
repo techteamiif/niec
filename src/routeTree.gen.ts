@@ -16,25 +16,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PaymentRouteImport } from './routes/payment'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ApplyRouteImport } from './routes/apply'
-import { Route as AppRouteImport } from './routes/_app'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
-import { Route as AppProfileRouteImport } from './routes/_app.profile'
-import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
-import { Route as AppMessagesRouteImport } from './routes/_app.messages'
-import { Route as AppMentorshipRouteImport } from './routes/_app.mentorship'
-import { Route as AppMembersRouteImport } from './routes/_app.members'
-import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
-import { Route as AppEventsRouteImport } from './routes/_app.events'
-import { Route as AppDealRoomRouteImport } from './routes/_app.deal-room'
-import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
-import { Route as AppCopsRouteImport } from './routes/_app.cops'
-import { Route as AppCommunityRouteImport } from './routes/_app.community'
-import { Route as AppAdminRouteImport } from './routes/_app.admin'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
 import { Route as AppCommunityRouteImport } from './routes/_app.community'
@@ -53,6 +35,7 @@ import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-we
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AppCopsCopRouteImport } from './routes/_app.cops.$cop'
+import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -91,9 +74,21 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppUpgradeRoute = AppUpgradeRouteImport.update({
-  id: '/upgrade',
-  path: '/upgrade',
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCommunityRoute = AppCommunityRouteImport.update({
@@ -177,6 +172,11 @@ const AppCopsCopRoute = AppCopsCopRouteImport.update({
   path: '/$cop',
   getParentRoute: () => AppCopsRoute,
 } as any)
+const AppEventEventIdRoute = AppEventEventIdRouteImport.update({
+  id: '/event/$eventId',
+  path: '/event/$eventId',
+  getParentRoute: () => AppRoute,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -220,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
+  '/event/$eventId': typeof AppEventEventIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -250,6 +251,7 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
+  '/event/$eventId': typeof AppEventEventIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -282,6 +284,7 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/cops/$cop': typeof AppCopsCopRoute
+  '/_app/event/$eventId': typeof AppEventEventIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -289,95 +292,98 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-  | '/'
-  | '/apply'
-  | '/login'
-  | '/mcp'
-  | '/payment'
-  | '/reset-password'
-  | '/.mcp/list-tools'
-  | '/.well-known/oauth-protected-resource'
-  | '/admin'
-  | '/community'
-  | '/cops'
-  | '/dashboard'
-  | '/deal-room'
-  | '/events'
-  | '/knowledge'
-  | '/members'
-  | '/mentorship'
-  | '/messages'
-  | '/notifications'
-  | '/profile'
-  | '/upgrade'
-  | '/api/paystack-webhook'
-  | '/.lovable/oauth/consent'
-  | '/.mcp/invoke-tool/$tool'
-  | '/cops/$cop'
-  | '/lovable/email/auth/preview'
-  | '/lovable/email/auth/webhook'
-  | '/lovable/email/transactional/preview'
+    | '/'
+    | '/apply'
+    | '/login'
+    | '/mcp'
+    | '/payment'
+    | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/admin'
+    | '/community'
+    | '/cops'
+    | '/dashboard'
+    | '/deal-room'
+    | '/events'
+    | '/knowledge'
+    | '/members'
+    | '/mentorship'
+    | '/messages'
+    | '/notifications'
+    | '/profile'
+    | '/upgrade'
+    | '/api/paystack-webhook'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/cops/$cop'
+    | '/event/$eventId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
-  | '/'
-  | '/apply'
-  | '/login'
-  | '/mcp'
-  | '/payment'
-  | '/reset-password'
-  | '/.mcp/list-tools'
-  | '/.well-known/oauth-protected-resource'
-  | '/admin'
-  | '/community'
-  | '/cops'
-  | '/dashboard'
-  | '/deal-room'
-  | '/events'
-  | '/knowledge'
-  | '/members'
-  | '/mentorship'
-  | '/messages'
-  | '/notifications'
-  | '/profile'
-  | '/upgrade'
-  | '/api/paystack-webhook'
-  | '/.lovable/oauth/consent'
-  | '/.mcp/invoke-tool/$tool'
-  | '/cops/$cop'
-  | '/lovable/email/auth/preview'
-  | '/lovable/email/auth/webhook'
-  | '/lovable/email/transactional/preview'
+    | '/'
+    | '/apply'
+    | '/login'
+    | '/mcp'
+    | '/payment'
+    | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/admin'
+    | '/community'
+    | '/cops'
+    | '/dashboard'
+    | '/deal-room'
+    | '/events'
+    | '/knowledge'
+    | '/members'
+    | '/mentorship'
+    | '/messages'
+    | '/notifications'
+    | '/profile'
+    | '/upgrade'
+    | '/api/paystack-webhook'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/cops/$cop'
+    | '/event/$eventId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
   id:
-  | '__root__'
-  | '/'
-  | '/_app'
-  | '/apply'
-  | '/login'
-  | '/mcp'
-  | '/payment'
-  | '/reset-password'
-  | '/.mcp/list-tools'
-  | '/.well-known/oauth-protected-resource'
-  | '/_app/admin'
-  | '/_app/community'
-  | '/_app/cops'
-  | '/_app/dashboard'
-  | '/_app/deal-room'
-  | '/_app/events'
-  | '/_app/knowledge'
-  | '/_app/members'
-  | '/_app/mentorship'
-  | '/_app/messages'
-  | '/_app/notifications'
-  | '/_app/profile'
-  | '/_app/upgrade'
-  | '/api/paystack-webhook'
-  | '/.lovable/oauth/consent'
-  | '/.mcp/invoke-tool/$tool'
-  | '/_app/cops/$cop'
-  | '/lovable/email/auth/preview'
-  | '/lovable/email/auth/webhook'
-  | '/lovable/email/transactional/preview'
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/apply'
+    | '/login'
+    | '/mcp'
+    | '/payment'
+    | '/reset-password'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
+    | '/_app/admin'
+    | '/_app/community'
+    | '/_app/cops'
+    | '/_app/dashboard'
+    | '/_app/deal-room'
+    | '/_app/events'
+    | '/_app/knowledge'
+    | '/_app/members'
+    | '/_app/mentorship'
+    | '/_app/messages'
+    | '/_app/notifications'
+    | '/_app/profile'
+    | '/_app/upgrade'
+    | '/api/paystack-webhook'
+    | '/.lovable/oauth/consent'
+    | '/.mcp/invoke-tool/$tool'
+    | '/_app/cops/$cop'
+    | '/_app/event/$eventId'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
+    | '/lovable/email/transactional/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -463,11 +469,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/upgrade': {
-      id: '/_app/upgrade'
-      path: '/upgrade'
-      fullPath: '/upgrade'
-      preLoaderRoute: typeof AppUpgradeRouteImport
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/community': {
@@ -582,6 +588,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCopsCopRouteImport
       parentRoute: typeof AppCopsRoute
     }
+    '/_app/event/$eventId': {
+      id: '/_app/event/$eventId'
+      path: '/event/$eventId'
+      fullPath: '/event/$eventId'
+      preLoaderRoute: typeof AppEventEventIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -631,6 +644,7 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppUpgradeRoute: typeof AppUpgradeRoute
+  AppEventEventIdRoute: typeof AppEventEventIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -647,6 +661,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppUpgradeRoute: AppUpgradeRoute,
+  AppEventEventIdRoute: AppEventEventIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

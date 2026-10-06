@@ -4,29 +4,33 @@
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  "observability": {
+    "enabled": true
+  },
 
   "vars": {
+    "PAYSTACK_PUBLIC_KEY": "pk_live_e7241a5ca882fb4a33a32a6de06a970d6c19abbc",
     "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
     "SUPABASE_PROJECT_ID": "mowjubtfponizxufrxem",
     "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vd2p1YnRmcG9uaXp4dWZyeGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MjY1MjUsImV4cCI6MjEwNjIwMjUyNX0.6q0f3BkXzcfgE8FMsWq73wKpA_ruw0AkVAIg0PInSrw",
     "SUPABASE_URL": "https://mowjubtfponizxufrxem.supabase.co",
-    "VITE_SITE_URL": "https://niec.techteam-315.workers.dev/",
+    "VITE_SITE_URL": "https://niec.techteam-315.workers.dev",
     "VITE_SUPABASE_PROJECT_ID": "mowjubtfponizxufrxem",
     "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vd2p1YnRmcG9uaXp4dWZyeGVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MjY1MjUsImV4cCI6MjEwNjIwMjUyNX0.6q0f3BkXzcfgE8FMsWq73wKpA_ruw0AkVAIg0PInSrw",
     "VITE_SUPABASE_URL": "https://mowjubtfponizxufrxem.supabase.co"
     },
     "previews": {
-    "vars": {
-      "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
-      "SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
-      "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
-      "SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co",
-      "VITE_SITE_URL": "https://development-niec.techteam-315.workers.dev",
-      "VITE_SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
-      "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
-      "VITE_SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co"
-      
-    }
+      "vars": {
+        "PAYSTACK_PUBLIC_KEY": "pk_test_2616921d06ef17a7577ec7f120fb96814f21a727",
+        "SMTP_USER": "Techteam@impactinvestorsfoundation.org",
+        "SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
+        "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
+        "SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co",
+        "VITE_SITE_URL": "https://development-niec.techteam-315.workers.dev",
+        "VITE_SUPABASE_PROJECT_ID": "xakulabhizohzbdbtwpc",
+        "VITE_SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhha3VsYWJoaXpvaHpiZGJ0d3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MzcyMDQsImV4cCI6MjEwNjIxMzIwNH0.oDclXjgIoQVb5zgO3_fp7bb3UdLkCCIiYPD1eh1eAaY",
+        "VITE_SUPABASE_URL": "https://xakulabhizohzbdbtwpc.supabase.co"
+      },
 
   }
   
