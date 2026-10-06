@@ -1,42 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Calendar, MapPin, Video, Download, X } from "lucide-react";
+import { Calendar, MapPin, Video, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
 });
-
-function toICS(ev: any) {
-  const dt = (s: string) => new Date(s).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-  const esc = (s: string) => (s ?? "").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-  const loc = ev.is_virtual ? (ev.virtual_link ?? "Virtual") : (ev.location ?? "");
-  return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//NIEC//EN", "BEGIN:VEVENT",
-    `UID:${ev.id}@niec`,
-    `DTSTAMP:${dt(new Date().toISOString())}`,
-    `DTSTART:${dt(ev.start_date)}`,
-    `DTEND:${dt(ev.end_date ?? ev.start_date)}`,
-    `SUMMARY:${esc(ev.title)}`,
-    `DESCRIPTION:${esc(ev.description ?? "")}`,
-    `LOCATION:${esc(loc)}`,
-    "END:VEVENT", "END:VCALENDAR",
-  ].join("\r\n");
-}
-
-function downloadICS(ev: any) {
-  const blob = new Blob([toICS(ev)], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${ev.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function formatEventType(eventType: string) {
   const label = eventType.replace(/_/g, " ");
@@ -44,7 +17,7 @@ function formatEventType(eventType: string) {
 }
 
 function EventsPage() {
-  const { user, profile, isStaff } = useAuth();
+  const { user, isStaff } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [regs, setRegs] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
@@ -59,26 +32,6 @@ function EventsPage() {
     }
   };
   useEffect(() => { load(); }, [user]);
-
-  const register = async (ev: any) => {
-    if (!user) return;
-    if (!tierMeets(profile?.membership_tier, ev.min_tier_required)) {
-      toast.error(`Requires ${TIER_LABELS[ev.min_tier_required]} tier or above`);
-      return;
-    }
-    const { error } = await supabase.from("event_registrations").insert({ event_id: ev.id, member_id: user.id });
-    if (error) toast.error(error.message);
-    else { toast.success("You're registered"); load(); }
-  };
-
-  const cancel = async (ev: any) => {
-    if (!user) return;
-    if (!confirm(`Cancel your registration for "${ev.title}"?`)) return;
-    const { error } = await supabase.from("event_registrations")
-      .delete().eq("event_id", ev.id).eq("member_id", user.id);
-    if (error) toast.error(error.message);
-    else { toast.success("Registration cancelled"); load(); }
-  };
 
   const now = Date.now();
   const filtered = useMemo(() => {
@@ -119,9 +72,6 @@ function EventsPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {filtered.map((ev) => {
-          const allowed = tierMeets(profile?.membership_tier, ev.min_tier_required);
-          const registered = regs.has(ev.id);
-          const ended = new Date(ev.end_date ?? ev.start_date).getTime() < now;
           return (
             <div key={ev.id} className="rounded-xl border bg-card p-6">
               <div className="flex items-center gap-2 text-xs text-primary">
@@ -138,28 +88,10 @@ function EventsPage() {
               </div>
               <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min tier: {TIER_LABELS[ev.min_tier_required]}</div>
-                <div className="flex items-center gap-2">
-                  {registered && (
-                    <button onClick={() => downloadICS(ev)} title="Add to calendar"
-                      className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium hover:bg-muted">
-                      <Download className="h-3 w-3" /> .ics
-                    </button>
-                  )}
-                  {ended ? (
-                    <span className="rounded-md bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground">Ended</span>
-                  ) : registered ? (
-                    <button onClick={() => cancel(ev)}
-                      className="inline-flex items-center gap-1 rounded-md border border-destructive/40 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10">
-                      <X className="h-3 w-3" /> Cancel
-                    </button>
-                  ) : (
-                    <button disabled={!allowed} onClick={() => register(ev)}
-                      title={allowed ? "" : "Upgrade your tier to register"}
-                      className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-                      {allowed ? "Register" : "Tier locked"}
-                    </button>
-                  )}
-                </div>
+                <Link to="/event/$eventId" params={{ eventId: ev.id }}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                  See details <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </div>
           );

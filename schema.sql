@@ -16,6 +16,9 @@ SET row_security = off;
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
+CREATE SCHEMA IF NOT EXISTS "private";
+REVOKE ALL ON SCHEMA "private" FROM PUBLIC, "anon", "authenticated";
+
 
 CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
 
@@ -836,6 +839,31 @@ END $$;
 ALTER FUNCTION "public"."notify_event_registration"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "private"."maintain_event_attendee_count"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO public.event_attendee_counts (event_id, attendee_count)
+    VALUES (NEW.event_id, 1)
+    ON CONFLICT (event_id) DO UPDATE
+      SET attendee_count = event_attendee_counts.attendee_count + 1;
+    RETURN NEW;
+  END IF;
+
+  UPDATE public.event_attendee_counts
+  SET attendee_count = GREATEST(attendee_count - 1, 0)
+  WHERE event_id = OLD.event_id;
+  RETURN OLD;
+END;
+$$;
+
+
+ALTER FUNCTION "private"."maintain_event_attendee_count"() OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "private"."maintain_event_attendee_count"() FROM PUBLIC, "anon", "authenticated";
+
+
 CREATE OR REPLACE FUNCTION "public"."notify_like_on_post"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1139,6 +1167,25 @@ CREATE TABLE IF NOT EXISTS "public"."event_registrations" (
 
 
 ALTER TABLE "public"."event_registrations" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."event_attendees" (
+    "event_id" "uuid" NOT NULL,
+    "member_id" "uuid" NOT NULL,
+    "registered_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."event_attendees" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."event_attendee_counts" (
+    "event_id" "uuid" NOT NULL,
+    "attendee_count" integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE "public"."event_attendee_counts" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."events" (
@@ -1731,6 +1778,8 @@ CREATE OR REPLACE TRIGGER "notify_direct_message_trg" AFTER INSERT ON "public"."
 CREATE OR REPLACE TRIGGER "notify_event_registration_trg" AFTER INSERT ON "public"."event_registrations" FOR EACH ROW EXECUTE FUNCTION "public"."notify_event_registration"();
 
 
+CREATE OR REPLACE TRIGGER "maintain_event_attendee_count" AFTER INSERT OR DELETE ON "public"."event_attendees" FOR EACH ROW EXECUTE FUNCTION "private"."maintain_event_attendee_count"();
+
 
 CREATE OR REPLACE TRIGGER "notify_like_on_post_trg" AFTER INSERT ON "public"."post_likes" FOR EACH ROW EXECUTE FUNCTION "public"."notify_like_on_post"();
 
@@ -1832,6 +1881,29 @@ ALTER TABLE ONLY "public"."event_registrations"
 ALTER TABLE ONLY "public"."event_registrations"
     ADD CONSTRAINT "event_registrations_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
+
+ALTER TABLE ONLY "public"."event_attendees"
+    ADD CONSTRAINT "event_attendees_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."event_attendees"
+    ADD CONSTRAINT "event_attendees_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."event_attendees"
+    ADD CONSTRAINT "event_attendees_pkey" PRIMARY KEY ("event_id", "member_id");
+
+
+ALTER TABLE ONLY "public"."event_attendee_counts"
+    ADD CONSTRAINT "event_attendee_counts_event_id_fkey" FOREIGN KEY ("event_id") REFERENCES "public"."events"("id") ON DELETE CASCADE;
+
+
+ALTER TABLE ONLY "public"."event_attendee_counts"
+    ADD CONSTRAINT "event_attendee_counts_pkey" PRIMARY KEY ("event_id");
+
+
+ALTER TABLE ONLY "public"."event_attendee_counts"
+    ADD CONSTRAINT "event_attendee_counts_attendee_count_check" CHECK (("attendee_count" >= 0));
 
 
 ALTER TABLE ONLY "public"."events"
@@ -2042,6 +2114,12 @@ CREATE POLICY "dm update recipient" ON "public"."direct_messages" FOR UPDATE TO 
 ALTER TABLE "public"."event_registrations" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."event_attendees" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."event_attendee_counts" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."events" ENABLE ROW LEVEL SECURITY;
 
 
@@ -2054,6 +2132,24 @@ CREATE POLICY "events staff delete" ON "public"."events" FOR DELETE TO "authenti
 
 
 CREATE POLICY "events staff update" ON "public"."events" FOR UPDATE TO "authenticated" USING ("public"."is_staff"("auth"."uid"()));
+
+
+CREATE POLICY "event attendees read own or event managers" ON "public"."event_attendees" FOR SELECT TO "authenticated" USING ((("member_id" = "auth"."uid"()) OR "public"."is_staff"("auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."events"
+  WHERE (("events"."id" = "event_attendees"."event_id") AND ("events"."created_by" = "auth"."uid"()))))));
+
+
+CREATE POLICY "event attendees insert own" ON "public"."event_attendees" FOR INSERT TO "authenticated" WITH CHECK ((("member_id" = "auth"."uid"()) AND (EXISTS ( SELECT 1
+   FROM "public"."events"
+  WHERE (("events"."id" = "event_attendees"."event_id") AND ("public"."tier_rank"("public"."current_tier"("auth"."uid"())) >= "public"."tier_rank"("events"."min_tier_required")))))));
+
+
+CREATE POLICY "event attendees delete own or event managers" ON "public"."event_attendees" FOR DELETE TO "authenticated" USING ((("member_id" = "auth"."uid"()) OR "public"."is_staff"("auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."events"
+  WHERE (("events"."id" = "event_attendees"."event_id") AND ("events"."created_by" = "auth"."uid"()))))));
+
+
+CREATE POLICY "event attendee counts read" ON "public"."event_attendee_counts" FOR SELECT TO "authenticated" USING (true);
 
 
 
@@ -2699,7 +2795,6 @@ GRANT ALL ON FUNCTION "public"."get_event_virtual_link"("_event_id" "uuid") TO "
 GRANT ALL ON FUNCTION "public"."get_event_virtual_link"("_event_id" "uuid") TO "authenticated";
 
 
-
 REVOKE ALL ON FUNCTION "public"."get_my_profile"() FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_my_profile"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_my_profile"() TO "authenticated";
@@ -2896,6 +2991,15 @@ GRANT ALL ON TABLE "public"."event_registrations" TO "anon";
 GRANT ALL ON TABLE "public"."event_registrations" TO "authenticated";
 GRANT ALL ON TABLE "public"."event_registrations" TO "service_role";
 
+
+REVOKE ALL ON TABLE "public"."event_attendees" FROM "anon";
+GRANT SELECT,INSERT,DELETE ON TABLE "public"."event_attendees" TO "authenticated";
+GRANT ALL ON TABLE "public"."event_attendees" TO "service_role";
+
+
+REVOKE ALL ON TABLE "public"."event_attendee_counts" FROM "anon";
+GRANT SELECT ON TABLE "public"."event_attendee_counts" TO "authenticated";
+GRANT ALL ON TABLE "public"."event_attendee_counts" TO "service_role";
 
 
 GRANT INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."events" TO "anon";
@@ -3096,14 +3200,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
-
-
-
-
-
-
 
 
 
