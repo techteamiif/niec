@@ -86,7 +86,7 @@ function EventsPage() {
                 <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
                 {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">Cap: {ev.max_attendees}</span>}
               </div>
-              <div className="mt-4 flex items-center justify-between gap-2">
+              <div className="mt-4 flex flex-col items-start gap-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min tier: {TIER_LABELS[ev.min_tier_required]}</div>
                 <Link to="/event/$eventId" params={{ eventId: ev.id }}
                   className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
