@@ -341,16 +341,19 @@ export type Database = {
       }
       event_attendees: {
         Row: {
+          attending: boolean
           event_id: string
           member_id: string
           registered_at: string
         }
         Insert: {
+          attending?: boolean
           event_id: string
           member_id: string
           registered_at?: string
         }
         Update: {
+          attending?: boolean
           event_id?: string
           member_id?: string
           registered_at?: string

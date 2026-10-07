@@ -31,6 +31,7 @@ import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
+import { Route as ApiNotificationEmailWebhookRouteImport } from './routes/api/notification-email-webhook'
 import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-webhook'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -151,6 +152,12 @@ const AppUpgradeRoute = AppUpgradeRouteImport.update({
   path: '/upgrade',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiNotificationEmailWebhookRoute =
+  ApiNotificationEmailWebhookRouteImport.update({
+    id: '/api/notification-email-webhook',
+    path: '/api/notification-email-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPaystackWebhookRoute = ApiPaystackWebhookRouteImport.update({
   id: '/api/paystack-webhook',
   path: '/api/paystack-webhook',
@@ -216,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/upgrade': typeof AppUpgradeRoute
+  '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -247,6 +255,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/upgrade': typeof AppUpgradeRoute
+  '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -280,6 +289,7 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/upgrade': typeof AppUpgradeRoute
+  '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/upgrade'
+    | '/api/notification-email-webhook'
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/upgrade'
+    | '/api/notification-email-webhook'
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -376,6 +388,7 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/profile'
     | '/_app/upgrade'
+    | '/api/notification-email-webhook'
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -396,6 +409,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiNotificationEmailWebhookRoute: typeof ApiNotificationEmailWebhookRoute
   ApiPaystackWebhookRoute: typeof ApiPaystackWebhookRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -560,6 +574,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUpgradeRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/notification-email-webhook': {
+      id: '/api/notification-email-webhook'
+      path: '/api/notification-email-webhook'
+      fullPath: '/api/notification-email-webhook'
+      preLoaderRoute: typeof ApiNotificationEmailWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paystack-webhook': {
       id: '/api/paystack-webhook'
       path: '/api/paystack-webhook'
@@ -677,6 +698,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiNotificationEmailWebhookRoute: ApiNotificationEmailWebhookRoute,
   ApiPaystackWebhookRoute: ApiPaystackWebhookRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,

@@ -20,6 +20,7 @@ function EventsPage() {
   const { user, isStaff } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [regs, setRegs] = useState<Set<string>>(new Set());
+  const [attendingEvents, setAttendingEvents] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
 
@@ -29,10 +30,32 @@ function EventsPage() {
       .select("id, title, description, event_type, start_date, end_date, location, is_virtual, max_attendees, min_tier_required, is_paid")
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
-    setEvents(data ?? []);
+    const { data: attendeeCounts, error: attendeeCountsError } = await supabase
+      .from("event_attendee_counts")
+      .select("event_id, attendee_count");
+    if (attendeeCountsError)
+      toast.error(`Could not load event attendee counts: ${attendeeCountsError.message}`);
+    const countsByEvent = new Map(
+      (attendeeCounts ?? []).map(({ event_id, attendee_count }) => [event_id, attendee_count]),
+    );
+    setEvents((data ?? []).map((event) => ({
+      ...event,
+      attendee_count: countsByEvent.get(event.id) ?? 0,
+    })));
     if (user) {
       const { data: r } = await supabase.from("event_registrations").select("event_id").eq("member_id", user.id);
       setRegs(new Set((r ?? []).map((x: any) => x.event_id)));
+      const { data: attendance, error: attendanceError } = await supabase
+        .from("event_attendees")
+        .select("event_id")
+        .eq("member_id", user.id)
+        .eq("attending", true);
+      if (attendanceError)
+        toast.error(`Could not load your event attendance: ${attendanceError.message}`);
+      setAttendingEvents(new Set((attendance ?? []).map(({ event_id }) => event_id)));
+    } else {
+      setRegs(new Set());
+      setAttendingEvents(new Set());
     }
   };
   useEffect(() => { load(); }, [user]);
@@ -94,8 +117,24 @@ function EventsPage() {
                 ) : null}
                 <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
                 <span className="rounded bg-muted px-2 py-0.5">{ev.is_paid ? "Paid" : "Free"}</span>
-                {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">Cap: {ev.max_attendees}</span>}
+                {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">{ev.max_attendees} Seats</span>}
+                <span className="rounded bg-muted px-2 py-0.5">
+                  {ev.attendee_count} {ev.attendee_count === 1 ? "attendee" : "attendees"}
+                </span>
               </div>
+              {ev.attendee_count > 0 && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {attendingEvents.has(ev.id)
+                    ? ev.attendee_count === 1
+                      ? "You will be attending this event"
+                      : `You and ${ev.attendee_count - 1} ${
+                          ev.attendee_count === 2 ? "other person" : "people"
+                        } will be attending this event`
+                    : `${ev.attendee_count} ${
+                        ev.attendee_count === 1 ? "person" : "people"
+                      } will be attending this event`}
+                </p>
+              )}
               <div className="mt-4 flex flex-col items-start gap-2">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min tier: {TIER_LABELS[ev.min_tier_required]}</div>
                 <Link to="/event/$eventId" params={{ eventId: ev.id }}
@@ -143,6 +182,17 @@ function CreateEvent({
     min_tier_required: "observer",
     max_attendees: "",
   });
+  useEffect(() => {
+    const bodyOverflow = document.body.style.overflow;
+    const documentOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = documentOverflow;
+    };
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload: any = {
@@ -162,8 +212,23 @@ function CreateEvent({
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <form onSubmit={submit} className="w-full max-w-xl space-y-3 rounded-2xl border bg-card p-6">
-        <h2 className="font-display text-xl">New event</h2>
+      <form
+        onSubmit={submit}
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-card shadow-xl"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
+          <h2 className="font-display text-xl">New event</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close event form"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="space-y-3">
         <div className="space-y-1.5">
           <label htmlFor="event-title" className="block text-sm font-medium">
             Title
@@ -282,10 +347,11 @@ function CreateEvent({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="event-registration-link" className="block text-sm font-medium">
-              Registration link (optional)
+              Registration link
             </label>
             <input
               id="event-registration-link"
+              required
               type="url"
               placeholder="https://example.com/register"
               value={form.registration_link}
@@ -319,7 +385,9 @@ function CreateEvent({
             className="h-10 w-full rounded-md border bg-background px-3 text-sm"
           />
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+          </div>
+        </div>
+        <div className="flex shrink-0 justify-end gap-2 border-t px-6 py-4">
           <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">
             Cancel
           </button>

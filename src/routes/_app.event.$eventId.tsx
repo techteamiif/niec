@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Calendar, Check, Download, MapPin, Video, X } from "lucide-react";
+import { ArrowLeft, Calendar, Download, MapPin, Video, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -10,6 +10,7 @@ import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 
 type EventRecord = Database["public"]["Tables"]["events"]["Row"];
+type AttendanceResponse = "yes" | "no" | null;
 type EventAttendee = {
   member_id: string;
   registered_at: string;
@@ -73,7 +74,7 @@ function EventDetailPage() {
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [attendeeCount, setAttendeeCount] = useState(0);
-  const [isAttending, setIsAttending] = useState(false);
+  const [attendanceResponse, setAttendanceResponse] = useState<AttendanceResponse>(null);
   const [updatingAttendance, setUpdatingAttendance] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [tab, setTab] = useState<"details" | "attendees">("details");
@@ -140,6 +141,7 @@ function EventDetailPage() {
         .from("event_attendees")
         .select("member_id, registered_at, profiles:member_id(full_name, avatar_url)")
         .eq("event_id", eventId)
+        .eq("attending", true)
         .order("registered_at");
       if (attendeeError) toast.error(`Could not load attendees: ${attendeeError.message}`);
       setAttendees(attendeeRows ?? []);
@@ -150,14 +152,14 @@ function EventDetailPage() {
     if (user) {
       const { data: rsvp, error: rsvpError } = await supabase
         .from("event_attendees")
-        .select("member_id")
+        .select("attending")
         .eq("event_id", eventId)
         .eq("member_id", user.id)
         .maybeSingle();
       if (rsvpError) toast.error(`Could not check your attendance: ${rsvpError.message}`);
-      setIsAttending(!!rsvp);
+      setAttendanceResponse(rsvp ? (rsvp.attending ? "yes" : "no") : null);
     } else {
-      setIsAttending(false);
+      setAttendanceResponse(null);
     }
     setLoading(false);
   }, [eventId, isStaff, user]);
@@ -184,26 +186,24 @@ function EventDetailPage() {
     await load();
   };
 
-  const toggleAttendance = async () => {
+  const setAttendance = async (response: Exclude<AttendanceResponse, null>) => {
     if (!user || !event || updatingAttendance) return;
     if (!allowed) {
       toast.error(`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`);
       return;
     }
     setUpdatingAttendance(true);
-    const result = isAttending
-      ? await supabase
-          .from("event_attendees")
-          .delete()
-          .eq("event_id", event.id)
-          .eq("member_id", user.id)
-      : await supabase.from("event_attendees").insert({
-          event_id: event.id,
-          member_id: user.id,
-        });
+    const { error } = await supabase.from("event_attendees").upsert(
+      {
+        event_id: event.id,
+        member_id: user.id,
+        attending: response === "yes",
+      },
+      { onConflict: "event_id,member_id" },
+    );
     setUpdatingAttendance(false);
-    if (result.error) return toast.error(result.error.message);
-    toast.success(isAttending ? "Attendance RSVP removed" : "You're on the attendee list");
+    if (error) return toast.error(error.message);
+    toast.success(response === "yes" ? "You're on the attendee list" : "Your response was saved");
     await load();
   };
 
@@ -222,6 +222,7 @@ function EventDetailPage() {
 
   const ended = event ? new Date(event.end_date ?? event.start_date).getTime() < Date.now() : false;
   const allowed = event ? tierMeets(profile?.membership_tier, event.min_tier_required) : false;
+  const isAttending = attendanceResponse === "yes";
 
   return (
     <div className="p-6 lg:p-10">
@@ -285,9 +286,62 @@ function EventDetailPage() {
                   {event.is_paid ? "Paid" : "Free"}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {attendeeCount} {attendeeCount === 1 ? "person" : "people"} will be attending
-              </p>
+              <div className="flex mt-8 justify-between items-center gap-1">
+                <p className="text-sm text-muted-foreground">
+                  {isAttending
+                    ? attendeeCount === 1
+                      ? "You will be attending this event"
+                      : `You and ${attendeeCount - 1} ${
+                          attendeeCount === 2 ? "other" : "others"
+                        } will be attending`
+                    : attendeeCount > 0
+                      ? `${attendeeCount} ${attendeeCount === 1 ? "person" : "people"} will be attending.`
+                      : attendanceResponse === "no"
+                        ? "No attendees yet."
+                        : "Be the first to show interest. Will you be attending?"}
+                </p>
+                {!attendanceResponse && attendeeCount > 0 && (
+                  <p className="text-sm text-muted-foreground">Will you be attending?</p>
+                )}
+                {!ended && (
+                  <>
+                    <button
+                      onClick={() => setAttendance("yes")}
+                      disabled={!allowed || updatingAttendance}
+                      aria-pressed={isAttending}
+                      title={
+                        allowed
+                          ? ""
+                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                      }
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                        isAttending
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/90"
+                      }`}
+                    >
+                      {updatingAttendance ? "Saving…" : "Yes"}
+                    </button>
+                    <button
+                      onClick={() => setAttendance("no")}
+                      disabled={!allowed || updatingAttendance}
+                      aria-pressed={attendanceResponse === "no"}
+                      title={
+                        allowed
+                          ? ""
+                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                      }
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                        attendanceResponse === "no"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/90"
+                      }`}
+                    >
+                      {updatingAttendance ? "Saving…" : "No"}
+                    </button>
+                  </>
+                )}
+              </div>
               {/* <p className="mt-2 text-sm text-muted-foreground">
                 Convenings, deal rooms, CoP meetings, boot camps and policy roundtables.
               </p> */}
@@ -309,50 +363,33 @@ function EventDetailPage() {
                   <X className="h-4 w-4" /> Cancel registration
                 </button>
               )}
-              {!registered && !ended && (
+              {!registered && !ended && (allowed ? (
+                event.registration_link ? (
+                  <a
+                    href={event.registration_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Register
+                  </a>
+                ) : (
+                  <button
+                    onClick={register}
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Register
+                  </button>
+                )
+              ) : (
                 <button
-                  disabled={!allowed}
-                  onClick={register}
-                  title={
-                    allowed ? "" : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                  }
-                  className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled
+                  title={`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`}
+                  className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground opacity-50"
                 >
-                  {allowed ? "Register" : "Tier locked"}
+                  Tier locked
                 </button>
-              )}
-              {event.registration_link && (
-                <a
-                  href={event.registration_link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-md border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
-                >
-                  External registration
-                </a>
-              )}
-              {!ended && (
-                <button
-                  onClick={toggleAttendance}
-                  disabled={!allowed || updatingAttendance}
-                  aria-pressed={isAttending}
-                  title={
-                    allowed ? "" : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                  }
-                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition ${
-                    isAttending
-                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
-                      : "hover:bg-muted"
-                  } disabled:cursor-wait disabled:opacity-60`}
-                >
-                  {isAttending && <Check className="h-4 w-4" />}
-                  {updatingAttendance
-                    ? "Updating…"
-                    : isAttending
-                      ? "You're attending"
-                      : "I will be attending"}
-                </button>
-              )}
+              ))}
               {ended && (
                 <span className="rounded-md bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground">
                   Event ended
