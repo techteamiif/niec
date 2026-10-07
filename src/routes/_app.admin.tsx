@@ -7,6 +7,7 @@ import { UserAvatar } from "@/components/Avatar";
 import { TIER_LABELS, ORG_TYPE_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
   Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
@@ -1003,7 +1004,9 @@ function ProgramsTab() {
             <div key={e.id} className="flex items-center gap-3 border-b py-2 last:border-0 text-sm">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{e.is_featured && "⭐ "}{e.title}</div>
-                <div className="text-[11px] text-muted-foreground">{format(new Date(e.start_date), "PPp")} · {e.event_type} · {e.status}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")} · {e.event_type} · {e.status}
+                </div>
               </div>
               <button onClick={() => toggleField("events", e.id, "is_featured", !e.is_featured)} title="Feature" className="rounded p-1 hover:bg-muted"><Star className={`h-3.5 w-3.5 ${e.is_featured ? "fill-gold text-gold" : ""}`} /></button>
               <select value={e.status} onChange={(ev) => toggleField("events", e.id, "status", ev.target.value)} className="h-7 rounded border bg-background px-2 text-xs">

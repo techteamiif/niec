@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { TIER_LABELS } from "@/lib/niec";
+import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
+import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Calendar, MapPin, Video, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/events")({
@@ -27,7 +28,7 @@ function EventsPage() {
   const load = async () => {
     const { data, error } = await supabase
       .from("events")
-      .select("id, title, description, event_type, start_date, end_date, location, is_virtual, max_attendees, min_tier_required, is_paid")
+      .select("id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, is_paid")
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
     const { data: attendeeCounts, error: attendeeCountsError } = await supabase
@@ -101,8 +102,13 @@ function EventsPage() {
         {filtered.map((ev) => {
           return (
             <div key={ev.id} className="rounded-xl border bg-card p-6">
-              <div className="flex items-center gap-2 text-xs text-primary">
-                <Calendar className="h-3.5 w-3.5" /> {format(new Date(ev.start_date), "PPP p")}
+              <div className="flex items-start gap-2 text-xs text-primary">
+                <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="space-y-1">
+                  {formatEventSchedule(ev.schedule, ev.start_date, ev.end_date).map((line, index) => (
+                    <div key={`${line}-${index}`}>{line}</div>
+                  ))}
+                </div>
               </div>
               <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
               <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{ev.description}</p>
@@ -159,6 +165,29 @@ function EventsPage() {
   );
 }
 
+type EventFormState = {
+  title: string;
+  description: string;
+  event_type: "onsite" | "online" | "hybrid";
+  start_date: string;
+  end_date: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  is_virtual: boolean;
+  virtual_link: string;
+  registration_link: string;
+  is_paid: boolean;
+  min_tier_required: Database["public"]["Enums"]["membership_tier"];
+  max_attendees: string;
+};
+
+type EventSessionForm = {
+  date: string;
+  start_time: string;
+  end_time: string;
+};
+
 function CreateEvent({
   onClose,
   onCreated,
@@ -168,12 +197,14 @@ function CreateEvent({
   onCreated: () => void;
   userId: string;
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<EventFormState>({
     title: "",
     description: "",
     event_type: "onsite",
     start_date: "",
     end_date: "",
+    start_time: "",
+    end_time: "",
     location: "",
     is_virtual: false,
     virtual_link: "",
@@ -182,6 +213,10 @@ function CreateEvent({
     min_tier_required: "observer",
     max_attendees: "",
   });
+  const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">("daily");
+  const [sessions, setSessions] = useState<EventSessionForm[]>([
+    { date: "", start_time: "", end_time: "" },
+  ]);
   useEffect(() => {
     const bodyOverflow = document.body.style.overflow;
     const documentOverflow = document.documentElement.style.overflow;
@@ -193,23 +228,122 @@ function CreateEvent({
     };
   }, []);
 
+  const set = <K extends keyof EventFormState,>(key: K, value: EventFormState[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const previewSchedule: EventSchedule | null =
+    scheduleMode === "daily" &&
+    form.start_date &&
+    form.end_date &&
+    form.end_date >= form.start_date &&
+    form.start_time &&
+    form.end_time &&
+    form.end_time > form.start_time
+      ? {
+          mode: "daily",
+          start_date: form.start_date,
+          end_date: form.end_date,
+          start_time: form.start_time,
+          end_time: form.end_time,
+        }
+      : scheduleMode === "custom" &&
+          sessions.length > 0 &&
+          sessions.every(
+            (session) =>
+              session.date &&
+              session.start_time &&
+              session.end_time &&
+              session.end_time > session.start_time,
+          )
+        ? {
+            mode: "custom",
+            sessions: sessions.map(({ date, start_time, end_time }) => ({
+              date,
+              start_time,
+              end_time,
+            })),
+          }
+        : null;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: any = {
-      ...form,
-      created_by: userId,
+    const registrationLink = form.registration_link.trim();
+    if (!registrationLink) {
+      toast.error("A registration link is required to create an event.");
+      return;
+    }
+    if (
+      scheduleMode === "daily" &&
+      (!form.start_date || !form.end_date || form.end_date < form.start_date)
+    ) {
+      toast.error("Choose a valid event start and end date.");
+      return;
+    }
+
+    let schedule: EventSchedule;
+    let startDateTime: string;
+    let endDateTime: string;
+    if (scheduleMode === "daily") {
+      if (!form.start_time || !form.end_time || form.end_time <= form.start_time) {
+        toast.error("Choose an end time later than the start time.");
+        return;
+      }
+      schedule = {
+        mode: "daily",
+        start_date: form.start_date,
+        end_date: form.end_date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+      };
+      startDateTime = new Date(`${form.start_date}T${form.start_time}`).toISOString();
+      endDateTime = new Date(`${form.end_date}T${form.end_time}`).toISOString();
+    } else {
+      const validSessions = sessions.every(
+        (session) =>
+          session.date &&
+          session.start_time &&
+          session.end_time &&
+          session.end_time > session.start_time,
+      );
+      if (!validSessions || sessions.length === 0) {
+        toast.error("Add at least one session with an end time later than its start time.");
+        return;
+      }
+      const sortedSessions = [...sessions].sort((left, right) =>
+        `${left.date}T${left.start_time}`.localeCompare(`${right.date}T${right.start_time}`),
+      );
+      schedule = { mode: "custom", sessions: sortedSessions };
+      startDateTime = new Date(
+        `${sortedSessions[0].date}T${sortedSessions[0].start_time}`,
+      ).toISOString();
+      const lastSession = [...sortedSessions].sort((left, right) =>
+        `${left.date}T${left.end_time}`.localeCompare(`${right.date}T${right.end_time}`),
+      )[sortedSessions.length - 1];
+      endDateTime = new Date(
+        `${lastSession.date}T${lastSession.end_time}`,
+      ).toISOString();
+    }
+
+    const { error } = await supabase.from("events").insert({
+      title: form.title,
+      description: form.description,
+      event_type: form.event_type,
+      start_date: startDateTime,
+      end_date: endDateTime,
+      schedule,
+      location: form.location || null,
       is_virtual: form.event_type === "online" || form.event_type === "hybrid",
+      virtual_link: form.virtual_link || null,
       max_attendees: form.max_attendees ? Number(form.max_attendees) : null,
-      registration_link: form.registration_link || null,
-      start_date: new Date(form.start_date).toISOString(),
-      end_date: new Date(form.end_date || form.start_date).toISOString(),
-    };
-    const { error } = await supabase.from("events").insert(payload);
+      min_tier_required: form.min_tier_required,
+      is_paid: form.is_paid,
+      registration_link: registrationLink,
+      created_by: userId,
+    });
     if (error) return toast.error(error.message);
     toast.success("Event created");
     onCreated();
   };
-  const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form
@@ -255,31 +389,180 @@ function CreateEvent({
             className="w-full rounded-md border bg-background p-3 text-sm"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label htmlFor="event-start-date" className="block text-sm font-medium">
-              Start date
-            </label>
-            <input
-              id="event-start-date"
-              required
-              type="datetime-local"
-              value={form.start_date}
-              onChange={(e) => set("start_date", e.target.value)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="event-end-date" className="block text-sm font-medium">
-              End date
-            </label>
-            <input
-              id="event-end-date"
-              type="datetime-local"
-              value={form.end_date}
-              onChange={(e) => set("end_date", e.target.value)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            />
+        <div className="space-y-2">
+          <label htmlFor="event-schedule-mode" className="block text-sm font-medium">
+            Schedule
+          </label>
+          <select
+            id="event-schedule-mode"
+            value={scheduleMode}
+            onChange={(e) => setScheduleMode(e.target.value as "daily" | "custom")}
+            className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="daily">Same time each day</option>
+            <option value="custom">Set individual sessions</option>
+          </select>
+          {scheduleMode === "daily" ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="event-start-date" className="block text-sm font-medium">
+                    First day
+                  </label>
+                  <input
+                    id="event-start-date"
+                    required
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => {
+                      set("start_date", e.target.value);
+                      if (!form.end_date) set("end_date", e.target.value);
+                    }}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="event-end-date" className="block text-sm font-medium">
+                    Last day
+                  </label>
+                  <input
+                    id="event-end-date"
+                    required
+                    type="date"
+                    min={form.start_date || undefined}
+                    value={form.end_date}
+                    onChange={(e) => set("end_date", e.target.value)}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="event-start-time" className="block text-sm font-medium">
+                    Starts at
+                  </label>
+                  <input
+                    id="event-start-time"
+                    required
+                    type="time"
+                    value={form.start_time}
+                    onChange={(e) => set("start_time", e.target.value)}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="event-end-time" className="block text-sm font-medium">
+                    Ends at
+                  </label>
+                  <input
+                    id="event-end-time"
+                    required
+                    type="time"
+                    value={form.end_time}
+                    onChange={(e) => set("end_time", e.target.value)}
+                    className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {sessions.map((session, index) => (
+                <div key={index} className="grid grid-cols-2 items-end gap-2 sm:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+                  <div className="space-y-1.5">
+                    <label htmlFor={`event-session-date-${index}`} className="block text-xs font-medium">
+                      Date
+                    </label>
+                    <input
+                      id={`event-session-date-${index}`}
+                      required
+                      type="date"
+                      value={session.date}
+                      onChange={(e) =>
+                        setSessions((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, date: e.target.value } : item,
+                          ),
+                        )
+                      }
+                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`event-session-start-${index}`} className="block text-xs font-medium">
+                      Starts
+                    </label>
+                    <input
+                      id={`event-session-start-${index}`}
+                      required
+                      type="time"
+                      value={session.start_time}
+                      onChange={(e) =>
+                        setSessions((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, start_time: e.target.value } : item,
+                          ),
+                        )
+                      }
+                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`event-session-end-${index}`} className="block text-xs font-medium">
+                      Ends
+                    </label>
+                    <input
+                      id={`event-session-end-${index}`}
+                      required
+                      type="time"
+                      value={session.end_time}
+                      onChange={(e) =>
+                        setSessions((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, end_time: e.target.value } : item,
+                          ),
+                        )
+                      }
+                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Remove session"
+                    disabled={sessions.length === 1}
+                    onClick={() =>
+                      setSessions((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                    }
+                    className="h-10 rounded-md border px-3 text-sm disabled:opacity-40"
+                  >
+                    −
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  setSessions((current) => [...current, { date: "", start_time: "", end_time: "" }])
+                }
+                className="rounded-md border px-3 py-1.5 text-sm"
+              >
+                + Add session
+              </button>
+            </div>
+          )}
+          <div className="rounded-md bg-muted/60 p-3 text-sm">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Schedule preview
+            </div>
+            {previewSchedule ? (
+              <div className="mt-1 space-y-1">
+                {formatEventSchedule(previewSchedule, "", "").map((line) => (
+                  <div key={line}>{line}</div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-muted-foreground">Enter the event dates and times to preview the schedule.</p>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -290,7 +573,7 @@ function CreateEvent({
             <select
               id="event-type"
               value={form.event_type}
-              onChange={(e) => set("event_type", e.target.value)}
+              onChange={(e) => set("event_type", e.target.value as EventFormState["event_type"])}
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
               <option value="onsite">Onsite</option>
@@ -305,7 +588,9 @@ function CreateEvent({
             <select
               id="event-min-tier"
               value={form.min_tier_required}
-              onChange={(e) => set("min_tier_required", e.target.value)}
+              onChange={(e) =>
+                set("min_tier_required", e.target.value as EventFormState["min_tier_required"])
+              }
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
               {Object.entries(TIER_LABELS).map(([k, v]) => (
@@ -347,7 +632,7 @@ function CreateEvent({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="event-registration-link" className="block text-sm font-medium">
-              Registration link
+              Registration link *
             </label>
             <input
               id="event-registration-link"

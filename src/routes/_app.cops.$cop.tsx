@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { COPS, COP_SLUG_REDIRECTS, initials, tierMeets } from "@/lib/niec";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { toast } from "sonner";
 import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -457,7 +458,9 @@ function CopWorkspace() {
           <div className="space-y-3">
             {events.map((e) => (
               <Link key={e.id} to="/events" className="block rounded-xl border bg-card p-4 hover:shadow-md">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{new Date(e.start_date).toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")}
+                </div>
                 <div className="mt-1 font-medium">{e.title}</div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>
               </Link>

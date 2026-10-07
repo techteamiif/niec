@@ -452,6 +452,7 @@ export type Database = {
           min_tier_required: Database["public"]["Enums"]["membership_tier"]
           is_paid: boolean
           registration_link: string | null
+          schedule: Json
           start_date: string
           title: string
           virtual_link: string | null
@@ -470,6 +471,7 @@ export type Database = {
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
           is_paid?: boolean
           registration_link?: string | null
+          schedule?: Json
           start_date: string
           title: string
           virtual_link?: string | null
@@ -488,6 +490,7 @@ export type Database = {
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
           is_paid?: boolean
           registration_link?: string | null
+          schedule?: Json
           start_date?: string
           title?: string
           virtual_link?: string | null

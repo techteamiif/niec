@@ -6,6 +6,7 @@ import { TierBadge } from "@/components/TierBadge";
 import { UserAvatar } from "@/components/Avatar";
 import { POST_TYPE_COLOR, POST_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
 import { capFor, nextTier } from "@/lib/entitlements";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { Calendar, MessageSquare, TrendingUp, Users, Sparkles, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
@@ -47,7 +48,7 @@ function Dashboard() {
           .order("created_at", { ascending: false })
           .limit(10),
         supabase.from("events")
-          .select("id, title, start_date, location, is_virtual, event_type")
+          .select("id, title, start_date, end_date, schedule, location, is_virtual, event_type")
           .gte("start_date", new Date().toISOString())
           .order("start_date")
           .limit(3),
@@ -139,7 +140,9 @@ function Dashboard() {
               {events.length === 0 && <div className="text-sm text-muted-foreground">None scheduled.</div>}
               {events.map((e) => (
                 <Link key={e.id} to="/events" className="block rounded-md border border-border/60 p-3 transition hover:border-primary">
-                  <div className="text-xs text-primary">{format(new Date(e.start_date), "PPP")}</div>
+                  <div className="text-xs text-primary">
+                    {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")}
+                  </div>
                   <div className="mt-1 text-sm font-medium">{e.title}</div>
                   <div className="text-xs text-muted-foreground">
                     {e.event_type === "hybrid"
