@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -27,9 +27,10 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, isStaff } = useAuth();
   const navigate = useNavigate();
   const next = Route.useSearch().next ?? "/dashboard";
+  const navigationStarted = useRef(false);
   const [mode, setMode] = useState<"signin" | "magic">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,17 +50,29 @@ function LoginPage() {
   };
 
   useEffect(() => {
-    if (!loading && user) navigate({ href: next });
-  }, [loading, user, navigate, next]);
+    if (loading || !user || !profile || navigationStarted.current) return;
+    navigationStarted.current = true;
+    const destination = !isStaff && profile.crm_stage !== "applicant" ? "/onboarding" : next;
+    navigate({ href: destination });
+  }, [loading, user, profile, isStaff, navigate, next]);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ href: next });
+        const [{ data: memberProfile, error: profileError }, { data: roles, error: rolesError }] = await Promise.all([
+          supabase.rpc("get_my_profile").maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+        ]);
+        if (profileError) throw profileError;
+        if (rolesError) throw rolesError;
+        navigationStarted.current = true;
+        const staff = (roles ?? []).some(({ role }) => role === "admin" || role === "super_admin");
+        const destination = !staff && memberProfile?.crm_stage !== "applicant" ? "/onboarding" : next;
+        navigate({ href: destination });
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -138,11 +151,11 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 text-center text-sm">
+          {/* <div className="mt-4 text-center text-sm">
             <button onClick={() => setMode(mode === "signin" ? "magic" : "signin")} className="text-muted-foreground hover:text-primary hover:underline">
               {mode === "signin" ? "Use a magic link instead" : "Use password instead"}
             </button>
-          </div>
+          </div> */}
 
           <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Your account is protected by IIF member security

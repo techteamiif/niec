@@ -39,6 +39,12 @@ export function AppShell() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
+    if (!loading && user && profile && !isStaff && profile.crm_stage !== "applicant") {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [loading, user, profile, isStaff, navigate]);
+
+  useEffect(() => {
     if (!user) return;
     const load = async () => {
       const { count } = await supabase
@@ -58,7 +64,7 @@ export function AppShell() {
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
-  if (loading || !user || !profile) {
+  if (loading || !user || !profile || (!isStaff && profile.crm_stage !== "applicant")) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   }
 

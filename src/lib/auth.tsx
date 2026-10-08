@@ -8,6 +8,7 @@ export interface Profile {
   id: string;
   full_name: string;
   email: string;
+  crm_stage: string;
   organisation_name: string;
   organisation_type: string;
   role_title: string;

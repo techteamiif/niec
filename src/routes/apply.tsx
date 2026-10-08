@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
+import { useAuth } from "@/lib/auth";
+import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
 import { toast } from "sonner";
-import { Check, ChevronRight, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Check, ChevronRight, ChevronDown, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 
 
@@ -16,8 +18,12 @@ export const Route = createFileRoute("/apply")({
       { name: "description", content: "Apply to join the Nigeria Impact Economy Community — a members' network for impact investors, social enterprises and ecosystem partners." },
     ],
   }),
-  component: ApplyPage,
+  component: () => <ApplyPage mode="signup" />,
 });
+
+export function ApplyOnboardingPage() {
+  return <ApplyPage mode="onboarding" />;
+}
 
 // const [password, setPassword] = useState();
 
@@ -47,6 +53,30 @@ const ORG_TYPES: { key: string; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
+const JOB_TITLES = [
+  "Chief Executive Officer (CEO)",
+  "Managing Director",
+  "Executive Director",
+  "Founder / Co-Founder",
+  "Chief Investment Officer (CIO)",
+  "Chief Financial Officer (CFO)",
+  "Chief Operating Officer (COO)",
+  "Chief Sustainability Officer (CSO)",
+  "Head of Investments",
+  "Head of Impact",
+  "Head of Partnerships",
+  "Investment Director",
+  "Fund Manager",
+  "Portfolio Manager",
+  "Investment Analyst",
+  "Programme Director",
+  "Project Manager",
+  "Policy / Advocacy Manager",
+  "Research Director",
+  "Board Chair",
+  "Board Member",
+];
+
 const AUM_OPTS = ["Under ₦50M", "₦50M – ₦500M", "₦500M – ₦5B", "₦5B – ₦50B", "Above ₦50B", "Not applicable"];
 const STAGE_OPTS = ["Seed / early stage", "Growth stage", "Scale / expansion", "Debt / blended finance", "Grant / catalytic capital", "Multiple stages"];
 
@@ -69,22 +99,27 @@ function toggle<T>(arr: T[], v: T) {
   return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 }
 
-function ApplyPage() {
+function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const navigate = useNavigate();
+  const { user, profile, loading, refresh } = useAuth();
   const [tier, setTier] = useState<typeof TIERS[number]["key"] | "">("");
   const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("");
-  const [city, setCity] = useState("");
+  const [orgTypeOpen, setOrgTypeOpen] = useState(false);
+  const [state, setState] = useState<NigerianState | "">("");
+  const [lga, setLga] = useState("");
   const [website, setWebsite] = useState("");
   const [aum, setAum] = useState("");
   const [stage, setStage] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [jobTitleOpen, setJobTitleOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [commPref, setCommPref] = useState("Email");
   const [sdgs, setSdgs] = useState<string[]>([]);
@@ -98,106 +133,214 @@ function ApplyPage() {
   const [consents, setConsents] = useState<boolean[]>([false, false, false]);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const [step, setStep] = useState(1);
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
 
-  const nextStep = () => {
-    if (step === 1) {
-      if (!orgName || !orgType || !city || !firstName || !lastName || !jobTitle || !email || !password) {
-        toast.error("Please complete all required fields.");
-        return;
-      }
-      if (password.length < 8) {
-        toast.error("Password must be at least 8 characters.");
-        return;
-      }
+  useEffect(() => {
+    if (!user) return;
+    const metadata = user.user_metadata;
+    const fullName = typeof metadata.full_name === "string" ? metadata.full_name : profile?.full_name ?? "";
+    const [metadataFirstName = "", ...lastNameParts] = fullName.split(" ");
+    setFirstName(typeof metadata.first_name === "string" ? metadata.first_name : metadataFirstName);
+    setLastName(typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" "));
+    setJobTitle(typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "");
+    setEmail(user.email ?? profile?.email ?? "");
+    setPhone(typeof metadata.phone === "string" ? metadata.phone : "");
+    setLinkedin(typeof metadata.linkedin_url === "string" ? metadata.linkedin_url : "");
+    const savedLocation = profile?.location?.split(",").map((part) => part.trim()) ?? [];
+    const savedState = savedLocation.length > 1 ? savedLocation[savedLocation.length - 1] : savedLocation[0];
+    if (savedState && NIGERIAN_STATES.includes(savedState as NigerianState)) {
+      setState(savedState as NigerianState);
+      const savedLga = savedLocation.length > 1 ? savedLocation.slice(0, -1).join(", ") : "";
+      setLga(NIGERIA_LOCATIONS[savedState as NigerianState].includes(savedLga) ? savedLga : "");
     }
-    if (step === 2 && !tier) {
-      toast.error("Please select a membership tier first.");
+  }, [user, profile]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (mode === "onboarding" && !user) {
+      navigate({ to: "/login", search: { next: "/onboarding" }, replace: true });
+    } else if (mode === "signup" && user && profile) {
+      navigate({ href: profile.crm_stage === "applicant" ? "/dashboard" : "/onboarding", replace: true });
+    }
+  }, [loading, mode, user, profile, navigate]);
+
+  const handlePhoneChange = (value: string) => {
+    const trimmedValue = value.trim();
+    const nationalNumber = trimmedValue.startsWith("+234")
+      ? trimmedValue.slice(4)
+      : trimmedValue;
+    let digits = nationalNumber.replace(/\D/g, "");
+    if (digits.startsWith("0")) digits = digits.slice(1);
+
+    if (digits.length > 10) {
+      toast.error("Phone number cannot exceed 11 digits.");
       return;
     }
-    setStep(s => Math.min(s + 1, 4));
+    setPhone(digits);
+  };
+
+  const validatePhone = () => {
+    if (!phone.trim()) return true;
+
+    if (phone.length !== 10) {
+      toast.error("Phone number must be 11 digits.");
+      return false;
+    }
+    return true;
+  };
+
+  const createAccount = async () => {
+    if (!firstName || !lastName || !jobTitle || !email || !password || !confirmPassword) {
+      toast.error("Please complete all required fields.");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Password does not match.");
+      return;
+    }
+    if (!validatePhone()) return;
+
+    setBusy(true);
+    try {
+      const fullName = `${firstName} ${lastName}`.trim();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent("/onboarding")}`,
+          data: {
+            full_name: fullName,
+            first_name: firstName,
+            last_name: lastName,
+            role_title: jobTitle,
+            phone,
+            linkedin_url: linkedin,
+          },
+        },
+      });
+      if (error) throw error;
+      if (!data.user) throw new Error("The account could not be created.");
+
+      if (data.session) {
+        toast.success("Account created. Continue with your onboarding.");
+        navigate({ to: "/onboarding", replace: true });
+      } else {
+        setAccountCreated(true);
+        toast.success("Account created. Verify your email to continue.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create account.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const nextStep = () => {
+    if (step === 2) {
+      const missingDetails = [
+        !orgName && "organisation name",
+        !orgType && "organisation type",
+        !state && "state",
+        !lga && "local government area",
+      ].filter(Boolean);
+      if (missingDetails.length > 0) {
+        toast.error(`Please provide your ${missingDetails.join(", ")}.`);
+        return;
+      }
+      if (!tier) {
+        toast.error("Please select a membership tier first.");
+        return;
+      }
+    }
+    setStep((s) => Math.min(s + 1, 3));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const prevStep = () => {
-    setStep(s => Math.max(s - 1, 1));
+    setStep((s) => Math.max(s - 1, mode === "onboarding" ? 2 : 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const progress = useMemo(() => {
-    const required = [orgName, orgType, city, firstName, lastName, jobTitle, email, password, tier];
+    const required = [orgName, orgType, state, lga, firstName, lastName, jobTitle, email, password, confirmPassword, tier];
     const filled = required.filter(Boolean).length;
     return Math.round((filled / required.length) * 100);
-  }, [orgName, orgType, city, firstName, lastName, jobTitle, email, password, tier]);
+  }, [orgName, orgType, state, lga, firstName, lastName, jobTitle, email, password, confirmPassword, tier]);
 
   const allConsented = consents.every(Boolean);
+  const phoneNumber = phone ? `+234${phone}` : "";
+  const location = `${lga}, ${state}`;
+  const filteredJobTitles = useMemo(() => {
+    if (!jobTitle.trim()) return JOB_TITLES;
+    const query = jobTitle.toLowerCase();
+    return JOB_TITLES.filter((title) => title.toLowerCase().includes(query));
+  }, [jobTitle]);
 
   const submit = async () => {
-    if (!tier || !orgName || !orgType || !city || !firstName || !lastName || !jobTitle || !email || !password) {
+    if (!user) {
+      toast.error("Please sign in to continue with onboarding.");
+      navigate({ to: "/login", search: { next: "/onboarding" } });
+      return;
+    }
+    if (!tier || !orgName || !orgType || !state || !lga || !firstName || !lastName || !jobTitle || !email) {
       toast.error("Please complete all required fields and pick a tier.");
       return;
     }
-    if (password.length < 8) { toast.error("Password must be at least 8 characters."); return; }
+    if (!validatePhone()) return;
     if (!allConsented) { toast.error("Please tick all three consent boxes."); return; }
 
     setBusy(true);
     try {
       const full_name = `${firstName} ${lastName}`.trim();
-      const { data: signUp, error: signErr } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin + "/dashboard",
-          data: { full_name },
-        },
+      const userId = user.id;
+      const application_data = {
+        requested_tier: tier,
+        aum_range: aum,
+        investment_stage: stage,
+        goals,
+        contributions,
+        events_interested: eventsInterested,
+        event_role: eventRole,
+        heard_from: heard,
+        comm_preference: commPref,
+        statement_of_intent: statement,
+        submitted_at: new Date().toISOString(),
+      };
+      const { error: rpcErr } = await supabase.rpc("submit_application", {
+        _user_id: userId,
+        _full_name: full_name,
+        _organisation_name: orgName,
+        _organisation_type: orgType as any,
+        _role_title: jobTitle,
+        _location: location,
+        _website_url: website || "",
+        _linkedin_url: linkedin || "",
+        _phone: phoneNumber,
+        _sdg_focus: sdgs,
+        _sectors: sectors,
+        _bio: statement || "",
+        _application_data: application_data as any,
       });
-      if (signErr) throw signErr;
-
-      const userId = signUp.user?.id;
-      if (userId) {
-        const application_data = {
-          requested_tier: tier,
-          aum_range: aum,
-          investment_stage: stage,
-          goals,
-          contributions,
-          events_interested: eventsInterested,
-          event_role: eventRole,
-          heard_from: heard,
-          comm_preference: commPref,
-          statement_of_intent: statement,
-          submitted_at: new Date().toISOString(),
-        };
-        const { error: rpcErr } = await supabase.rpc("submit_application", {
-          _user_id: userId,
-          _full_name: full_name,
-          _organisation_name: orgName,
-          _organisation_type: orgType as any,
-          _role_title: jobTitle,
-          _location: city,
-          _website_url: website || "",
-          _linkedin_url: linkedin || "",
-          _phone: phone || "",
-          _sdg_focus: sdgs,
-          _sectors: sectors,
-          _bio: statement || "",
-          _application_data: application_data as any,
-        });
-        if (rpcErr) throw rpcErr;
-      }
+      if (rpcErr) throw rpcErr;
+      await refresh();
 
       // Record the application for the NIEC team (CRM + email notification)
       try {
         const res = await submitJoinApplication({
           data: {
-            userId: userId ?? undefined,
+            userId,
             fullName: full_name,
             email,
-            phone,
+            phone: phoneNumber,
             organisationName: orgName,
             organisationType: ORG_TYPES.find((o) => o.key === orgType)?.label ?? orgType,
             roleTitle: jobTitle,
-            location: city,
+            location,
             website,
             linkedin,
             tier,
@@ -231,7 +374,7 @@ function ApplyPage() {
               tier,
               amountKobo: PAYABLE[tier]! * 100,
               fullName: full_name,
-              userId: userId ?? undefined,
+              userId,
               callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(full_name)}`,
             },
           });
@@ -264,7 +407,12 @@ function ApplyPage() {
     }
   };
 
-  if (done) {
+  if (mode === "onboarding" && (loading || !user)) {
+    return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
+  }
+
+  if (done || (mode === "signup" && accountCreated)) {
+    const awaitingVerification = mode === "signup" && accountCreated;
     return (
       <div className="min-h-screen bg-[#F7FBFA]">
         <PublicHeader />
@@ -272,13 +420,19 @@ function ApplyPage() {
           <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary/10">
             <Check className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="mt-6 font-display text-3xl text-primary">Application submitted</h1>
+          <h1 className="mt-6 font-display text-3xl text-primary">
+            {awaitingVerification ? "Verify your email" : "Application submitted"}
+          </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received as a <strong>{TIERS.find(t => t.key === tier)?.label}</strong> applicant.
-            We've sent a confirmation email — please verify your address. The IIF team will review your application and be in touch within 5 business days.
+            {awaitingVerification ? (
+              <>Thank you, {firstName}. Your account has been created. We've sent a confirmation email — please verify your address, then sign in to complete onboarding.</>
+            ) : (
+              <>Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received as a <strong>{TIERS.find(t => t.key === tier)?.label}</strong> applicant.
+              We've sent a confirmation email.</>
+            )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {PAYABLE[tier] && (
+            {!awaitingVerification && PAYABLE[tier] && (
               <Link
                 to="/payment"
                 search={{ tier, email, name: `${firstName} ${lastName}`.trim(), reference: "" }}
@@ -287,7 +441,13 @@ function ApplyPage() {
                 Pay membership fee
               </Link>
             )}
-            <Link to="/login" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Go to sign in</Link>
+            <Link
+              to="/login"
+              search={awaitingVerification ? { next: "/onboarding" } : undefined}
+              className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Go to sign in
+            </Link>
             <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Back to home</Link>
           </div>
         </div>
@@ -313,19 +473,104 @@ function ApplyPage() {
       </section>
 
       {/* Progress */}
-      <div className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
+      {/* <div className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Step {step} of 4</span>
+          <span className="text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Step {step} of 3</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
           </div>
           <span className="w-10 text-right text-xs font-medium text-primary">{progress}%</span>
         </div>
-      </div>
+      </div> */}
 
       <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
 
         {step === 2 && (
+          <>
+        <Section title="Organisation details">
+          <Row>
+            <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
+            <Field label="Organisation type *">
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={orgTypeOpen}
+                  onClick={() => setOrgTypeOpen((open) => !open)}
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm outline-none focus:border-primary"
+                >
+                  <span className={orgType ? "text-foreground" : "text-muted-foreground"}>
+                    {ORG_TYPES.find((type) => type.key === orgType)?.label ?? "Select type"}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </button>
+                {orgTypeOpen && (
+                  <div
+                    role="listbox"
+                    className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white shadow-lg [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+                  >
+                    {ORG_TYPES.map((type) => (
+                      <button
+                        key={type.key}
+                        type="button"
+                        role="option"
+                        aria-selected={orgType === type.key}
+                        onClick={() => {
+                          setOrgType(type.key);
+                          setOrgTypeOpen(false);
+                        }}
+                        className="block w-full bg-white px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Field>
+          </Row>
+          <Row>
+            <Field label="State *">
+              <LocationDropdown
+                value={state}
+                options={NIGERIAN_STATES}
+                placeholder="Select state"
+                onChange={(value) => {
+                  setState(value as NigerianState);
+                  setLga("");
+                }}
+              />
+            </Field>
+            <Field label="Local Government Area *">
+              <LocationDropdown
+                value={lga}
+                options={state ? NIGERIA_LOCATIONS[state] : []}
+                placeholder={state ? "Select LGA" : "Select a state first"}
+                disabled={!state}
+                onChange={setLga}
+              />
+            </Field>
+          </Row>
+          <Row>
+            <Field label="Investment stage focus">
+              <Select value={stage} onChange={setStage} options={[{ key: "", label: "Select stage" }, ...STAGE_OPTS.map(o => ({ key: o, label: o }))]} />
+            </Field>
+            <Field label="AUM / Annual budget">
+              <Select value={aum} onChange={setAum} options={[{ key: "", label: "Select range" }, ...AUM_OPTS.map(o => ({ key: o, label: o }))]} />
+            </Field>
+          </Row>
+          <Row>
+            <Field label="Website"><Input value={website} onChange={setWebsite} placeholder="https://" /></Field>
+            {/* <Field label="Preferred communication channel">
+              <LocationDropdown
+                value={commPref}
+                options={COMMS}
+                placeholder="Select communication channel"
+                onChange={setCommPref}
+              />
+            </Field> */}
+          </Row>
+        </Section>
         <Section title="Membership tier" desc="Select the tier that best reflects your organisation's capacity and engagement level.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {TIERS.map((t) => (
@@ -337,42 +582,58 @@ function ApplyPage() {
             ))}
           </div>
         </Section>
+        </>
         )}
 
         {step === 1 && (
           <>
-        <Section title="Organisation details">
+        <Section title="Create an account" desc="Provide your personal and professional details to create a secure account for your organisation.">
           <Row>
-            <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
-            <Field label="Organisation type *">
-              <Select value={orgType} onChange={setOrgType} options={[{ key: "", label: "Select type" }, ...ORG_TYPES]} />
+            <Field label="First name *"><Input value={firstName} placeholder="John" onChange={setFirstName} /></Field>
+            <Field label="Last name *"><Input value={lastName} placeholder="Doe" onChange={setLastName} /></Field>
+          </Row>
+          <Row>
+            <Field label="Job title *">
+              <div className="relative">
+                <Input
+                  value={jobTitle}
+                  onChange={(value) => {
+                    setJobTitle(value);
+                    setJobTitleOpen(true);
+                  }}
+                  placeholder="e.g. CEO, Director of Investments"
+                  onFocus={() => setJobTitleOpen(true)}
+                  onBlur={() => window.setTimeout(() => setJobTitleOpen(false), 120)}
+                />
+                {jobTitleOpen && filteredJobTitles.length > 0 && (
+                  <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white shadow-lg [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                    {filteredJobTitles.map((title) => (
+                      <button
+                        key={title}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setJobTitle(title);
+                          setJobTitleOpen(false);
+                        }}
+                        className="block w-full bg-white px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted last:border-b-0"
+                      >
+                        {title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </Field>
-          </Row>
-          <Row>
-            <Field label="City / State *"><Input value={city} onChange={setCity} placeholder="e.g. Lagos, Abuja, Kano" /></Field>
-            <Field label="Website"><Input value={website} onChange={setWebsite} placeholder="https://" /></Field>
-          </Row>
-          <Row>
-            <Field label="AUM / Annual budget">
-              <Select value={aum} onChange={setAum} options={[{ key: "", label: "Select range" }, ...AUM_OPTS.map(o => ({ key: o, label: o }))]} />
-            </Field>
-            <Field label="Investment stage focus">
-              <Select value={stage} onChange={setStage} options={[{ key: "", label: "Select stage" }, ...STAGE_OPTS.map(o => ({ key: o, label: o }))]} />
-            </Field>
-          </Row>
-        </Section>
-
-        <Section title="Primary contact">
-          <Row>
-            <Field label="First name *"><Input value={firstName} onChange={setFirstName} /></Field>
-            <Field label="Last name *"><Input value={lastName} onChange={setLastName} /></Field>
-          </Row>
-          <Row>
-            <Field label="Job title *"><Input value={jobTitle} onChange={setJobTitle} placeholder="e.g. CEO, Director of Investments" /></Field>
             <Field label="Work email *"><Input value={email} onChange={setEmail} type="email" placeholder="name@organisation.org" /></Field>
           </Row>
           <Row>
-            <Field label="Phone"><Input value={phone} onChange={setPhone} type="tel" placeholder="+234 xxx xxx xxxx" /></Field>
+            <Field label="Phone">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
+                <Input value={phone} onChange={handlePhoneChange} type="tel" placeholder="800 000 0000" className="pl-14" />
+              </div>
+            </Field>
             <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
           </Row>
           <Field label="Set a password * (min 8 characters)">
@@ -398,8 +659,28 @@ function ApplyPage() {
               </button>
             </div>
           </Field>
-          <Field label="Preferred communication channel">
-            <PillRow options={COMMS} value={commPref} onChange={setCommPref} />
+          <Field label="Confirm password">
+            <div className="relative">
+              <Input
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                type={showPassword ? "text" : "password"}
+                placeholder="Retype your password"
+                className="pr-10" // Extra right padding so text doesn't overlap the button
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </Field>
         </Section>
         </>
@@ -408,7 +689,7 @@ function ApplyPage() {
         {step === 3 && (
           <>
         <Section title="SDG focus areas" desc="Select all Sustainable Development Goals your organisation actively works on.">
-          <ChipGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
+          <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
           <Divider>Investment sectors</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
@@ -426,42 +707,37 @@ function ApplyPage() {
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
           </Field>
         </Section>
+          <Section title="Declaration & consent">
+            <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
+              <p className="mb-3 text-xs text-gold-foreground/80">By submitting this application you confirm the following — please tick each item:</p>
+              {CONSENTS.map((c, i) => (
+                <label key={i} className="flex cursor-pointer items-start gap-3 py-2 text-sm">
+                  <input type="checkbox" checked={consents[i]} onChange={() => {
+                    const next = [...consents]; next[i] = !next[i]; setConsents(next);
+                  }} className="mt-0.5 h-4 w-4 rounded border-gold accent-gold" />
+                  <span>{c}</span>
+                </label>
+              ))}
+            </div>
+          </Section>
         </>
         )}
 
-        {step === 4 && (
-          <>
-        <Section title="IIF 2026 events" desc="Which flagship events would your organisation like to attend or sponsor?">
-          <CheckGrid options={EVENTS} selected={eventsInterested} onToggle={(v) => setEventsInterested(toggle(eventsInterested, v))} />
-          <Divider>Your participation role</Divider>
-          <PillRow options={ROLES} value={eventRole} onChange={setEventRole} />
-        </Section>
-
-        <Section title="Declaration & consent">
-          <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
-            <p className="mb-3 text-xs text-gold-foreground/80">By submitting this application you confirm the following — please tick each item:</p>
-            {CONSENTS.map((c, i) => (
-              <label key={i} className="flex cursor-pointer items-start gap-3 py-2 text-sm">
-                <input type="checkbox" checked={consents[i]} onChange={() => {
-                  const next = [...consents]; next[i] = !next[i]; setConsents(next);
-                }} className="mt-0.5 h-4 w-4 rounded border-gold accent-gold" />
-                <span>{c}</span>
-              </label>
-            ))}
-          </div>
-        </Section>
-        </>
-        )}
-
+      
         <div className="flex flex-wrap items-center gap-3 pt-2">
-          {step > 1 && (
+          {step > (mode === "onboarding" ? 2 : 1) && (
             <button onClick={prevStep} type="button"
               className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
               Previous
             </button>
           )}
           
-          {step < 4 ? (
+          {step === 1 && mode === "signup" ? (
+            <button onClick={createAccount} disabled={busy} type="button"
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+              {busy ? "Creating account…" : "Create account"} <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : step < 3 ? (
             <button onClick={nextStep} type="button"
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
               Next <ChevronRight className="h-4 w-4" />
@@ -473,13 +749,13 @@ function ApplyPage() {
             </button>
           )}
 
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-auto">Already a member? Sign in →</Link>
+          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
         </div>
-        <div className="flex justify-center pt-2">
+        {/* <div className="flex justify-center pt-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Reviewed by IIF within 5 business days
           </span>
-        </div>
+        </div> */}
       </main>
 
       <footer className="mt-10 border-t py-8 text-center text-xs text-muted-foreground">
@@ -504,17 +780,90 @@ function Row({ children }: { children: React.ReactNode }) {
   return <div className="grid gap-4 md:grid-cols-2">{children}</div>;
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const requiredMarkerIndex = label.indexOf("*");
+
   return (
     <div>
-      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</label>
+      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {requiredMarkerIndex === -1 ? label : (
+          <>
+            {label.slice(0, requiredMarkerIndex)}
+            <span className="text-red-600">*</span>
+            {label.slice(requiredMarkerIndex + 1)}
+          </>
+        )}
+      </label>
       <div className="mt-1.5">{children}</div>
     </div>
   );
 }
-function Input({ value, onChange, type = "text", placeholder, className = "" }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string; }) {
+function Input({ value, onChange, type = "text", placeholder, className = "", list, onFocus, onBlur }: { value: string; onChange: (v: string) => void; type?: string; placeholder?: string; className?: string; list?: string; onFocus?: () => void; onBlur?: () => void; }) {
   return (
-    <input value={value} onChange={(e) => onChange(e.target.value)} type={type} placeholder={placeholder}
-      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary ${className}`} />
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      type={type}
+      placeholder={placeholder}
+      list={list}
+      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary ${className}`}
+    />
+  );
+}
+function LocationDropdown({
+  value,
+  options,
+  placeholder,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  options: readonly string[];
+  placeholder: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+        onClick={() => setOpen((isOpen) => !isOpen)}
+        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <span className={value ? "text-foreground" : "text-muted-foreground"}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
+      {open && !disabled && (
+        <div
+          role="listbox"
+          className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white shadow-lg [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+        >
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+              className="block w-full bg-white px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {

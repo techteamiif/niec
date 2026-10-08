@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -63,6 +64,11 @@ const LoginRoute = LoginRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PaymentRoute = PaymentRouteImport.update({
@@ -206,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/apply': typeof ApplyRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/apply': typeof ApplyRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/apply': typeof ApplyRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
+  '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/login'
     | '/mcp'
+    | '/onboarding'
     | '/payment'
     | '/reset-password'
     | '/.mcp/list-tools'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/login'
     | '/mcp'
+    | '/onboarding'
     | '/payment'
     | '/reset-password'
     | '/.mcp/list-tools'
@@ -371,6 +382,7 @@ export interface FileRouteTypes {
     | '/apply'
     | '/login'
     | '/mcp'
+    | '/onboarding'
     | '/payment'
     | '/reset-password'
     | '/.mcp/list-tools'
@@ -405,6 +417,7 @@ export interface RootRouteChildren {
   ApplyRoute: typeof ApplyRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
+  OnboardingRoute: typeof OnboardingRoute
   PaymentRoute: typeof PaymentRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -453,6 +466,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/payment': {
@@ -693,6 +713,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApplyRoute: ApplyRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
+  OnboardingRoute: OnboardingRoute,
   PaymentRoute: PaymentRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
