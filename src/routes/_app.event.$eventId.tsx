@@ -383,9 +383,9 @@ function EventDetailPage() {
                   <h2 className="font-display text-lg">Other information</h2>
                   <dl className="mt-4 space-y-4 text-sm">
                     <div>
-                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {/* <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Date and time
-                      </dt>
+                      </dt> */}
                       {formatEventSchedule(event.schedule, event.start_date, event.end_date).map(
                         (line, index) => (
                           <dd key={`${line}-${index}`} className="mt-1">

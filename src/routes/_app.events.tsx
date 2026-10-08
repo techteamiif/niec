@@ -407,7 +407,7 @@ function CreateEvent({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label htmlFor="event-start-date" className="block text-sm font-medium">
-                    First day
+                    Start Date
                   </label>
                   <input
                     id="event-start-date"
@@ -423,7 +423,7 @@ function CreateEvent({
                 </div>
                 <div className="space-y-1.5">
                   <label htmlFor="event-end-date" className="block text-sm font-medium">
-                    Last day
+                    End Date
                   </label>
                   <input
                     id="event-end-date"
