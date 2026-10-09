@@ -36,18 +36,6 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [resetting, setResetting] = useState(false);
-
-  const sendReset = async () => {
-    if (!email) { toast.error("Enter your email above first."); return; }
-    setResetting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
-    });
-    setResetting(false);
-    if (error) toast.error(error.message);
-    else toast.success("Password reset email sent", { description: "Check your inbox." });
-  };
 
   useEffect(() => {
     if (loading || !user || !profile || navigationStarted.current) return;
@@ -117,9 +105,9 @@ function LoginPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Password *</label>
-                  <button type="button" onClick={sendReset} disabled={resetting} className="text-xs text-primary hover:underline disabled:opacity-60">
-                    {resetting ? "Sending…" : "Forgot password?"}
-                  </button>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
                 </div>
                 <div className="relative mt-1.5">
                   <input
