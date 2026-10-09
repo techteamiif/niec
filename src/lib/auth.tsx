@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -45,14 +45,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = async (uid: string) => {
+  const loadProfile = useCallback(async (uid: string) => {
     const [{ data: p }, { data: r }] = await Promise.all([
       supabase.rpc("get_my_profile").maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
     setProfile((p as Profile) ?? null);
     setRoles(((r ?? []) as { role: AppRole }[]).map((x) => x.role));
-  };
+  }, []);
 
 
   useEffect(() => {
@@ -73,11 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadProfile]);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (user) await loadProfile(user.id);
-  };
+  }, [loadProfile, user]);
   const signOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";

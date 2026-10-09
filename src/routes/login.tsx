@@ -92,20 +92,20 @@ function LoginPage() {
     <div className="min-h-screen bg-[#F7FBFA]">
       <PublicHeader />
 
-      <section className="bg-primary px-6 py-14 text-center text-white">
+      {/* <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
           <h1 className="font-display text-3xl md:text-5xl text-gold">
             {mode === "signin" ? <>Welcome back</> : <>Magic link <span className="text-gold">sign-in</span></>}
           </h1>
-          <p className="mt-4 text-white/75">
-            Sign in to continue connecting with the NIEC community and access your member benefits.
-          </p>
         </div>
-      </section>
+      </section> */}
 
       <main className="mx-auto max-w-lg space-y-6 px-6 py-10">
         <section className="rounded-2xl border bg-white p-6 shadow-sm md:p-8">
-          <h2 className="font-display text-xl text-primary">Member sign-in</h2>
+          <h2 className="font-display text-xl text-primary">Welcome back</h2>
+          <p className="mt-2 text-sm text-black/75">
+            Sign in to continue connecting with the NIEC community and access your member benefits.
+          </p>
           <form onSubmit={handle} className="mt-5 space-y-4">
             <div>
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email *</label>

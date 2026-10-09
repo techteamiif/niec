@@ -369,7 +369,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               tier,
               amountKobo: PAYABLE[tier]! * 100,
               fullName: full_name,
-              userId,
               callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(full_name)}`,
             },
           });
@@ -422,28 +421,25 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             {awaitingVerification ? (
               <>Thank you, {firstName}. Your account has been created. We've sent a confirmation email — please verify your address, then sign in to complete onboarding.</>
             ) : (
-              <>Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received as a <strong>{TIERS.find(t => t.key === tier)?.label}</strong> applicant.
-              We've sent a confirmation email.</>
+              <>Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received. Your account is ready to use — continue to your dashboard to get started.</>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            {!awaitingVerification && PAYABLE[tier] && (
-              <Link
-                to="/payment"
-                search={{ tier, email, name: `${firstName} ${lastName}`.trim(), reference: "" }}
-                className="rounded-md bg-gold px-5 py-2.5 text-sm font-semibold text-gold-foreground hover:opacity-90"
-              >
-                Pay membership fee
-              </Link>
+            {awaitingVerification ? (
+              <>
+                <Link to="/login" search={{ next: "/onboarding" }} className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  Go to sign in
+                </Link>
+                <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
+                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                  Continue to dashboard
+                </Link>
+              </>
             )}
-            <Link
-              to="/login"
-              search={awaitingVerification ? { next: "/onboarding" } : undefined}
-              className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Go to sign in
-            </Link>
-            <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Back to home</Link>
           </div>
         </div>
       </div>
@@ -455,12 +451,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       <PublicHeader />
 
       {/* Hero */}
-      <section className="bg-primary px-6 py-14 text-center text-white">
+      <section className="px-6 pt-8 text-start text-black">
         <div className="mx-auto max-w-2xl">
           <h1 className="font-display text-3xl md:text-5xl">
             {mode === "onboarding" ? `Hi, ${firstName || "there"}` : <>Join the <span className="text-gold">NIEC</span> Community</>}
           </h1>
-          <p className="mt-4 text-white/75">
+          <p className="mt-4 text-black/75">
             {mode === "onboarding"
               ? "Kindly complete your onboarding"
               : "Apply for membership in Nigeria's premier impact economy network — connecting capital, conviction, and community for Africa's new economy."}
