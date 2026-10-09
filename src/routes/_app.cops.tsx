@@ -38,7 +38,7 @@ function CopsIndex() {
   const toggle = async (cop: string) => {
     if (!user) return;
     if (!tierMeets(profile?.membership_tier, "contributor")) {
-      toast.error("Join NIEC at Contributor tier or above to join a CoP.");
+      toast.error("Join NIEC at Enterprise tier or above to join a CoP.");
       return;
     }
     if (joined.has(cop)) {

@@ -145,7 +145,7 @@ function CopWorkspace() {
 
   const join = async () => {
     if (!user) return;
-    if (!tierMeets(profile?.membership_tier, "contributor")) return toast.error("Contributor tier required.");
+    if (!tierMeets(profile?.membership_tier, "contributor")) return toast.error("Enterprise tier required.");
     const { error } = await supabase.from("cop_memberships").insert({ member_id: user.id, cop: cop as any });
     if (error) return toast.error(error.message);
     toast.success("Joined " + meta.name);

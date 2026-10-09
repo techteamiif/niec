@@ -60,7 +60,7 @@ function MembersPage() {
         <select value={tier} onChange={(e) => setTier(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
           <option value="all">All tiers</option>
           <option value="observer">Observer</option>
-          <option value="contributor">Contributor</option>
+          <option value="contributor">Enterprise</option>
           <option value="growth_partner">Growth Partner</option>
           <option value="anchor">Anchor</option>
           <option value="strategic_partner">Strategic Partner</option>

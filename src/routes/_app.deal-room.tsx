@@ -46,7 +46,7 @@ function DealRoom() {
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20"><Lock className="h-5 w-5 text-gold-foreground" /></div>
           <h1 className="font-display text-2xl">Deal Room is tier-locked</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Upgrade your NIEC membership to Contributor to preview deals, or Growth Partner and above for the full pipeline.
+            Upgrade your NIEC membership to Enterprise to preview deals, or Growth Partner and above for the full pipeline.
           </p>
           <div className="mt-6 flex justify-center gap-2">
             <Link to="/upgrade" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Upgrade membership</Link>

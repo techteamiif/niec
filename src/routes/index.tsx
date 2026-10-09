@@ -122,7 +122,7 @@ function ImpactLanding() {
             <div className="text-[10px] uppercase tracking-[0.22em] text-primary">About NIEC</div>
             <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl text-balance">A trusted, tiered community for serious capital.</h2>
             <p className="mt-6 leading-relaxed text-muted-foreground">
-              Five membership tiers — Observer, Contributor, Growth Partner, Anchor, Strategic Partner — with a
+              Five membership tiers — Observer, Enterprise, Growth Partner, Anchor, Strategic Partner — with a
               private deal room, six Communities of Practice, and flagship convenings including GIIS, AIS and ACII.
             </p>
             <Link to="/apply" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">

@@ -255,7 +255,7 @@ function MentorCard({ offer, canBook, onBooked }: { offer: Offer; canBook: boole
           </Dialog>
         ) : (
           <div className="rounded-md border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
-            Mentorship requests require the <strong>Contributor</strong> tier or above.{" "}
+            Mentorship requests require the <strong>Enterprise</strong> tier or above.{" "}
             <a href="/apply" className="text-primary hover:underline">Upgrade your membership →</a>
           </div>
         )}

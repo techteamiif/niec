@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { TIER_LABELS } from "@/lib/niec";
+import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -18,12 +18,16 @@ function formatEventType(eventType: string) {
 }
 
 function EventsPage() {
-  const { user, isStaff } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [events, setEvents] = useState<any[]>([]);
   const [regs, setRegs] = useState<Set<string>>(new Set());
   const [attendingEvents, setAttendingEvents] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
+  const canCreateEvents = !!user && (
+    isStaff ||
+    (profile?.membership_status === "active" && tierMeets(profile.membership_tier, "contributor"))
+  );
 
   const load = async () => {
     const { data, error } = await supabase
@@ -78,7 +82,7 @@ function EventsPage() {
           <h1 className="font-display text-3xl">Events</h1>
           <p className="text-sm text-muted-foreground">Onsite, online, and hybrid events for NIEC members.</p>
         </div>
-        {isStaff && (
+        {canCreateEvents && (
           <button onClick={() => setShowCreate(true)} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
             + New event
           </button>
@@ -160,7 +164,7 @@ function EventsPage() {
         )}
       </div>
 
-      {showCreate && isStaff && <CreateEvent onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} userId={user!.id} />}
+      {showCreate && canCreateEvents && <CreateEvent onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} userId={user.id} />}
     </div>
   );
 }
