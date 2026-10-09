@@ -161,9 +161,9 @@ export function AppShell() {
             <div className="p-6 lg:p-10">
               <div className="mx-auto max-w-2xl rounded-2xl border bg-card p-8 text-center shadow-sm">
                 <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20 text-gold-foreground">⏳</div>
-                <h1 className="font-display text-2xl">Your application is under review</h1>
+                <h1 className="font-display text-2xl">Complete your onboarding</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  An IIF admin will review your membership shortly. You'll receive a notification when you're approved.
+                  Finish your onboarding to activate your account and access features available to your membership tier.
                 </p>
                 <button onClick={signOut} className="mt-6 inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm hover:bg-muted">
                   <LogOut className="h-4 w-4" /> Sign out

@@ -114,7 +114,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
-  const [jobTitleOpen, setJobTitleOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedin, setLinkedin] = useState("");
@@ -143,7 +142,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     const [metadataFirstName = "", ...lastNameParts] = fullName.split(" ");
     setFirstName(typeof metadata.first_name === "string" ? metadata.first_name : metadataFirstName);
     setLastName(typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" "));
-    setJobTitle(typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "");
+    const savedJobTitle = typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "";
+    setJobTitle(JOB_TITLES.includes(savedJobTitle) ? savedJobTitle : "");
     setEmail(user.email ?? profile?.email ?? "");
     setPhone(typeof metadata.phone === "string" ? metadata.phone : "");
     setLinkedin(typeof metadata.linkedin_url === "string" ? metadata.linkedin_url : "");
@@ -275,11 +275,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const allConsented = consents.every(Boolean);
   const phoneNumber = phone ? `+234${phone}` : "";
   const location = `${lga}, ${state}`;
-  const filteredJobTitles = useMemo(() => {
-    if (!jobTitle.trim()) return JOB_TITLES;
-    const query = jobTitle.toLowerCase();
-    return JOB_TITLES.filter((title) => title.toLowerCase().includes(query));
-  }, [jobTitle]);
 
   const submit = async () => {
     if (!user) {
@@ -462,8 +457,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       {/* Hero */}
       <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-3xl md:text-5xl">Join the <span className="text-gold">NIEC</span> Community</h1>
-          <p className="mt-4 text-white/75">Apply for membership in Nigeria's premier impact economy network — connecting capital, conviction, and community for Africa's new economy.</p>
+          <h1 className="font-display text-3xl md:text-5xl">
+            {mode === "onboarding" ? `Hi, ${firstName || "there"}` : <>Join the <span className="text-gold">NIEC</span> Community</>}
+          </h1>
+          <p className="mt-4 text-white/75">
+            {mode === "onboarding"
+              ? "Kindly complete your onboarding"
+              : "Apply for membership in Nigeria's premier impact economy network — connecting capital, conviction, and community for Africa's new economy."}
+          </p>
           {/* <div className="mt-5 flex flex-wrap justify-center gap-2">
             {["Deal Flow","Policy Influence","GIIS · Summit · ACII","SDG Reporting","Market Intelligence"].map(p => (
               <span key={p} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs">{p}</span>
@@ -594,36 +595,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           </Row>
           <Row>
             <Field label="Job title *">
-              <div className="relative">
-                <Input
-                  value={jobTitle}
-                  onChange={(value) => {
-                    setJobTitle(value);
-                    setJobTitleOpen(true);
-                  }}
-                  placeholder="e.g. CEO, Director of Investments"
-                  onFocus={() => setJobTitleOpen(true)}
-                  onBlur={() => window.setTimeout(() => setJobTitleOpen(false), 120)}
-                />
-                {jobTitleOpen && filteredJobTitles.length > 0 && (
-                  <div className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white shadow-lg [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
-                    {filteredJobTitles.map((title) => (
-                      <button
-                        key={title}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setJobTitle(title);
-                          setJobTitleOpen(false);
-                        }}
-                        className="block w-full bg-white px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted last:border-b-0"
-                      >
-                        {title}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <LocationDropdown
+                value={jobTitle}
+                options={JOB_TITLES}
+                placeholder="Select job title"
+                onChange={setJobTitle}
+              />
             </Field>
             <Field label="Work email *"><Input value={email} onChange={setEmail} type="email" placeholder="name@organisation.org" /></Field>
           </Row>
@@ -642,7 +619,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 value={password}
                 onChange={setPassword}
                 type={showPassword ? "text" : "password"}
-                placeholder="Choose a strong password"
+                placeholder="Enter password"
                 className="pr-10" // Extra right padding so text doesn't overlap the button
               />
               <button
@@ -665,7 +642,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 value={confirmPassword}
                 onChange={setConfirmPassword}
                 type={showPassword ? "text" : "password"}
-                placeholder="Retype your password"
+                placeholder="Enter password"
                 className="pr-10" // Extra right padding so text doesn't overlap the button
               />
               <button

@@ -94,11 +94,11 @@ function LoginPage() {
 
       <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-3xl md:text-5xl">
-            {mode === "signin" ? <>Welcome back to <span className="text-gold">NIEC</span></> : <>Magic link <span className="text-gold">sign-in</span></>}
+          <h1 className="font-display text-3xl md:text-5xl text-gold">
+            {mode === "signin" ? <>Welcome back</> : <>Magic link <span className="text-gold">sign-in</span></>}
           </h1>
           <p className="mt-4 text-white/75">
-            Sign in to your member account to access the community feed, Communities of Practice, events, Deal Room and Knowledge Hub.
+            Sign in to continue connecting with the NIEC community and access your member benefits.
           </p>
         </div>
       </section>
@@ -158,7 +158,7 @@ function LoginPage() {
           </div> */}
 
           <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" /> Your account is protected by IIF member security
+            <ShieldCheck className="h-3.5 w-3.5" /> Your account is protected
           </div>
         </section>
 

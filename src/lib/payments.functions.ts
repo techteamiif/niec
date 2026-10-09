@@ -130,7 +130,7 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
         recipient_id: row.user_id,
         type: "tier_upgrade" as never,
         title: "Membership payment received",
-        message: "Thank you — your NIEC membership payment was confirmed. An IIF admin will complete your onboarding shortly.",
+        message: "Thank you — your NIEC membership payment was confirmed and your membership tier has been updated.",
         link: "/dashboard",
       } as never);
     }
