@@ -131,6 +131,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [statement, setStatement] = useState("");
   const [consents, setConsents] = useState<boolean[]>([false, false, false]);
   const [busy, setBusy] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
   const [done, setDone] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
@@ -237,6 +238,25 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       toast.error(error instanceof Error ? error.message : "Could not create account.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const resendConfirmationEmail = async () => {
+    setResendingEmail(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent("/onboarding")}`,
+        },
+      });
+      if (error) throw error;
+      toast.success("Confirmation email sent", { description: "Check your inbox." });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not resend confirmation email.");
+    } finally {
+      setResendingEmail(false);
     }
   };
 
@@ -415,23 +435,38 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             <Check className="h-10 w-10 text-primary" />
           </div>
           <h1 className="mt-6 font-display text-3xl text-primary">
-            {awaitingVerification ? "Verify your email" : "Application submitted"}
+            {awaitingVerification ? "Verify your email address" : "Application submitted"}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {awaitingVerification ? (
-              <>Thank you, {firstName}. Your account has been created. We've sent a confirmation email — please verify your address, then sign in to complete onboarding.</>
+              <>Please check your inbox and click the confirmation link to complete your account setup.</>
             ) : (
               <>Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received. Your account is ready to use — continue to your dashboard to get started.</>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             {awaitingVerification ? (
-              <>
-                <Link to="/login" search={{ next: "/onboarding" }} className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Go to sign in
-                </Link>
-                <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
-              </>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={resendConfirmationEmail}
+                  disabled={resendingEmail}
+                  className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {resendingEmail ? "Sending…" : "Resend Email"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountCreated(false);
+                    setStep(1);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="text-sm text-primary underline-offset-4 hover:underline"
+                >
+                  Change Email Address
+                </button>
+              </div>
             ) : (
               <>
                 <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
