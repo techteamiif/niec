@@ -446,6 +446,7 @@ export type Database = {
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
+          image_url: string | null
           is_virtual: boolean
           location: string | null
           max_attendees: number | null
@@ -465,6 +466,7 @@ export type Database = {
           end_date: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
           is_virtual?: boolean
           location?: string | null
           max_attendees?: number | null
@@ -484,6 +486,7 @@ export type Database = {
           end_date?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
           is_virtual?: boolean
           location?: string | null
           max_attendees?: number | null

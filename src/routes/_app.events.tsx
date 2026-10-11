@@ -32,7 +32,9 @@ function EventsPage() {
   const load = async () => {
     const { data, error } = await supabase
       .from("events")
-      .select("id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, is_paid")
+      .select(
+        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, is_paid, image_url",
+      )
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
     const { data: attendeeCounts, error: attendeeCountsError } = await supabase
@@ -105,52 +107,79 @@ function EventsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         {filtered.map((ev) => {
           return (
-            <div key={ev.id} className="rounded-xl border bg-card p-6">
-              <div className="flex items-start gap-2 text-xs text-primary">
-                <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <div className="space-y-1">
-                  {formatEventSchedule(ev.schedule, ev.start_date, ev.end_date).map((line, index) => (
-                    <div key={`${line}-${index}`}>{line}</div>
-                  ))}
-                </div>
-              </div>
-              <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{ev.description}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                {ev.event_type === "onsite" ||
-                ev.event_type === "hybrid" ||
-                (!ev.is_virtual && ev.event_type !== "online") ? (
-                  <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {ev.location || "Location to be announced"}</span>
-                ) : null}
-                {ev.event_type === "online" || ev.event_type === "hybrid" || ev.is_virtual ? (
-                  <span className="inline-flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Online</span>
-                ) : null}
-                <span className="rounded bg-muted px-2 py-0.5">{formatEventType(ev.event_type)}</span>
-                <span className="rounded bg-muted px-2 py-0.5">{ev.is_paid ? "Paid" : "Free"}</span>
-                {ev.max_attendees && <span className="rounded bg-muted px-2 py-0.5">{ev.max_attendees} Seats</span>}
-                <span className="rounded bg-muted px-2 py-0.5">
-                  {ev.attendee_count} {ev.attendee_count === 1 ? "attendee" : "attendees"}
-                </span>
-              </div>
-              {ev.attendee_count > 0 && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {attendingEvents.has(ev.id)
-                    ? ev.attendee_count === 1
-                      ? "You will be attending this event"
-                      : `You and ${ev.attendee_count - 1} ${
-                          ev.attendee_count === 2 ? "other person" : "people"
-                        } will be attending this event`
-                    : `${ev.attendee_count} ${
-                        ev.attendee_count === 1 ? "person" : "people"
-                      } will be attending this event`}
-                </p>
+            <div key={ev.id} className="overflow-hidden rounded-xl border bg-card">
+              {ev.image_url && (
+                <img
+                  src={ev.image_url}
+                  alt={`${ev.title} event`}
+                  className="h-48 w-full object-cover"
+                />
               )}
-              <div className="mt-4 flex flex-col items-start gap-2">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Min tier: {TIER_LABELS[ev.min_tier_required]}</div>
-                <Link to="/event/$eventId" params={{ eventId: ev.id }}
-                  className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-                  See details <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+              <div className="p-6">
+                <div className="flex items-start gap-2 text-xs text-primary">
+                  <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <div className="space-y-1">
+                    {formatEventSchedule(ev.schedule, ev.start_date, ev.end_date).map((line, index) => (
+                      <div key={`${line}-${index}`}>{line}</div>
+                    ))}
+                  </div>
+                </div>
+                <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{ev.description}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  {ev.event_type === "onsite" ||
+                  ev.event_type === "hybrid" ||
+                  (!ev.is_virtual && ev.event_type !== "online") ? (
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="h-3.5 w-3.5" />{" "}
+                      {ev.location || "Location to be announced"}
+                    </span>
+                  ) : null}
+                  {ev.event_type === "online" || ev.event_type === "hybrid" || ev.is_virtual ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Video className="h-3.5 w-3.5" /> Online
+                    </span>
+                  ) : null}
+                  <span className="rounded bg-muted px-2 py-0.5">
+                    {formatEventType(ev.event_type)}
+                  </span>
+                  <span className="rounded bg-muted px-2 py-0.5">
+                    {ev.is_paid ? "Paid" : "Free"}
+                  </span>
+                  {ev.max_attendees && (
+                    <span className="rounded bg-muted px-2 py-0.5">
+                      {ev.max_attendees} Seats
+                    </span>
+                  )}
+                  <span className="rounded bg-muted px-2 py-0.5">
+                    {ev.attendee_count} {ev.attendee_count === 1 ? "attendee" : "attendees"}
+                  </span>
+                </div>
+                {ev.attendee_count > 0 && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {attendingEvents.has(ev.id)
+                      ? ev.attendee_count === 1
+                        ? "You will be attending this event"
+                        : `You and ${ev.attendee_count - 1} ${
+                            ev.attendee_count === 2 ? "other person" : "people"
+                          } will be attending this event`
+                      : `${ev.attendee_count} ${
+                          ev.attendee_count === 1 ? "person" : "people"
+                        } will be attending this event`}
+                  </p>
+                )}
+                <div className="mt-4 flex flex-col items-start gap-2">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Min tier: {TIER_LABELS[ev.min_tier_required]}
+                  </div>
+                  <Link
+                    to="/event/$eventId"
+                    params={{ eventId: ev.id }}
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    See details <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           );
@@ -217,6 +246,9 @@ function CreateEvent({
     min_tier_required: "observer",
     max_attendees: "",
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">("daily");
   const [sessions, setSessions] = useState<EventSessionForm[]>([
     { date: "", start_time: "", end_time: "" },
@@ -232,8 +264,36 @@ function CreateEvent({
     };
   }, []);
 
+  useEffect(() => {
+    if (!imageFile) {
+      setImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(imageFile);
+    setImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [imageFile]);
+
   const set = <K extends keyof EventFormState,>(key: K, value: EventFormState[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  const selectImage = (file: File | null) => {
+    if (!file) {
+      setImageFile(null);
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setImageFile(null);
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageFile(null);
+      toast.error("Image must be 5 MB or smaller.");
+      return;
+    }
+    setImageFile(file);
+  };
 
   const previewSchedule: EventSchedule | null =
     scheduleMode === "daily" &&
@@ -271,6 +331,7 @@ function CreateEvent({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     const registrationLink = form.registration_link.trim();
     if (!registrationLink) {
       toast.error("A registration link is required to create an event.");
@@ -328,6 +389,28 @@ function CreateEvent({
       ).toISOString();
     }
 
+    setBusy(true);
+    let imageUrl: string | null = null;
+    let imagePath: string | null = null;
+    if (imageFile) {
+      const extensionByType: Record<string, string> = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+      };
+      imagePath = `${userId}/${crypto.randomUUID()}.${extensionByType[imageFile.type]}`;
+      const { error: uploadError } = await supabase.storage
+        .from("event-images")
+        .upload(imagePath, imageFile, { contentType: imageFile.type });
+      if (uploadError) {
+        setBusy(false);
+        toast.error(`Could not upload image: ${uploadError.message}`);
+        return;
+      }
+      imageUrl = supabase.storage.from("event-images").getPublicUrl(imagePath).data.publicUrl;
+    }
+
     const { error } = await supabase.from("events").insert({
       title: form.title,
       description: form.description,
@@ -343,8 +426,20 @@ function CreateEvent({
       is_paid: form.is_paid,
       registration_link: registrationLink,
       created_by: userId,
+      image_url: imageUrl,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (imagePath) {
+        const { error: cleanupError } = await supabase.storage
+          .from("event-images")
+          .remove([imagePath]);
+        if (cleanupError) toast.error(`Could not clean up uploaded image: ${cleanupError.message}`);
+      }
+      setBusy(false);
+      toast.error(error.message);
+      return;
+    }
+    setBusy(false);
     toast.success("Event created");
     onCreated();
   };
@@ -359,6 +454,7 @@ function CreateEvent({
           <button
             type="button"
             onClick={onClose}
+            disabled={busy}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Close event form"
           >
@@ -392,6 +488,37 @@ function CreateEvent({
             rows={1}
             className="w-full rounded-md border bg-background p-3 text-sm"
           />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="event-image" className="block text-sm font-medium">
+            Event image (optional)
+          </label>
+          <input
+            id="event-image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={(e) => {
+              selectImage(e.currentTarget.files?.[0] ?? null);
+              e.currentTarget.value = "";
+            }}
+            className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:text-sm"
+          />
+          {imagePreview && (
+            <div className="space-y-2">
+              <img
+                src={imagePreview}
+                alt="Event image preview"
+                className="mt-2 max-h-48 w-full rounded-md object-cover"
+              />
+              <button
+                type="button"
+                onClick={() => setImageFile(null)}
+                className="text-sm text-muted-foreground underline hover:text-foreground"
+              >
+                Remove image
+              </button>
+            </div>
+          )}
         </div>
         <div className="space-y-2">
           <label htmlFor="event-schedule-mode" className="block text-sm font-medium">
@@ -677,11 +804,19 @@ function CreateEvent({
           </div>
         </div>
         <div className="flex shrink-0 justify-end gap-2 border-t px-6 py-4">
-          <button type="button" onClick={onClose} className="rounded-md border px-4 py-2 text-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="rounded-md border px-4 py-2 text-sm disabled:opacity-60"
+          >
             Cancel
           </button>
-          <button className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">
-            Create
+          <button
+            disabled={busy}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {busy ? "Creating..." : "Create"}
           </button>
         </div>
       </form>

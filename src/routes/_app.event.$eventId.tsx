@@ -10,7 +10,25 @@ import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 
-type EventRecord = Database["public"]["Tables"]["events"]["Row"];
+type EventRecord = Pick<
+  Database["public"]["Tables"]["events"]["Row"],
+  | "id"
+  | "title"
+  | "description"
+  | "event_type"
+  | "start_date"
+  | "end_date"
+  | "schedule"
+  | "location"
+  | "is_virtual"
+  | "max_attendees"
+  | "min_tier_required"
+  | "created_by"
+  | "is_paid"
+  | "image_url"
+  | "virtual_link"
+  | "registration_link"
+>;
 type AttendanceResponse = "yes" | "no" | null;
 type EventAttendee = {
   member_id: string;
@@ -43,7 +61,9 @@ function EventDetailPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("events")
-      .select("id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, created_by, is_paid")
+      .select(
+        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, created_by, is_paid, image_url",
+      )
       .eq("id", eventId)
       .maybeSingle();
     if (error) {
@@ -203,6 +223,13 @@ function EventDetailPage() {
         </div>
       ) : (
         <>
+          {event.image_url && (
+            <img
+              src={event.image_url}
+              alt={`${event.title} event`}
+              className="mb-7 h-52 w-full rounded-xl object-cover md:h-80"
+            />
+          )}
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
