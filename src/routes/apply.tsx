@@ -153,7 +153,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     if (savedState && NIGERIAN_STATES.includes(savedState as NigerianState)) {
       setState(savedState as NigerianState);
       const savedLga = savedLocation.length > 1 ? savedLocation.slice(0, -1).join(", ") : "";
-      setLga(NIGERIA_LOCATIONS[savedState as NigerianState].includes(savedLga) ? savedLga : "");
+      const matchingLgas = NIGERIA_LOCATIONS[savedState as NigerianState] as readonly string[];
+      setLga(matchingLgas.includes(savedLga) ? savedLga : "");
     }
   }, [user, profile]);
 

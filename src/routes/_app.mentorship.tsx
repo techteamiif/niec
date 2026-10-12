@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { GraduationCap, Search, Sparkles, CalendarCheck, X, Check } from "lucide-react";
 import { format } from "date-fns";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 export const Route = createFileRoute("/_app/mentorship")({ component: MentorshipPage });
 
@@ -43,7 +44,7 @@ type Booking = {
 };
 
 function MentorshipPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [myOffer, setMyOffer] = useState<Offer | null>(null);
   const [bookingsIn, setBookingsIn] = useState<Booking[]>([]);
@@ -78,6 +79,7 @@ function MentorshipPage() {
   });
 
   const updateBookingStatus = async (id: string, status: Booking["status"]) => {
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("mentorship_bookings").update({ status, decided_at: new Date().toISOString() }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Updated");
@@ -197,11 +199,12 @@ function MentorCard({ offer, canBook, onBooked }: { offer: Offer; canBook: boole
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
   const [proposedTime, setProposedTime] = useState("");
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (!user || !topic.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setBusy(true);
     const { error } = await supabase.from("mentorship_bookings").insert({
       mentor_id: offer.mentor_id, requester_id: user.id, topic, message, proposed_time: proposedTime,
@@ -255,7 +258,13 @@ function MentorCard({ offer, canBook, onBooked }: { offer: Offer; canBook: boole
           </Dialog>
         ) : (
           <div className="rounded-md border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
-            Mentorship requests require the <strong>Enterprise</strong> tier or above.{" "}
+            <button
+              type="button"
+              onClick={() => requireEnterpriseForWrite(profile?.membership_tier, isStaff)}
+              className="font-semibold text-primary hover:underline"
+            >
+              Mentorship requests require the Enterprise tier or above.
+            </button>{" "}
             <a href="/apply" className="text-primary hover:underline">Upgrade your membership →</a>
           </div>
         )}
@@ -265,6 +274,7 @@ function MentorCard({ offer, canBook, onBooked }: { offer: Offer; canBook: boole
 }
 
 function OfferDialog({ user, myOffer, onSaved }: { user?: string; myOffer: Offer | null; onSaved: () => void }) {
+  const { profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [topics, setTopics] = useState(myOffer?.topics.join(", ") ?? "");
   const [cops, setCops] = useState<string[]>(myOffer?.cops ?? []);
@@ -287,6 +297,11 @@ function OfferDialog({ user, myOffer, onSaved }: { user?: string; myOffer: Offer
 
   const save = async () => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!isStaff && !tierMeets(profile?.membership_tier, "growth_partner")) {
+      toast.error("Upgrade to a Growth Partner account to offer mentorship.");
+      return;
+    }
     setBusy(true);
     const payload = {
       mentor_id: user,

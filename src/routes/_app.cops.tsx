@@ -2,9 +2,10 @@ import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { COPS, tierMeets } from "@/lib/niec";
+import { COPS } from "@/lib/niec";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 export const Route = createFileRoute("/_app/cops")({
   component: CopsLayout,
@@ -18,7 +19,7 @@ function CopsLayout() {
 }
 
 function CopsIndex() {
-  const { user, profile } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [joined, setJoined] = useState<Set<string>>(new Set());
 
@@ -37,10 +38,7 @@ function CopsIndex() {
 
   const toggle = async (cop: string) => {
     if (!user) return;
-    if (!tierMeets(profile?.membership_tier, "contributor")) {
-      toast.error("Join NIEC at Enterprise tier or above to join a CoP.");
-      return;
-    }
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     if (joined.has(cop)) {
       await supabase.from("cop_memberships").delete().eq("member_id", user.id).eq("cop", cop as any);
       toast.success("Left CoP");

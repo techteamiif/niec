@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/Avatar";
-import { TierBadge } from "@/components/TierBadge";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
 import { Search, MessageCircle } from "lucide-react";
@@ -25,7 +24,7 @@ function MembersPage() {
 
   useEffect(() => {
     (async () => {
-      let q = supabase.from("profiles").select("id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_tier, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at").eq("membership_status", "active");
+      let q = supabase.from("profiles").select("id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at").eq("membership_status", "active").neq("membership_tier", "observer");
       if (tier !== "all") q = q.eq("membership_tier", tier as any);
       if (org !== "all") q = q.eq("organisation_type", org as any);
       const { data } = await q.limit(200);
@@ -59,7 +58,6 @@ function MembersPage() {
         </div>
         <select value={tier} onChange={(e) => setTier(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
           <option value="all">All tiers</option>
-          <option value="observer">Observer</option>
           <option value="contributor">Enterprise</option>
           <option value="growth_partner">Growth Partner</option>
           <option value="anchor">Anchor</option>
@@ -74,28 +72,33 @@ function MembersPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((m) => (
           <div key={m.id} className="rounded-xl border bg-card p-5 transition hover:shadow-sm">
-            <div className="flex items-start gap-3">
-              <UserAvatar name={m.full_name} src={m.avatar_url} size={48} />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{m.full_name || "—"}</div>
-                <div className="text-xs text-muted-foreground">{m.role_title}</div>
-                <div className="mt-1 text-sm">{m.organisation_name}</div>
-                <div className="mt-2"><TierBadge tier={m.membership_tier} /></div>
+            <Link
+              to="/member/$memberId"
+              params={{ memberId: m.id }}
+              className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <div className="flex items-start gap-3">
+                <UserAvatar name={m.full_name} src={m.avatar_url} size={48} />
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{m.full_name || "—"}</div>
+                  <div className="text-xs text-muted-foreground">{m.role_title}</div>
+                  <div className="mt-1 text-sm">{m.organisation_name}</div>
+                </div>
               </div>
-            </div>
-            {m.location && <div className="mt-3 text-xs text-muted-foreground">📍 {m.location}</div>}
-            {m.sectors?.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {m.sectors.slice(0, 4).map((s: string) => (
-                  <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-foreground">{s.replace(/_/g, " ")}</span>
-                ))}
-              </div>
-            )}
-            {m.sdg_focus?.length > 0 && (
-              <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                SDGs: {m.sdg_focus.slice(0, 6).join(", ")}
-              </div>
-            )}
+              {m.location && <div className="mt-3 text-xs text-muted-foreground">📍 {m.location}</div>}
+              {m.sectors?.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {m.sectors.slice(0, 4).map((s: string) => (
+                    <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-foreground">{s.replace(/_/g, " ")}</span>
+                  ))}
+                </div>
+              )}
+              {m.sdg_focus?.length > 0 && (
+                <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  SDGs: {m.sdg_focus.slice(0, 6).join(", ")}
+                </div>
+              )}
+            </Link>
             {user && m.id !== user.id && (
               <Link to="/messages" search={{ to: m.id }}
                 className="mt-4 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">

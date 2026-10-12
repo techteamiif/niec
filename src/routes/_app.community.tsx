@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { CommentsThread } from "@/components/CommentsThread";
-import { TierBadge } from "@/components/TierBadge";
 import { COPS, POST_TYPE_COLOR, POST_TYPE_LABELS } from "@/lib/niec";
 import { can } from "@/lib/entitlements";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { toast } from "sonner";
 import { Pin, Plus, Heart, MessageCircle, Lock, Image as ImageIcon, X } from "lucide-react";
 import { format } from "date-fns";
@@ -39,7 +39,7 @@ function CommunityPage() {
   const load = async () => {
     let q = supabase
       .from("community_posts")
-      .select("*, profiles:author_id(full_name, organisation_name, avatar_url, membership_tier)")
+      .select("*, profiles:author_id(full_name, organisation_name, avatar_url)")
       .order("created_at", { ascending: false });
     if (typeFilter !== "all") q = q.eq("post_type", typeFilter as any);
     if (copFilter !== "all") q = q.eq("community_of_practice", copFilter as any);
@@ -77,6 +77,7 @@ function CommunityPage() {
 
   const toggleLike = async (postId: string) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     if (liked.has(postId)) {
       await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
       setLiked((s) => {
@@ -125,13 +126,19 @@ function CommunityPage() {
             <Plus className="h-4 w-4" /> Create post
           </button>
         ) : (
-          <Link
-            to="/upgrade"
-            title="Upgrade to Enterprise to post"
-            className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
-          >
-            <Lock className="h-4 w-4" /> Upgrade to post
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => requireEnterpriseForWrite(profile?.membership_tier, isStaff)}
+              title="Upgrade to Enterprise to post"
+              className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
+            >
+              <Lock className="h-4 w-4" /> Create post
+            </button>
+            <Link to="/upgrade" className="text-sm font-medium text-primary hover:underline">
+              Upgrade
+            </Link>
+          </div>
         )}
       </div>
 
@@ -166,7 +173,6 @@ function CommunityPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="font-medium">{p.profiles?.full_name}</span>
-                    <TierBadge tier={p.profiles?.membership_tier} />
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP p")}
@@ -330,6 +336,7 @@ function Composer({
   authorId: string;
   onCreated: () => void;
 }) {
+  const { profile, isStaff } = useAuth();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [postType, setPostType] = useState("discussion");
@@ -376,6 +383,7 @@ function Composer({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setBusy(true);
     let imageUrl: string | null = null;
     let imagePath: string | null = null;

@@ -7,6 +7,8 @@ import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Calendar, MapPin, Video, ArrowRight } from "lucide-react";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
+import { EventImage } from "@/components/EventImage";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
@@ -24,6 +26,10 @@ function EventsPage() {
   const [attendingEvents, setAttendingEvents] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
+  const [search, setSearch] = useState("");
+  const [eventTypeFilter, setEventTypeFilter] = useState<"all" | "onsite" | "online" | "hybrid">("all");
+  const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
+  const [tierFilter, setTierFilter] = useState<"all" | keyof typeof TIER_LABELS>("all");
   const canCreateEvents = !!user && (
     isStaff ||
     (profile?.membership_status === "active" && tierMeets(profile.membership_tier, "contributor"))
@@ -71,11 +77,29 @@ function EventsPage() {
   const filtered = useMemo(() => {
     return events.filter((ev) => {
       const ended = new Date(ev.end_date ?? ev.start_date).getTime() < now;
-      if (tab === "upcoming") return !ended;
-      if (tab === "past") return ended;
-      return regs.has(ev.id);
+      const matchesTab =
+        tab === "upcoming" ? !ended : tab === "past" ? ended : regs.has(ev.id);
+      if (!matchesTab) return false;
+      if (eventTypeFilter !== "all" && ev.event_type !== eventTypeFilter) return false;
+      if (priceFilter === "free" && ev.is_paid) return false;
+      if (priceFilter === "paid" && !ev.is_paid) return false;
+      if (tierFilter !== "all" && ev.min_tier_required !== tierFilter) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        (ev.title ?? "").toLowerCase().includes(q) ||
+        (ev.description ?? "").toLowerCase().includes(q) ||
+        (ev.location ?? "").toLowerCase().includes(q)
+      );
     });
-  }, [events, tab, regs, now]);
+  }, [events, tab, regs, now, search, eventTypeFilter, priceFilter, tierFilter]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setEventTypeFilter("all");
+    setPriceFilter("all");
+    setTierFilter("all");
+  };
 
   return (
     <div className="p-6 lg:p-10">
@@ -86,6 +110,18 @@ function EventsPage() {
         </div>
         {canCreateEvents && (
           <button onClick={() => setShowCreate(true)} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            + New event
+          </button>
+        )}
+        {!canCreateEvents &&
+          user &&
+          !isStaff &&
+          !tierMeets(profile?.membership_tier, "contributor") && (
+          <button
+            type="button"
+            onClick={() => requireEnterpriseForWrite(profile?.membership_tier, isStaff)}
+            className="rounded-md border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
+          >
             + New event
           </button>
         )}
@@ -104,18 +140,80 @@ function EventsPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {filtered.map((ev) => {
+      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search events, locations, keywords…"
+          className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm"
+        />
+
+        <select
+          value={eventTypeFilter}
+          onChange={(e) => setEventTypeFilter(e.target.value as typeof eventTypeFilter)}
+          className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+        >
+          <option value="all">All types</option>
+          <option value="onsite">Onsite</option>
+          <option value="online">Online</option>
+          <option value="hybrid">Hybrid</option>
+        </select>
+
+        <select
+          value={priceFilter}
+          onChange={(e) => setPriceFilter(e.target.value as typeof priceFilter)}
+          className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+        >
+          <option value="all">All pricing</option>
+          <option value="free">Free</option>
+          <option value="paid">Paid</option>
+        </select>
+
+        <select
+          value={tierFilter}
+          onChange={(e) => setTierFilter(e.target.value as typeof tierFilter)}
+          className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+        >
+          <option value="all">All tiers</option>
+          {Object.entries(TIER_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+
+        {(search || eventTypeFilter !== "all" || priceFilter !== "all" || tierFilter !== "all") && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="h-9 rounded-md border px-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {filtered.length === 0 ? (
+          <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+            {            search.trim() ||
+            eventTypeFilter !== "all" ||
+            priceFilter !== "all" ||
+            tierFilter !== "all"
+              ? "No events match the selected filters."
+              : tab === "upcoming"
+                ? "No upcoming events."
+                : tab === "past"
+                  ? "No past events yet."
+                  : "You haven't registered for any events yet."}
+          </div>
+        ) : filtered.map((ev) => {
           return (
             <div key={ev.id} className="overflow-hidden rounded-xl border bg-card">
-              {ev.image_url && (
-                <img
-                  src={ev.image_url}
-                  alt={`${ev.title} event`}
-                  className="h-48 w-full object-cover"
-                />
-              )}
-              <div className="p-6">
+              <EventImage
+                src={ev.image_url}
+                title={ev.title}
+                className="h-52 w-full"
+              />
+              <div className="p-5">
                 <div className="flex items-start gap-2 text-xs text-primary">
                   <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <div className="space-y-1">
@@ -125,7 +223,7 @@ function EventsPage() {
                   </div>
                 </div>
                 <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-3">{ev.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{ev.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   {ev.event_type === "onsite" ||
                   ev.event_type === "hybrid" ||
@@ -184,13 +282,6 @@ function EventsPage() {
             </div>
           );
         })}
-        {filtered.length === 0 && (
-          <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
-            {tab === "upcoming" && "No upcoming events."}
-            {tab === "past" && "No past events yet."}
-            {tab === "mine" && "You haven't registered for any events yet."}
-          </div>
-        )}
       </div>
 
       {showCreate && canCreateEvents && <CreateEvent onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} userId={user.id} />}
@@ -230,6 +321,7 @@ function CreateEvent({
   onCreated: () => void;
   userId: string;
 }) {
+  const { profile, isStaff } = useAuth();
   const [form, setForm] = useState<EventFormState>({
     title: "",
     description: "",
@@ -332,6 +424,7 @@ function CreateEvent({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const registrationLink = form.registration_link.trim();
     if (!registrationLink) {
       toast.error("A registration link is required to create an event.");

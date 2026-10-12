@@ -7,6 +7,7 @@ import { UserAvatar } from "@/components/Avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Send } from "lucide-react";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 export const Route = createFileRoute("/_app/messages")({
   validateSearch: z.object({ to: z.string().uuid().optional() }),
@@ -17,7 +18,7 @@ type DM = { id: string; sender_id: string; recipient_id: string; content: string
 type Profile = { id: string; full_name: string; avatar_url: string | null; organisation_name: string | null };
 
 function MessagesPage() {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const { to } = useSearch({ from: "/_app/messages" });
   const [messages, setMessages] = useState<DM[]>([]);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
@@ -102,6 +103,7 @@ function MessagesPage() {
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !activePeer || !draft.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const content = draft.trim();
     setDraft("");
     const { error } = await supabase.from("direct_messages").insert({

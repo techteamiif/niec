@@ -2,7 +2,8 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { COPS, COP_SLUG_REDIRECTS, initials, tierMeets } from "@/lib/niec";
+import { COPS, COP_SLUG_REDIRECTS, initials } from "@/lib/niec";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { toast } from "sonner";
 import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye } from "lucide-react";
@@ -145,7 +146,7 @@ function CopWorkspace() {
 
   const join = async () => {
     if (!user) return;
-    if (!tierMeets(profile?.membership_tier, "contributor")) return toast.error("Enterprise tier required.");
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("cop_memberships").insert({ member_id: user.id, cop: cop as any });
     if (error) return toast.error(error.message);
     toast.success("Joined " + meta.name);
@@ -153,11 +154,13 @@ function CopWorkspace() {
   };
   const leave = async () => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     await supabase.from("cop_memberships").delete().eq("member_id", user.id).eq("cop", cop as any);
     toast.success("Left CoP"); load();
   };
 
   const togglePin = async (postId: string, current: boolean) => {
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("community_posts").update({ pinned_in_cop: !current }).eq("id", postId);
     if (error) return toast.error(error.message);
     load();
@@ -165,6 +168,11 @@ function CopWorkspace() {
 
   const vote = async (pollId: string, idx: number, multi: boolean) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!joined) {
+      toast.info("Join this CoP to vote in its polls.");
+      return;
+    }
     const mine = myVotes[pollId] ?? new Set();
     if (mine.has(idx)) {
       await supabase.from("poll_votes").delete().eq("poll_id", pollId).eq("user_id", user.id).eq("option_index", idx);
@@ -180,6 +188,11 @@ function CopWorkspace() {
 
   const toggleGroupMembership = async (gid: string) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!joined) {
+      toast.info("Join this CoP to join a working group.");
+      return;
+    }
     const in_ = (groupMembers[gid] ?? []).includes(user.id);
     if (in_) {
       await supabase.from("working_group_members").delete().eq("group_id", gid).eq("user_id", user.id);
@@ -192,6 +205,7 @@ function CopWorkspace() {
 
   const reactRfc = async (rfcId: string, reaction: "support" | "concern" | "watching") => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const mine = myRfcReactions[rfcId];
     if (mine === reaction) {
       await supabase.from("rfc_reactions").delete().eq("rfc_id", rfcId).eq("user_id", user.id);
@@ -206,6 +220,7 @@ function CopWorkspace() {
 
   const decideRfc = async (rfcId: string, status: "accepted" | "parked" | "rejected", note: string) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("rfcs").update({ status, decided_by: user.id, decided_at: new Date().toISOString(), decision_note: note }).eq("id", rfcId);
     if (error) return toast.error(error.message);
     toast.success("Decision recorded");
@@ -344,7 +359,7 @@ function CopWorkspace() {
                       <h3 className="font-display text-lg">{g.name}</h3>
                       <Badge variant={g.status === "active" ? "default" : "secondary"} className="mt-1">{g.status}</Badge>
                     </div>
-                    <Button size="sm" variant={inGroup ? "outline" : "default"} onClick={() => toggleGroupMembership(g.id)} disabled={!joined}>
+                    <Button size="sm" variant={inGroup ? "outline" : "default"} onClick={() => toggleGroupMembership(g.id)}>
                       {inGroup ? "Leave" : "Join"}
                     </Button>
                   </div>
@@ -384,7 +399,7 @@ function CopWorkspace() {
                       const pct = Math.round((c / total) * 100);
                       const mine = (myVotes[p.id] ?? new Set()).has(i);
                       return (
-                        <button key={i} onClick={() => !closed && vote(p.id, i, p.multi_select)} disabled={!!closed || !joined}
+                        <button key={i} onClick={() => !closed && vote(p.id, i, p.multi_select)} disabled={!!closed}
                           className={`relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition ${mine ? "border-primary bg-primary/5" : "hover:bg-muted"}`}>
                           <div className="absolute inset-y-0 left-0 bg-primary/10" style={{ width: `${pct}%` }} />
                           <div className="relative flex items-center justify-between">
@@ -563,13 +578,14 @@ function PostCard({ post, canManage, onPin }: { post: any; canManage: boolean; o
 }
 
 function NewGroupDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deliverable, setDeliverable] = useState("");
   const submit = async () => {
     if (!user || !name) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("working_groups").insert({
       cop: cop as any, name, description, deliverable, lead_id: user.id, created_by: user.id,
     });
@@ -595,13 +611,14 @@ function NewGroupDialog({ cop, onCreated }: { cop: string; onCreated: () => void
 }
 
 function NewPollDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [optionsText, setOptionsText] = useState("");
   const [multi, setMulti] = useState(false);
   const submit = async () => {
     if (!user || !question) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const options = optionsText.split("\n").map((s) => s.trim()).filter(Boolean);
     if (options.length < 2) return toast.error("Add at least 2 options");
     const { error } = await supabase.from("polls").insert({
@@ -639,12 +656,13 @@ function RfcStatusBadge({ s }: { s: string }) {
 }
 
 function NewRfcDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const submit = async () => {
     if (!user || !title.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("rfcs").insert({ cop: cop as any, author_id: user.id, title, body });
     if (error) return toast.error(error.message);
     toast.success("Proposal submitted");

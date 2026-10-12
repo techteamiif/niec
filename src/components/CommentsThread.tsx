@@ -5,6 +5,8 @@ import { UserAvatar } from "@/components/Avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Pencil, Trash2, Check, X } from "lucide-react";
+import { tierMeets } from "@/lib/niec";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 interface CommentRow {
   id: string;
@@ -30,7 +32,11 @@ export function CommentsThread({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
-  const canPost = !!user && profile?.membership_status === "active";
+  const canPost =
+    !!user &&
+    (isStaff ||
+      (profile?.membership_status === "active" &&
+        tierMeets(profile.membership_tier, "contributor")));
 
   const load = async () => {
     setLoading(true);
@@ -52,6 +58,7 @@ export function CommentsThread({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !draft.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setBusy(true);
     const { error } = await supabase
       .from("comments")
@@ -64,12 +71,14 @@ export function CommentsThread({
   };
 
   const startEdit = (c: CommentRow) => {
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setEditingId(c.id);
     setEditValue(c.content);
   };
 
   const saveEdit = async (id: string) => {
     if (!editValue.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase
       .from("comments")
       .update({ content: editValue.trim() })
@@ -81,6 +90,7 @@ export function CommentsThread({
   };
 
   const remove = async (id: string) => {
+    if (!isStaff && !requireEnterpriseForWrite(profile?.membership_tier, false)) return;
     if (!confirm("Delete this comment?")) return;
     const { error } = await supabase.from("comments").delete().eq("id", id);
     if (error) return toast.error(error.message);
@@ -98,8 +108,8 @@ export function CommentsThread({
         <ul className="space-y-3">
           {comments.map((c) => {
             const mine = user?.id === c.author_id;
-            const canEdit = mine;
-            const canDelete = mine || isStaff;
+            const canEdit = mine && (isStaff || tierMeets(profile?.membership_tier, "contributor"));
+            const canDelete = isStaff || (mine && tierMeets(profile?.membership_tier, "contributor"));
             const isEditing = editingId === c.id;
             return (
               <li key={c.id} className="flex gap-3">
@@ -142,6 +152,14 @@ export function CommentsThread({
                           </button>
                         </div>
                       </div>
+                    ) : user && profile?.membership_tier === "observer" ? (
+                      <button
+                        type="button"
+                        onClick={() => requireEnterpriseForWrite(profile.membership_tier, isStaff)}
+                        className="text-left text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Upgrade to Enterprise to comment.
+                      </button>
                     ) : (
                       <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{c.content}</p>
                     )}

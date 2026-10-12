@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ArrowLeft, Calendar, MapPin, Video } from "lucide-react";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EventImage } from "@/components/EventImage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -223,13 +224,11 @@ function EventDetailPage() {
         </div>
       ) : (
         <>
-          {event.image_url && (
-            <img
-              src={event.image_url}
-              alt={`${event.title} event`}
-              className="mb-7 h-52 w-full rounded-xl object-cover md:h-80"
-            />
-          )}
+          <EventImage
+            src={event.image_url}
+            title={event.title}
+            className="mb-7 h-52 w-full rounded-xl md:h-80"
+          />
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

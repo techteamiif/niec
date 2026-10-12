@@ -39,6 +39,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AppCopsCopRouteImport } from './routes/_app.cops.$cop'
 import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
+import { Route as AppMemberMemberIdRouteImport } from './routes/_app.member.$memberId'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -196,6 +197,11 @@ const AppEventEventIdRoute = AppEventEventIdRouteImport.update({
   path: '/event/$eventId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppMemberMemberIdRoute = AppMemberMemberIdRouteImport.update({
+  id: '/member/$memberId',
+  path: '/member/$memberId',
+  getParentRoute: () => AppRoute,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -243,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
+  '/member/$memberId': typeof AppMemberMemberIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
+  '/member/$memberId': typeof AppMemberMemberIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/cops/$cop': typeof AppCopsCopRoute
   '/_app/event/$eventId': typeof AppEventEventIdRoute
+  '/_app/member/$memberId': typeof AppMemberMemberIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/cops/$cop'
     | '/event/$eventId'
+    | '/member/$memberId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/cops/$cop'
     | '/event/$eventId'
+    | '/member/$memberId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -418,6 +429,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_app/cops/$cop'
     | '/_app/event/$eventId'
+    | '/_app/member/$memberId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -656,6 +668,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventEventIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/member/$memberId': {
+      id: '/_app/member/$memberId'
+      path: '/member/$memberId'
+      fullPath: '/member/$memberId'
+      preLoaderRoute: typeof AppMemberMemberIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -706,6 +725,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppUpgradeRoute: typeof AppUpgradeRoute
   AppEventEventIdRoute: typeof AppEventEventIdRoute
+  AppMemberMemberIdRoute: typeof AppMemberMemberIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -723,6 +743,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppUpgradeRoute: AppUpgradeRoute,
   AppEventEventIdRoute: AppEventEventIdRoute,
+  AppMemberMemberIdRoute: AppMemberMemberIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

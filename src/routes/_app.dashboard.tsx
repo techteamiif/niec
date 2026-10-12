@@ -43,7 +43,7 @@ function Dashboard() {
         supabase.from("deal_opportunities").select("id", { count: "exact", head: true }).eq("status", "open"),
         supabase.from("events").select("id", { count: "exact", head: true }).gte("start_date", new Date().toISOString()),
         supabase.from("community_posts")
-          .select("*, profiles:author_id(full_name, organisation_name, avatar_url, membership_tier)")
+          .select("*, profiles:author_id(full_name, organisation_name, avatar_url)")
           .order("is_pinned", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(10),
@@ -115,7 +115,6 @@ function Dashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-medium">{p.profiles?.full_name}</span>
-                      <TierBadge tier={p.profiles?.membership_tier} />
                     </div>
                     <div className="text-xs text-muted-foreground">{p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP")}</div>
                   </div>
