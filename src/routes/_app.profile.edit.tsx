@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -11,7 +12,6 @@ import { readOnboardingData } from "@/lib/profile-onboarding";
 import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
 import {
   AUM_OPTIONS,
-  COMMUNICATION_OPTIONS,
   CONTRIBUTION_OPTIONS,
   EVENT_OPTIONS,
   EVENT_ROLE_OPTIONS,
@@ -93,7 +93,7 @@ function createForm(profile: NonNullable<ReturnType<typeof useAuth>["profile"]>)
 }
 
 function ProfilePage() {
-  const { profile, user, refresh } = useAuth();
+  const { profile, user, refresh, signOut } = useAuth();
   const [form, setForm] = useState<ProfileForm | null>(null);
   const [busy, setBusy] = useState<Record<SaveSection, boolean>>({
     personal: false,
@@ -217,13 +217,13 @@ function ProfilePage() {
           <div className="mt-4 font-display text-xl">{profile.full_name}</div>
           <div className="text-sm text-muted-foreground">{profile.role_title}</div>
           <div className="mt-3 flex justify-center"><MemberBadges userId={user.id} compact /></div>
-          <div className="mt-5 rounded-lg bg-muted/40 p-3 text-left text-xs">
-            <div className="text-muted-foreground">Engagement score</div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-border">
-              <div className="h-full bg-primary" style={{ width: `${Math.min(100, profile.engagement_score)}%` }} />
-            </div>
-            <div className="mt-1 text-right font-medium">{profile.engagement_score}/100</div>
-          </div>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-500/20"
+          >
+            <LogOut className="h-4 w-4" /> Log out
+          </button>
         </aside>
 
         <div className="space-y-6">
@@ -342,12 +342,6 @@ function ProfilePage() {
             </Field>
             <Field label="How did you hear about NIEC?">
               <ChoiceButtons options={HEARD_OPTIONS} value={form.heard_from} onChange={(value) => update("heard_from", value)} />
-            </Field>
-            <Field label="Preferred communication channel">
-              <select value={form.comm_preference} onChange={(e) => update("comm_preference", e.target.value)} className="input">
-                <option value="">Select communication channel</option>
-                {COMMUNICATION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
             </Field>
             <SaveButton busy={busy.engagement} />
           </form>

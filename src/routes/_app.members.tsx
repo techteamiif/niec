@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/Avatar";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
-import { Search, MessageCircle } from "lucide-react";
+import { MapPin, Search, MessageCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_app/members")({
   validateSearch: z.object({ q: z.string().optional() }),
@@ -75,33 +75,20 @@ function MembersPage() {
             <Link
               to="/member/$memberId"
               params={{ memberId: m.id }}
-              className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex flex-col items-center rounded-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <div className="flex items-start gap-3">
-                <UserAvatar name={m.full_name} src={m.avatar_url} size={48} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium">{m.full_name || "—"}</div>
-                  <div className="text-xs text-muted-foreground">{m.role_title}</div>
-                  <div className="mt-1 text-sm">{m.organisation_name}</div>
-                </div>
-              </div>
-              {m.location && <div className="mt-3 text-xs text-muted-foreground">📍 {m.location}</div>}
-              {m.sectors?.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {m.sectors.slice(0, 4).map((s: string) => (
-                    <span key={s} className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-foreground">{s.replace(/_/g, " ")}</span>
-                  ))}
-                </div>
-              )}
-              {m.sdg_focus?.length > 0 && (
-                <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                  SDGs: {m.sdg_focus.slice(0, 6).join(", ")}
+              <UserAvatar name={m.full_name} src={m.avatar_url} size={72} />
+              <div className="mt-3 font-medium">{m.full_name || "—"}</div>
+              {m.role_title && <div className="mt-1 text-sm text-muted-foreground">{m.role_title}</div>}
+              {m.location && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" /> {m.location}
                 </div>
               )}
             </Link>
             {user && m.id !== user.id && (
               <Link to="/messages" search={{ to: m.id }}
-                className="mt-4 inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">
+                className="mx-auto mt-4 flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">
                 <MessageCircle className="h-3 w-3" /> Message
               </Link>
             )}
