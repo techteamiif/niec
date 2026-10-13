@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { GraduationCap, Search, Sparkles, CalendarCheck, X, Check } from "lucide-react";
+import { ArrowRight, GraduationCap, Search, Sparkles, CalendarCheck, X, Check } from "lucide-react";
 import { format } from "date-fns";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
@@ -265,7 +265,7 @@ function MentorCard({ offer, canBook, onBooked }: { offer: Offer; canBook: boole
             >
               Mentorship requests require the Enterprise tier or above.
             </button>{" "}
-            <a href="/apply" className="text-primary hover:underline">Upgrade your membership →</a>
+            <a href="/apply" className="inline-flex items-center gap-1 text-primary hover:underline">Upgrade your membership <ArrowRight className="h-3.5 w-3.5" /></a>
           </div>
         )}
       </div>

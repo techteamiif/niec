@@ -6,9 +6,25 @@ import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-import { Calendar, MapPin, Video, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Video, ArrowRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { EventImage } from "@/components/EventImage";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
@@ -25,6 +41,9 @@ function EventsPage() {
   const [regs, setRegs] = useState<Set<string>>(new Set());
   const [attendingEvents, setAttendingEvents] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<EventEditData | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
   const [search, setSearch] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState<"all" | "onsite" | "online" | "hybrid">("all");
@@ -39,7 +58,7 @@ function EventsPage() {
     const { data, error } = await supabase
       .from("events")
       .select(
-        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, is_paid, image_url",
+        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, virtual_link, registration_link, max_attendees, min_tier_required, is_paid, image_url, created_by",
       )
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
@@ -99,6 +118,29 @@ function EventsPage() {
     setEventTypeFilter("all");
     setPriceFilter("all");
     setTierFilter("all");
+  };
+
+  const deleteEvent = async () => {
+    if (!eventToDelete || deleting) return;
+    setDeleting(true);
+    const { data, error } = await supabase
+      .from("events")
+      .delete()
+      .eq("id", eventToDelete.id)
+      .select("id")
+      .maybeSingle();
+    setDeleting(false);
+    if (error) {
+      toast.error(`Could not delete event: ${error.message}`);
+      return;
+    }
+    if (!data) {
+      toast.error("You do not have permission to delete this event.");
+      return;
+    }
+    toast.success("Event deleted");
+    setEventToDelete(null);
+    await load();
   };
 
   return (
@@ -206,13 +248,40 @@ function EventsPage() {
                   : "You haven't registered for any events yet."}
           </div>
         ) : filtered.map((ev) => {
+          const canManageEvent = isStaff || (!!user && ev.created_by === user.id);
           return (
             <div key={ev.id} className="overflow-hidden rounded-xl border bg-card">
-              <EventImage
-                src={ev.image_url}
-                title={ev.title}
-                className="h-52 w-full"
-              />
+              <div className="relative">
+                <EventImage
+                  src={ev.image_url}
+                  title={ev.title}
+                  className="h-52 w-full"
+                />
+                {canManageEvent && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Manage ${ev.title}`}
+                        className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      >
+                        <MoreVertical className="h-5 w-5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-36">
+                      <DropdownMenuItem onSelect={() => setEventToEdit(ev)}>
+                        <Pencil /> Edit event
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => setEventToDelete({ id: ev.id, title: ev.title })}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 /> Delete event
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
               <div className="p-5">
                 <div className="flex items-start gap-2 text-xs text-primary">
                   <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -266,7 +335,7 @@ function EventsPage() {
                         } will be attending this event`}
                   </p>
                 )}
-                <div className="mt-4 flex flex-col items-start gap-2">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     Min tier: {TIER_LABELS[ev.min_tier_required]}
                   </div>
@@ -284,7 +353,35 @@ function EventsPage() {
         })}
       </div>
 
-      {showCreate && canCreateEvents && <CreateEvent onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} userId={user.id} />}
+      {showCreate && canCreateEvents && <CreateEvent onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); void load(); }} userId={user.id} />}
+      {eventToEdit && user && (
+        <CreateEvent
+          event={eventToEdit}
+          onClose={() => setEventToEdit(null)}
+          onCreated={() => { setEventToEdit(null); void load(); }}
+          userId={user.id}
+        />
+      )}
+      <AlertDialog open={!!eventToDelete} onOpenChange={(open) => { if (!open && !deleting) setEventToDelete(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {eventToDelete?.title ? `"${eventToDelete.title}"` : "This event"} will be permanently deleted along with its registrations and RSVPs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); void deleteEvent(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting…" : "Delete event"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -305,43 +402,122 @@ type EventFormState = {
   max_attendees: string;
 };
 
+type EventEditData = Pick<
+  Database["public"]["Tables"]["events"]["Row"],
+  | "id"
+  | "title"
+  | "description"
+  | "event_type"
+  | "start_date"
+  | "end_date"
+  | "schedule"
+  | "location"
+  | "is_virtual"
+  | "virtual_link"
+  | "registration_link"
+  | "max_attendees"
+  | "min_tier_required"
+  | "is_paid"
+  | "image_url"
+  | "created_by"
+>;
+
 type EventSessionForm = {
   date: string;
   time: string;
 };
 
+function dateInputValue(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function timeInputValue(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function eventScheduleDefaults(event: EventEditData | null) {
+  if (event && isRecord(event.schedule) && event.schedule.mode === "custom" && Array.isArray(event.schedule.sessions)) {
+    const sessions = event.schedule.sessions.flatMap((session) => {
+      if (!isRecord(session) || typeof session.date !== "string") return [];
+      return [{
+        date: session.date,
+        time: typeof session.time === "string"
+          ? session.time
+          : typeof session.start_time === "string" ? session.start_time : "",
+      }];
+    });
+    if (sessions.length) return { mode: "custom" as const, sessions };
+  }
+
+  if (event && isRecord(event.schedule) && event.schedule.mode === "daily"
+    && typeof event.schedule.start_date === "string" && typeof event.schedule.end_date === "string") {
+    return {
+      mode: "daily" as const,
+      sessions: [{ date: "", time: "" }],
+      startDate: event.schedule.start_date,
+      endDate: event.schedule.end_date,
+      time: typeof event.schedule.time === "string" ? event.schedule.time : "",
+    };
+  }
+
+  return {
+    mode: "daily" as const,
+    sessions: [{ date: "", time: "" }],
+    startDate: event ? dateInputValue(event.start_date) : "",
+    endDate: event ? dateInputValue(event.end_date) : "",
+    time: event ? timeInputValue(event.start_date) : "",
+  };
+}
+
+function eventFormDefaults(event: EventEditData | null): EventFormState {
+  const schedule = eventScheduleDefaults(event);
+  const dailySchedule = schedule.mode === "daily" ? schedule : null;
+  return {
+    title: event?.title ?? "",
+    description: event?.description ?? "",
+    event_type: event?.event_type === "online" || event?.event_type === "hybrid" ? event.event_type : "onsite",
+    start_date: dailySchedule?.startDate ?? "",
+    end_date: dailySchedule?.endDate ?? "",
+    start_time: dailySchedule?.time ?? "",
+    location: event?.location ?? "",
+    is_virtual: event?.is_virtual ?? false,
+    virtual_link: event?.virtual_link ?? "",
+    registration_link: event?.registration_link ?? "",
+    is_paid: event?.is_paid ?? false,
+    min_tier_required: event?.min_tier_required ?? "observer",
+    max_attendees: event?.max_attendees?.toString() ?? "",
+  };
+}
+
 function CreateEvent({
+  event = null,
   onClose,
   onCreated,
   userId,
 }: {
+  event?: EventEditData | null;
   onClose: () => void;
   onCreated: () => void;
   userId: string;
 }) {
   const { profile, isStaff } = useAuth();
-  const [form, setForm] = useState<EventFormState>({
-    title: "",
-    description: "",
-    event_type: "onsite",
-    start_date: "",
-    end_date: "",
-    start_time: "",
-    location: "",
-    is_virtual: false,
-    virtual_link: "",
-    registration_link: "",
-    is_paid: false,
-    min_tier_required: "observer",
-    max_attendees: "",
-  });
+  const [form, setForm] = useState<EventFormState>(() => eventFormDefaults(event));
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">("daily");
-  const [sessions, setSessions] = useState<EventSessionForm[]>([
-    { date: "", time: "" },
-  ]);
+  const scheduleDefaults = eventScheduleDefaults(event);
+  const [scheduleMode, setScheduleMode] = useState<"daily" | "custom">(scheduleDefaults.mode);
+  const [sessions, setSessions] = useState<EventSessionForm[]>(scheduleDefaults.sessions);
   useEffect(() => {
     const bodyOverflow = document.body.style.overflow;
     const documentOverflow = document.documentElement.style.overflow;
@@ -382,6 +558,7 @@ function CreateEvent({
       return;
     }
     setImageFile(file);
+    setRemoveExistingImage(false);
   };
 
   const previewSchedule: EventSchedule | null =
@@ -410,10 +587,10 @@ function CreateEvent({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!event && !requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const registrationLink = form.registration_link.trim();
     if (!registrationLink) {
-      toast.error("A registration link is required to create an event.");
+      toast.error("A registration link is required.");
       return;
     }
     if (
@@ -451,8 +628,9 @@ function CreateEvent({
     }
 
     setBusy(true);
-    let imageUrl: string | null = null;
+    let imageUrl = event?.image_url ?? null;
     let imagePath: string | null = null;
+    if (removeExistingImage) imageUrl = null;
     if (imageFile) {
       const extensionByType: Record<string, string> = {
         "image/jpeg": "jpg",
@@ -472,7 +650,7 @@ function CreateEvent({
       imageUrl = supabase.storage.from("event-images").getPublicUrl(imagePath).data.publicUrl;
     }
 
-    const { error } = await supabase.from("events").insert({
+    const eventValues = {
       title: form.title,
       description: form.description,
       event_type: form.event_type,
@@ -486,9 +664,12 @@ function CreateEvent({
       min_tier_required: form.min_tier_required,
       is_paid: form.is_paid,
       registration_link: registrationLink,
-      created_by: userId,
       image_url: imageUrl,
-    });
+    };
+    const result = event
+      ? await supabase.from("events").update(eventValues).eq("id", event.id).select("id").maybeSingle()
+      : await supabase.from("events").insert({ ...eventValues, created_by: userId }).select("id").maybeSingle();
+    const { data, error } = result;
     if (error) {
       if (imagePath) {
         const { error: cleanupError } = await supabase.storage
@@ -500,10 +681,16 @@ function CreateEvent({
       toast.error(error.message);
       return;
     }
+    if (!data) {
+      setBusy(false);
+      toast.error(event ? "You do not have permission to update this event." : "Could not create event.");
+      return;
+    }
     setBusy(false);
-    toast.success("Event created");
+    toast.success(event ? "Event updated" : "Event created");
     onCreated();
   };
+  const displayedImage = imagePreview ?? (removeExistingImage ? null : event?.image_url ?? null);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <form
@@ -511,7 +698,7 @@ function CreateEvent({
         className="flex max-h-[calc(100dvh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-card shadow-xl"
       >
         <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
-          <h2 className="font-display text-xl">New event</h2>
+          <h2 className="font-display text-xl">{event ? "Edit event" : "New event"}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -564,16 +751,19 @@ function CreateEvent({
             }}
             className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-2 file:text-sm"
           />
-          {imagePreview && (
+          {displayedImage && (
             <div className="space-y-2">
               <img
-                src={imagePreview}
+                src={displayedImage}
                 alt="Event image preview"
                 className="mt-2 max-h-48 w-full rounded-md object-cover"
               />
               <button
                 type="button"
-                onClick={() => setImageFile(null)}
+                onClick={() => {
+                  if (imageFile) setImageFile(null);
+                  else setRemoveExistingImage(true);
+                }}
                 className="text-sm text-muted-foreground underline hover:text-foreground"
               >
                 Remove image
@@ -841,7 +1031,7 @@ function CreateEvent({
             disabled={busy}
             className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60"
           >
-            {busy ? "Creating..." : "Create"}
+            {busy ? (event ? "Saving..." : "Creating...") : (event ? "Save changes" : "Create")}
           </button>
         </div>
       </form>

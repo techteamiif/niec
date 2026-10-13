@@ -511,9 +511,11 @@ export type Database = {
       knowledge_resources: {
         Row: {
           community_of_practice: Database["public"]["Enums"]["cop_type"]
+          cover_image_url: string | null
           created_at: string
           description: string
           downloads_count: number
+          executive_summary_url: string | null
           file_url: string
           id: string
           min_tier_required: Database["public"]["Enums"]["membership_tier"]
@@ -523,9 +525,11 @@ export type Database = {
         }
         Insert: {
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
+          cover_image_url?: string | null
           created_at?: string
           description?: string
           downloads_count?: number
+          executive_summary_url?: string | null
           file_url?: string
           id?: string
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
@@ -535,9 +539,11 @@ export type Database = {
         }
         Update: {
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
+          cover_image_url?: string | null
           created_at?: string
           description?: string
           downloads_count?: number
+          executive_summary_url?: string | null
           file_url?: string
           id?: string
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]

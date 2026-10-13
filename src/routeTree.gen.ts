@@ -39,6 +39,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AppCopsCopRouteImport } from './routes/_app.cops.$cop'
 import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
+import { Route as AppKnowledgeResourceIdRouteImport } from './routes/_app.knowledge.$resourceId'
 import { Route as AppMemberMemberIdRouteImport } from './routes/_app.member.$memberId'
 import { Route as AppProfileEditRouteImport } from './routes/_app.profile.edit'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -198,6 +199,11 @@ const AppEventEventIdRoute = AppEventEventIdRouteImport.update({
   path: '/event/$eventId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppKnowledgeResourceIdRoute = AppKnowledgeResourceIdRouteImport.update({
+  id: '/$resourceId',
+  path: '/$resourceId',
+  getParentRoute: () => AppKnowledgeRoute,
+} as any)
 const AppMemberMemberIdRoute = AppMemberMemberIdRouteImport.update({
   id: '/member/$memberId',
   path: '/member/$memberId',
@@ -242,7 +248,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
   '/events': typeof AppEventsRoute
-  '/knowledge': typeof AppKnowledgeRoute
+  '/knowledge': typeof AppKnowledgeRouteWithChildren
   '/members': typeof AppMembersRoute
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
+  '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
   '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -278,7 +285,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
   '/events': typeof AppEventsRoute
-  '/knowledge': typeof AppKnowledgeRoute
+  '/knowledge': typeof AppKnowledgeRouteWithChildren
   '/members': typeof AppMembersRoute
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
+  '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
   '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -316,7 +324,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/deal-room': typeof AppDealRoomRoute
   '/_app/events': typeof AppEventsRoute
-  '/_app/knowledge': typeof AppKnowledgeRoute
+  '/_app/knowledge': typeof AppKnowledgeRouteWithChildren
   '/_app/members': typeof AppMembersRoute
   '/_app/mentorship': typeof AppMentorshipRoute
   '/_app/messages': typeof AppMessagesRoute
@@ -329,6 +337,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/cops/$cop': typeof AppCopsCopRoute
   '/_app/event/$eventId': typeof AppEventEventIdRoute
+  '/_app/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/_app/member/$memberId': typeof AppMemberMemberIdRoute
   '/_app/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -367,6 +376,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/cops/$cop'
     | '/event/$eventId'
+    | '/knowledge/$resourceId'
     | '/member/$memberId'
     | '/profile/edit'
     | '/lovable/email/auth/preview'
@@ -403,6 +413,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/cops/$cop'
     | '/event/$eventId'
+    | '/knowledge/$resourceId'
     | '/member/$memberId'
     | '/profile/edit'
     | '/lovable/email/auth/preview'
@@ -440,6 +451,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_app/cops/$cop'
     | '/_app/event/$eventId'
+    | '/_app/knowledge/$resourceId'
     | '/_app/member/$memberId'
     | '/_app/profile/edit'
     | '/lovable/email/auth/preview'
@@ -680,6 +692,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventEventIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/knowledge/$resourceId': {
+      id: '/_app/knowledge/$resourceId'
+      path: '/$resourceId'
+      fullPath: '/knowledge/$resourceId'
+      preLoaderRoute: typeof AppKnowledgeResourceIdRouteImport
+      parentRoute: typeof AppKnowledgeRoute
+    }
     '/_app/member/$memberId': {
       id: '/_app/member/$memberId'
       path: '/member/$memberId'
@@ -729,6 +748,18 @@ const AppCopsRouteChildren: AppCopsRouteChildren = {
 const AppCopsRouteWithChildren =
   AppCopsRoute._addFileChildren(AppCopsRouteChildren)
 
+interface AppKnowledgeRouteChildren {
+  AppKnowledgeResourceIdRoute: typeof AppKnowledgeResourceIdRoute
+}
+
+const AppKnowledgeRouteChildren: AppKnowledgeRouteChildren = {
+  AppKnowledgeResourceIdRoute: AppKnowledgeResourceIdRoute,
+}
+
+const AppKnowledgeRouteWithChildren = AppKnowledgeRoute._addFileChildren(
+  AppKnowledgeRouteChildren,
+)
+
 interface AppProfileRouteChildren {
   AppProfileEditRoute: typeof AppProfileEditRoute
 }
@@ -748,7 +779,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealRoomRoute: typeof AppDealRoomRoute
   AppEventsRoute: typeof AppEventsRoute
-  AppKnowledgeRoute: typeof AppKnowledgeRoute
+  AppKnowledgeRoute: typeof AppKnowledgeRouteWithChildren
   AppMembersRoute: typeof AppMembersRoute
   AppMentorshipRoute: typeof AppMentorshipRoute
   AppMessagesRoute: typeof AppMessagesRoute
@@ -766,7 +797,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDealRoomRoute: AppDealRoomRoute,
   AppEventsRoute: AppEventsRoute,
-  AppKnowledgeRoute: AppKnowledgeRoute,
+  AppKnowledgeRoute: AppKnowledgeRouteWithChildren,
   AppMembersRoute: AppMembersRoute,
   AppMentorshipRoute: AppMentorshipRoute,
   AppMessagesRoute: AppMessagesRoute,

@@ -4,6 +4,16 @@ import { LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { UserAvatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
 import { MemberBadges } from "@/components/MemberBadges";
@@ -103,6 +113,7 @@ function ProfilePage() {
     statement: false,
   });
   const [coverBusy, setCoverBusy] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     if (profile && !form) setForm(createForm(profile));
@@ -219,8 +230,8 @@ function ProfilePage() {
           <div className="mt-3 flex justify-center"><MemberBadges userId={user.id} compact /></div>
           <button
             type="button"
-            onClick={() => void signOut()}
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-500/20"
+            onClick={() => setConfirmLogout(true)}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-[#F5F5F5] bg-[#F5F5F5] px-4 py-2 text-sm font-medium text-foreground transition hover:bg-[#EAEAEA]"
           >
             <LogOut className="h-4 w-4" /> Log out
           </button>
@@ -366,6 +377,25 @@ function ProfilePage() {
 textarea.input{ height:auto; padding:0.75rem; }`}</style>
         </div>
       </div>
+      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

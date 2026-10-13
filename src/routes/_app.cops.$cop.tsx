@@ -488,7 +488,7 @@ function CopWorkspace() {
         <TabsContent value="resources" className="mt-6">
           <div className="grid gap-3 md:grid-cols-2">
             {resources.map((r) => (
-              <Link key={r.id} to="/knowledge" className="rounded-xl border bg-card p-4 hover:shadow-md">
+              <Link key={r.id} to="/knowledge/$resourceId" params={{ resourceId: r.id }} className="rounded-xl border bg-card p-4 hover:shadow-md">
                 <Badge variant="secondary" className="capitalize">{r.resource_type}</Badge>
                 <div className="mt-2 font-medium">{r.title}</div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{r.description}</p>

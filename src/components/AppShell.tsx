@@ -7,6 +7,16 @@ import {
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NiecLogo } from "@/components/brand/NiecLogo";
@@ -33,6 +43,7 @@ export function AppShell() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -119,9 +130,19 @@ export function AppShell() {
           <UserAvatar name={profile.full_name || profile.email} src={profile.avatar_url} size={36} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-white">{profile.full_name || "Member"}</div>
-            <div className="mt-0.5"><TierBadge tier={profile.membership_tier} /></div>
+            <div className="mt-0.5">
+              <TierBadge
+                tier={profile.membership_tier}
+                className={profile.membership_tier === "growth_partner" ? "text-white" : undefined}
+              />
+            </div>
           </div>
-          <button onClick={signOut} title="Sign out" className="rounded p-1.5 text-sidebar-muted hover:bg-white/10 hover:text-white">
+          <button
+            type="button"
+            onClick={() => setConfirmLogout(true)}
+            title="Sign out"
+            className="rounded p-1.5 text-sidebar-muted hover:bg-white/10 hover:text-white"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -131,6 +152,25 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-background lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="hidden lg:block lg:h-dvh lg:shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">

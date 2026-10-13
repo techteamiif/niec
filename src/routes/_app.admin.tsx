@@ -10,7 +10,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
-  Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
+  ArrowRight, Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
   CheckCircle2, XCircle, UserPlus, History, Users as UsersIcon, Tag as TagIcon,
   Network, MessageSquare, Calendar, BookOpen, Briefcase, Award, Activity, Vote, Lightbulb, HeartHandshake, Plus, Pencil, Star, FileText, CreditCard,
 } from "lucide-react";
@@ -781,7 +781,7 @@ function CopHealthTab({ members }: { members: Profile[] }) {
                 <td className="p-3">{s.rfcs}</td>
                 <td className="p-3">{s.wgs}</td>
                 <td className="p-3">{s.polls}</td>
-                <td className="p-3"><a href={`/cops/${s.cop.key}`} className="text-xs text-primary hover:underline">Open →</a></td>
+                <td className="p-3"><a href={`/cops/${s.cop.key}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a></td>
               </tr>
             ))}
           </tbody>
@@ -902,7 +902,7 @@ function ContentTab({ actor }: { actor: string }) {
               </select>
               <button onClick={() => setEditRfc(r)} className="rounded p-1 hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
               <button onClick={() => removeRfc(r)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
-              <a href={`/cops/${r.cop}`} className="text-xs text-primary hover:underline">Open →</a>
+              <a href={`/cops/${r.cop}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a>
             </div>
           ))}
           {rfcs.length === 0 && <div className="rounded-xl border bg-card p-6 text-center text-xs text-muted-foreground">No proposals yet.</div>}
@@ -1102,7 +1102,9 @@ function ProgramsTab() {
         fields={[
           { name: "title", label: "Title" },
           { name: "description", label: "Description", multiline: true },
-          { name: "file_url", label: "File URL" },
+          { name: "cover_image_url", label: "Cover image URL" },
+          { name: "executive_summary_url", label: "Executive summary URL" },
+          { name: "file_url", label: "Full report/publication URL" },
         ]}
         onSave={async (vals) => {
           const { error } = await supabase.from("knowledge_resources").update(vals as never).eq("id", editResource.id);
@@ -1185,7 +1187,7 @@ function ProgramCard({ icon: Icon, title, count, href, children }: { icon: any; 
     <section className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-display text-lg inline-flex items-center gap-2"><Icon className="h-4 w-4" /> {title} <span className="text-xs text-muted-foreground">({count})</span></h3>
-        <a href={href} className="text-xs text-primary hover:underline">Open →</a>
+        <a href={href} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a>
       </div>
       <ul className="text-sm">{children}</ul>
     </section>
