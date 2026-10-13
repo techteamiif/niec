@@ -73,18 +73,18 @@ function Dashboard() {
   return (
     <div className="p-6 lg:p-10">
       {/* Welcome banner */}
-      <div className="rounded-2xl border bg-gradient-to-br from-navy via-navy to-primary p-8 text-white">
+      <div className="rounded-2xl border bg-white p-8 text-black">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-widest text-white/60">Welcome back</div>
+            <div className="text-xs uppercase tracking-widest text-black/60">Welcome back</div>
             <h1 className="mt-1 font-display text-3xl md:text-4xl">{profile?.full_name || "Member"}</h1>
-            <div className="mt-3 flex items-center gap-3 text-sm text-white/80">
+            <div className="mt-3 flex items-center gap-3 text-sm text-black/80">
               <TierBadge tier={profile?.membership_tier} />
               <span>{profile?.organisation_name || "—"}</span>
             </div>
           </div>
-          <Link to="/community" className="rounded-md bg-white/15 px-4 py-2 text-sm font-medium hover:bg-white/25">
-            Open community →
+          <Link to="/community" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+            Open community
           </Link>
         </div>
       </div>

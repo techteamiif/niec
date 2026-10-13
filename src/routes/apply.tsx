@@ -5,6 +5,20 @@ import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { useAuth } from "@/lib/auth";
 import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
+import {
+  AUM_OPTIONS as AUM_OPTS,
+  COMMUNICATION_OPTIONS as COMMS,
+  CONTRIBUTION_OPTIONS as CONTRIBUTIONS,
+  EVENT_OPTIONS as EVENTS,
+  EVENT_ROLE_OPTIONS as ROLES,
+  GOAL_OPTIONS as GOALS,
+  HEARD_OPTIONS as HEARD,
+  INVESTMENT_STAGE_OPTIONS as STAGE_OPTS,
+  JOB_TITLES,
+  ORG_TYPES,
+  SDG_OPTIONS as SDGS,
+  SECTOR_OPTIONS as SECTORS,
+} from "@/lib/onboarding-options";
 import { toast } from "sonner";
 import { Check, ChevronRight, ChevronDown, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
@@ -40,54 +54,6 @@ const PAYABLE: Record<string, number> = {
   growth_partner: 500_000,
   anchor: 1_500_000,
 };
-
-const ORG_TYPES: { key: string; label: string }[] = [
-  { key: "investor", label: "Impact investor / fund manager" },
-  { key: "dfi", label: "Development finance institution (DFI)" },
-  { key: "corporate", label: "Corporate / private sector" },
-  { key: "social_enterprise", label: "NGO / social enterprise" },
-  { key: "government", label: "Government / public institution" },
-  { key: "research", label: "Academic / research institution" },
-  { key: "accelerator", label: "Accelerator / incubator" },
-  { key: "foundation", label: "Foundation" },
-  { key: "other", label: "Other" },
-];
-
-const JOB_TITLES = [
-  "Chief Executive Officer (CEO)",
-  "Managing Director",
-  "Executive Director",
-  "Founder / Co-Founder",
-  "Chief Investment Officer (CIO)",
-  "Chief Financial Officer (CFO)",
-  "Chief Operating Officer (COO)",
-  "Chief Sustainability Officer (CSO)",
-  "Head of Investments",
-  "Head of Impact",
-  "Head of Partnerships",
-  "Investment Director",
-  "Fund Manager",
-  "Portfolio Manager",
-  "Investment Analyst",
-  "Programme Director",
-  "Project Manager",
-  "Policy / Advocacy Manager",
-  "Research Director",
-  "Board Chair",
-  "Board Member",
-];
-
-const AUM_OPTS = ["Under ₦50M", "₦50M – ₦500M", "₦500M – ₦5B", "₦5B – ₦50B", "Above ₦50B", "Not applicable"];
-const STAGE_OPTS = ["Seed / early stage", "Growth stage", "Scale / expansion", "Debt / blended finance", "Grant / catalytic capital", "Multiple stages"];
-
-const SDGS = ["SDG 1 — No poverty", "SDG 2 — Zero hunger", "SDG 3 — Good health", "SDG 4 — Quality education", "SDG 5 — Gender equality", "SDG 7 — Clean energy", "SDG 8 — Decent work", "SDG 9 — Industry & innovation", "SDG 10 — Reduced inequality", "SDG 11 — Sustainable cities", "SDG 13 — Climate action", "SDG 17 — Partnerships"];
-const SECTORS = ["Agri-food systems", "Fintech / financial inclusion", "Healthcare", "EdTech", "Clean energy / climate", "Housing / real estate", "Digital infrastructure", "Creative economy", "Gender lens investing", "Supply chain / logistics"];
-const GOALS = ["Deal flow & co-investment", "Policy influence & advocacy", "Capacity building & training", "Impact data & market intelligence", "Network & partnerships", "Event access (GIIS, Summit, ACII)", "Visibility & brand profile", "ESG / SDG reporting support"];
-const CONTRIBUTIONS = ["Capital / investment", "Technical expertise", "Market access / networks", "Research & data", "Policy knowledge", "Mentorship & advisory"];
-const EVENTS = ["GIIS 2026 (Sept, Lagos)", "Africa Impact Summit 2026 (June, Nairobi)", "ACII 2026 (November, Abuja)", "Creative Economy Roundtable"];
-const HEARD = ["Referral", "LinkedIn", "IIF event", "Website", "Media / press", "Other"];
-const COMMS = ["Email", "WhatsApp", "Phone call", "In-person"];
-const ROLES = ["Attendee", "Speaker / panellist", "Sponsor", "Exhibitor", "Partner organisation"];
 
 const CONSENTS = [
   "I confirm that the information provided is accurate and I am authorised to represent my organisation.",

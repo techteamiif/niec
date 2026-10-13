@@ -4,6 +4,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.sidebar-scrollbar {
+  scrollbar-color: oklch(0.25 0.08 152) transparent;
+  scrollbar-width: thin;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: oklch(0.25 0.08 152);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -224,11 +224,6 @@ function EventDetailPage() {
         </div>
       ) : (
         <>
-          <EventImage
-            src={event.image_url}
-            title={event.title}
-            className="mb-7 h-52 w-full rounded-xl md:h-80"
-          />
           <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -281,7 +276,7 @@ function EventDetailPage() {
                       ? `${attendeeCount} ${attendeeCount === 1 ? "person" : "people"} will be attending.`
                       : attendanceResponse === "no"
                         ? "No attendees yet."
-                        : "No one will be attending yet."}
+                        : "Be the first to show interest."}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="mr-1 text-sm text-foreground">Will you be attending?</p>
@@ -397,6 +392,13 @@ function EventDetailPage() {
                   )}
                 </div>
                 {/* <h2 className="mt-3 font-display text-2xl">{event.title}</h2> */}
+                <EventImage
+                  src={event.image_url}
+                  title={event.title}
+                  fit="contain"
+                  showPlaceholder={false}
+                  className="mx-auto my-5 aspect-[4/5] w-full max-w-md overflow-hidden rounded-xl"
+                />
                 {event.description && (
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                     {event.description}

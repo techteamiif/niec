@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type AppRole = "member" | "admin" | "super_admin";
 
@@ -14,7 +15,10 @@ export interface Profile {
   role_title: string;
   membership_tier: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
   membership_status: "pending" | "active" | "lapsed" | "suspended";
+  application_data: Json;
   avatar_url: string | null;
+  cover_image_url: string | null;
+  phone: string | null;
   bio: string | null;
   location: string;
   sdg_focus: string[] | null;

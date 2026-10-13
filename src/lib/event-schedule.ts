@@ -4,16 +4,18 @@ export type DailyEventSchedule = {
   mode: "daily";
   start_date: string;
   end_date: string;
-  start_time: string;
-  end_time: string;
+  time?: string;
+  start_time?: string;
+  end_time?: string;
 };
 
 export type CustomEventSchedule = {
   mode: "custom";
   sessions: {
     date: string;
-    start_time: string;
-    end_time: string;
+    time?: string;
+    start_time?: string;
+    end_time?: string;
   }[];
 };
 
@@ -23,29 +25,21 @@ type EventSession = CustomEventSchedule["sessions"][number];
 function formatDateRange(startDate: string, endDate: string) {
   const start = parseISO(startDate);
   const end = parseISO(endDate);
-  if (startDate === endDate) return format(start, "MMMM do, yyyy");
+  if (startDate === endDate) return format(start, "MMM d, yyyy");
   if (start.getFullYear() !== end.getFullYear()) {
-    return `${format(start, "MMMM do, yyyy")}–${format(end, "MMMM do, yyyy")}`;
+    return `${format(start, "MMM d, yyyy")}–${format(end, "MMM d, yyyy")}`;
   }
   if (start.getMonth() !== end.getMonth()) {
-    return `${format(start, "MMMM do")}–${format(end, "MMMM do, yyyy")}`;
+    return `${format(start, "MMM d")}–${format(end, "MMM d, yyyy")}`;
   }
-  return `${format(start, "MMMM do")}–${format(end, "do, yyyy")}`;
+  return `${format(start, "MMM d")}–${format(end, "d, yyyy")}`;
 }
 
 function formatTime(time: string) {
   const [hour, minute] = time.split(":").map(Number);
-  const period = hour >= 12 ? "PM" : "AM";
+  const period = hour >= 12 ? "pm" : "am";
   const twelveHour = hour % 12 || 12;
-  return `${twelveHour}:${String(minute).padStart(2, "0")} ${period}`;
-}
-
-function formatTimeRange(startTime: string, endTime: string) {
-  const startPeriod = Number(startTime.slice(0, 2)) >= 12 ? "PM" : "AM";
-  const endPeriod = Number(endTime.slice(0, 2)) >= 12 ? "PM" : "AM";
-  const start = formatTime(startTime);
-  const end = formatTime(endTime);
-  return startPeriod === endPeriod ? `${start.slice(0, -3)}–${end}` : `${start}–${end}`;
+  return `${twelveHour}${minute ? `:${String(minute).padStart(2, "0")}` : ""}${period}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -61,18 +55,22 @@ function isTime(value: unknown): value is string {
 }
 
 function isEventSession(value: unknown): value is EventSession {
+  if (!isRecord(value) || !isDate(value.date)) return false;
   return (
-    isRecord(value) && isDate(value.date) && isTime(value.start_time) && isTime(value.end_time)
+    value.time === undefined ||
+    value.time === null ||
+    value.time === "" ||
+    isTime(value.time) ||
+    (isTime(value.start_time) && isTime(value.end_time))
   );
 }
 
 export function formatEventSchedule(value: unknown, startDate: string, endDate: string) {
   if (isRecord(value) && value.mode === "daily") {
-    const { start_date, end_date, start_time, end_time } = value;
-    if (isDate(start_date) && isDate(end_date) && isTime(start_time) && isTime(end_time)) {
-      return [
-        `${formatDateRange(start_date, end_date)} · ${formatTimeRange(start_time, end_time)}`,
-      ];
+    const { start_date, end_date } = value;
+    if (isDate(start_date) && isDate(end_date)) {
+      const time = isTime(value.time) ? value.time : isTime(value.start_time) ? value.start_time : null;
+      return [`${formatDateRange(start_date, end_date)}${time ? ` · ${formatTime(time)}` : ""}`];
     }
   }
 
@@ -81,26 +79,26 @@ export function formatEventSchedule(value: unknown, startDate: string, endDate: 
     if (sessions.length > 0) {
       return sessions
         .sort((left, right) =>
-          `${left.date}T${left.start_time}`.localeCompare(`${right.date}T${right.start_time}`),
+          `${left.date}T${left.time ?? left.start_time ?? ""}`.localeCompare(
+            `${right.date}T${right.time ?? right.start_time ?? ""}`,
+          ),
         )
-        .map(
-          (session) =>
-            `${formatDateRange(session.date, session.date)} · ${formatTimeRange(
-              session.start_time,
-              session.end_time,
-            )}`,
-        );
+        .map((session) => {
+          const time = isTime(session.time)
+            ? session.time
+            : isTime(session.start_time)
+              ? session.start_time
+              : null;
+          return `${formatDateRange(session.date, session.date)}${time ? ` · ${formatTime(time)}` : ""}`;
+        });
     }
   }
 
   const start = new Date(startDate);
   const end = new Date(endDate);
-  if (start.toDateString() === end.toDateString()) {
-    return [
-      `${format(start, "MMMM do, yyyy")} · ${format(start, "h:mm a")}–${format(end, "h:mm a")}`,
-    ];
-  }
-  return [
-    `${format(start, "MMMM do, yyyy 'at' h:mm a")}–${format(end, "MMMM do, yyyy 'at' h:mm a")}`,
-  ];
+  const dateRange = formatDateRange(format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd"));
+  const time = start.getHours() || start.getMinutes()
+    ? ` · ${formatTime(format(start, "HH:mm"))}`
+    : "";
+  return [`${dateRange}${time}`];
 }

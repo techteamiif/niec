@@ -994,6 +994,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1020,6 +1021,7 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           crm_stage?: string
           crm_tags?: string[]
           email: string
@@ -1046,6 +1048,7 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           crm_stage?: string
           crm_tags?: string[]
           email?: string
@@ -1295,6 +1298,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1330,6 +1334,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1384,6 +1389,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string

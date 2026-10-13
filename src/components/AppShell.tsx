@@ -2,7 +2,7 @@ import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, MessageSquare, Users, Calendar, Briefcase,
-  BookOpen, Layers, User, Bell, Settings, LogOut, Menu, X, Search, Mail, GraduationCap, Sparkles,
+  BookOpen, Layers, User, Bell, Settings, LogOut, Menu, X, Search, Mail, GraduationCap, CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
@@ -23,7 +23,7 @@ const NAV: NavItem[] = [
   { to: "/cops",       label: "CoPs",          icon: Layers },
   { to: "/mentorship", label: "Mentorship",    icon: GraduationCap },
   { to: "/profile",    label: "My Profile",    icon: User },
-  { to: "/upgrade",    label: "Membership",    icon: Sparkles },
+  { to: "/upgrade",    label: "Membership",    icon: CreditCard },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
 ] as const;
 
@@ -77,7 +77,7 @@ export function AppShell() {
         <button className="lg:hidden" onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
       </div>
 
-      <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+      <nav className="sidebar-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
         {NAV.map(({ to, label, icon: Icon, badge }) => {
           const active = path === to || path.startsWith(to + "/");
           return (
@@ -90,11 +90,12 @@ export function AppShell() {
                   : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white",
               )}
             >
-              {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-[3px] rounded-r-full bg-sidebar-accent" />}
               <Icon className="h-4 w-4" />
               <span className="flex-1">{label}</span>
               {badge && unread > 0 && (
-                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">{unread}</span>
+                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
               )}
             </Link>
           );
@@ -153,7 +154,23 @@ export function AppShell() {
             />
           </form>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden md:inline">{profile.organisation_name || "—"}</span>
+            {/* <span className="hidden md:inline">{profile.organisation_name || "—"}</span> */}
+            <Link
+              to="/notifications"
+              aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+              title="Notifications"
+              className={cn(
+                "relative rounded-md p-2 transition hover:bg-muted",
+                path.startsWith("/notifications") ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Bell className="h-5 w-5" />
+              {unread > 0 && (
+                <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-destructive px-1 text-center text-[10px] leading-4 text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
         <div className="flex-1">

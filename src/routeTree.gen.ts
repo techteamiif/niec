@@ -40,6 +40,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as AppCopsCopRouteImport } from './routes/_app.cops.$cop'
 import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
 import { Route as AppMemberMemberIdRouteImport } from './routes/_app.member.$memberId'
+import { Route as AppProfileEditRouteImport } from './routes/_app.profile.edit'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -202,6 +203,11 @@ const AppMemberMemberIdRoute = AppMemberMemberIdRouteImport.update({
   path: '/member/$memberId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfileEditRoute = AppProfileEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AppProfileRoute,
+} as any)
 const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   id: '/lovable/email/auth/preview',
   path: '/lovable/email/auth/preview',
@@ -241,7 +247,7 @@ export interface FileRoutesByFullPath {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
-  '/profile': typeof AppProfileRoute
+  '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
+  '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -276,7 +283,7 @@ export interface FileRoutesByTo {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
-  '/profile': typeof AppProfileRoute
+  '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
+  '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -313,7 +321,7 @@ export interface FileRoutesById {
   '/_app/mentorship': typeof AppMentorshipRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
-  '/_app/profile': typeof AppProfileRoute
+  '/_app/profile': typeof AppProfileRouteWithChildren
   '/_app/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
@@ -322,6 +330,7 @@ export interface FileRoutesById {
   '/_app/cops/$cop': typeof AppCopsCopRoute
   '/_app/event/$eventId': typeof AppEventEventIdRoute
   '/_app/member/$memberId': typeof AppMemberMemberIdRoute
+  '/_app/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/cops/$cop'
     | '/event/$eventId'
     | '/member/$memberId'
+    | '/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/cops/$cop'
     | '/event/$eventId'
     | '/member/$memberId'
+    | '/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -430,6 +441,7 @@ export interface FileRouteTypes {
     | '/_app/cops/$cop'
     | '/_app/event/$eventId'
     | '/_app/member/$memberId'
+    | '/_app/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
@@ -675,6 +687,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMemberMemberIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profile/edit': {
+      id: '/_app/profile/edit'
+      path: '/edit'
+      fullPath: '/profile/edit'
+      preLoaderRoute: typeof AppProfileEditRouteImport
+      parentRoute: typeof AppProfileRoute
+    }
     '/lovable/email/auth/preview': {
       id: '/lovable/email/auth/preview'
       path: '/lovable/email/auth/preview'
@@ -710,6 +729,18 @@ const AppCopsRouteChildren: AppCopsRouteChildren = {
 const AppCopsRouteWithChildren =
   AppCopsRoute._addFileChildren(AppCopsRouteChildren)
 
+interface AppProfileRouteChildren {
+  AppProfileEditRoute: typeof AppProfileEditRoute
+}
+
+const AppProfileRouteChildren: AppProfileRouteChildren = {
+  AppProfileEditRoute: AppProfileEditRoute,
+}
+
+const AppProfileRouteWithChildren = AppProfileRoute._addFileChildren(
+  AppProfileRouteChildren,
+)
+
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
   AppCommunityRoute: typeof AppCommunityRoute
@@ -722,7 +753,7 @@ interface AppRouteChildren {
   AppMentorshipRoute: typeof AppMentorshipRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
-  AppProfileRoute: typeof AppProfileRoute
+  AppProfileRoute: typeof AppProfileRouteWithChildren
   AppUpgradeRoute: typeof AppUpgradeRoute
   AppEventEventIdRoute: typeof AppEventEventIdRoute
   AppMemberMemberIdRoute: typeof AppMemberMemberIdRoute
@@ -740,7 +771,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMentorshipRoute: AppMentorshipRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
-  AppProfileRoute: AppProfileRoute,
+  AppProfileRoute: AppProfileRouteWithChildren,
   AppUpgradeRoute: AppUpgradeRoute,
   AppEventEventIdRoute: AppEventEventIdRoute,
   AppMemberMemberIdRoute: AppMemberMemberIdRoute,

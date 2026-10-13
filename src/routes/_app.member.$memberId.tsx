@@ -14,6 +14,7 @@ type MemberProfile = Pick<
   | "id"
   | "full_name"
   | "avatar_url"
+  | "cover_image_url"
   | "organisation_name"
   | "organisation_type"
   | "role_title"
@@ -55,7 +56,7 @@ function MemberDetailPage() {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, avatar_url, organisation_name, organisation_type, role_title, bio, location, sectors, sdg_focus, linkedin_url, website_url, joined_at",
+          "id, full_name, avatar_url, cover_image_url, organisation_name, organisation_type, role_title, bio, location, sectors, sdg_focus, linkedin_url, website_url, joined_at",
         )
         .eq("id", memberId)
         .eq("membership_status", "active")
@@ -99,8 +100,12 @@ function MemberDetailPage() {
           </p>
         </div>
       ) : (
-        <article className="mx-auto max-w-4xl overflow-hidden rounded-xl border bg-card">
-          <div className="h-28 bg-[#D4A017]" />
+        <article className="w-full overflow-hidden rounded-xl border bg-card">
+          <div className="h-28 bg-[#D4A017]">
+            {member.cover_image_url && (
+              <img src={member.cover_image_url} alt="" className="h-full w-full object-cover" />
+            )}
+          </div>
           <div className="px-6 pb-7 md:px-9">
             <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <UserAvatar

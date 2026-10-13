@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Lock, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -31,6 +31,7 @@ function UpgradePage() {
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(null);
+  const upgradeRequestRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -50,6 +51,11 @@ function UpgradePage() {
     setNote("");
   };
 
+  const chooseUpgrade = (tier: Tier) => {
+    setSelected(tier);
+    upgradeRequestRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="p-6 lg:p-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -57,41 +63,77 @@ function UpgradePage() {
           <h1 className="font-display text-3xl">Your NIEC membership</h1>
           <p className="text-sm text-muted-foreground">Compare tiers and request an upgrade — an IIF admin will follow up.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm">
+        {/* <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Current tier:</span>
           <TierBadge tier={current} />
-        </div>
+        </div> */}
       </div>
 
-      {usage && (
+      {/* {usage && (
         <div className="mb-6 grid gap-3 sm:grid-cols-2">
           <UsageCard label="Communities of Practice joined" value={usage.cop_count} />
           <UsageCard label="Mentorship bookings this month" value={usage.mentorship_this_month} />
         </div>
-      )}
+      )} */}
 
       <div className="grid gap-4 lg:grid-cols-5">
         {TIER_ORDER.map((t) => {
           const isCurrent = t === current;
-          const isSelected = t === selected;
           const rankDiff = (TIER_RANK[t] ?? 0) - (TIER_RANK[current] ?? 0);
           return (
-            <button
-              type="button"
+            <article
               key={t}
-              onClick={() => rankDiff > 0 && setSelected(t)}
-              disabled={rankDiff <= 0}
-              className={`text-left rounded-xl border bg-card p-5 transition ${
-                isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
-              } ${rankDiff <= 0 ? "opacity-70" : "hover:border-primary/60"}`}
+              className={`flex h-full min-h-50 flex-col rounded-xl border bg-card p-5 transition ${
+                isCurrent
+                  ? "border-primary ring-1 ring-primary"
+                  : "border-border"
+              } ${rankDiff < 0 ? "opacity-70" : ""}`}
             >
-              <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => rankDiff > 0 && setSelected(t)}
+                disabled={rankDiff <= 0}
+                className={`flex-1 text-left ${rankDiff > 0 ? "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-default"}`}
+              >
                 <TierBadge tier={t} />
-                {isCurrent && <span className="text-[10px] font-semibold uppercase text-primary">Current</span>}
-              </div>
-              <div className="mt-3 font-display text-lg">{TIER_LABELS[t]}</div>
-              <p className="mt-1 text-xs text-muted-foreground">{TIER_BLURB[t]}</p>
-            </button>
+                <div className="mt-3 font-display text-lg">{TIER_LABELS[t]}</div>
+                <p className="mt-1 min-h-12 text-xs text-muted-foreground">{TIER_BLURB[t]}</p>
+              </button>
+              {isCurrent ? (
+                <button
+                  type="button"
+                  disabled
+                  className="mt-auto w-full rounded-full border px-3 py-2 text-xs font-medium text-muted-foreground"
+                >
+                  Your current plan
+                </button>
+              ) : rankDiff > 0 ? (
+                ["contributor", "growth_partner", "anchor"].includes(t) ? (
+                  <Link
+                    to="/payment"
+                    search={{
+                      tier: t,
+                      email: profile?.email ?? "",
+                      name: profile?.full_name ?? "",
+                      reference: "",
+                    }}
+                    className="mt-auto w-full rounded-full bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    Upgrade
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => chooseUpgrade(t)}
+                    className="mt-auto w-full rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    Upgrade
+                  </button>
+                )
+              ) : (
+                <div aria-hidden="true" className="mt-auto h-8" />
+              )}
+            </article>
           );
         })}
       </div>
@@ -145,7 +187,7 @@ function UpgradePage() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-xl border bg-card p-6">
+      <div ref={upgradeRequestRef} className="mt-8 scroll-mt-6 rounded-xl border bg-card p-6">
         <div className="mb-3 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <h2 className="font-display text-lg">Request an upgrade</h2>
@@ -161,15 +203,6 @@ function UpgradePage() {
           className="mt-3 w-full rounded-md border bg-background p-3 text-sm"
         />
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-          {["contributor", "growth_partner", "anchor"].includes(selected) && (
-            <Link
-              to="/payment"
-              search={{ tier: selected, email: profile?.email ?? "", name: profile?.full_name ?? "", reference: "" }}
-              className="rounded-md border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5"
-            >
-              Pay now with Paystack
-            </Link>
-          )}
           <button
             onClick={submit}
             disabled={submitting || selected === current}
