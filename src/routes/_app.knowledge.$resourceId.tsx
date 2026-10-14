@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ArrowLeft, Download, FileText, Share2 } from "lucide-react";
+import { RichTextContent } from "@/components/RichTextContent";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -156,9 +157,10 @@ function KnowledgeResourcePage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-b pb-5">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800">
-                <Download className="h-4 w-4" aria-hidden="true" />
-                {resource.downloads_count ?? 0} downloads
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-3 py-1 text-xs font-medium text-muted-foreground">
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                {resource.downloads_count ?? 0}{" "}
+                {(resource.downloads_count ?? 0) === 1 ? "download" : "downloads"}
               </span>
               <Button type="button" variant="ghost" size="sm" onClick={() => void share()}>
                 <Share2 aria-hidden="true" /> Share
@@ -166,16 +168,23 @@ function KnowledgeResourcePage() {
             </div>
 
             <section className="pt-6">
-              <h2 className="font-semibold">Abstract</h2>
-              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-foreground/85">
-                {resource.description || "No description is available for this resource yet."}
-              </p>
               {resource.cover_image_url && (
                 <img
                   src={resource.cover_image_url}
                   alt={`${resource.title} cover`}
-                  className="mt-6 max-h-[28rem] w-full rounded-lg object-cover"
+                  className="mb-6 max-h-[28rem] w-full rounded-lg object-cover"
                 />
+              )}
+              <h2 className="font-semibold">Abstract</h2>
+              {resource.description ? (
+                <RichTextContent
+                  content={resource.description}
+                  className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-foreground/85 [&_a]:text-primary [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:font-display [&_h2]:text-xl [&_h3]:mb-2 [&_h3]:mt-5 [&_h3]:font-semibold [&_li]:ml-6 [&_ol]:my-3 [&_ol]:list-decimal [&_p]:mb-3 [&_ul]:my-3 [&_ul]:list-disc"
+                />
+              ) : (
+                <p className="mt-3 text-[15px] leading-7 text-foreground/85">
+                  No description is available for this resource yet.
+                </p>
               )}
             </section>
 

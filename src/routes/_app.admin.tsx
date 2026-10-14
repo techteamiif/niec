@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { TierBadge } from "@/components/TierBadge";
 import { UserAvatar } from "@/components/Avatar";
 import { TIER_LABELS, ORG_TYPE_LABELS } from "@/lib/niec";
+import { sanitizeRichText } from "@/lib/rich-text";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { formatEventSchedule } from "@/lib/event-schedule";
@@ -14,6 +15,7 @@ import {
   ArrowRight, Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
   CheckCircle2, XCircle, UserPlus, History, Users as UsersIcon, Tag as TagIcon,
   Network, MessageSquare, Calendar, BookOpen, Briefcase, Award, Activity, Vote, Lightbulb, HeartHandshake, Plus, Pencil, Star, FileText, CreditCard,
+  Bold, Heading2, Italic, List, ListOrdered, Underline,
 } from "lucide-react";
 import { COPS } from "@/lib/niec";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -107,7 +109,7 @@ function AdminCRM() {
             <Stat label="Suspended" value={counts.suspended} tone="bg-destructive/15 text-destructive" />
           </div>
         </div>
-        <nav className="mt-4 flex flex-wrap gap-1 rounded-lg border bg-background p-1 text-sm">
+        <nav className="sidebar-scrollbar mt-4 flex flex-nowrap gap-1 overflow-x-auto rounded-lg border bg-background p-1 text-sm">
           {([
             { k: "crm", label: "CRM", icon: UsersIcon },
             { k: "applications", label: "Applications", icon: FileText },
@@ -120,8 +122,8 @@ function AdminCRM() {
             { k: "analytics", label: "Analytics", icon: Activity },
           ] as const).map(({ k, label, icon: Icon }) => (
             <button key={k} onClick={() => setTab(k)}
-              className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 ${tab === k ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-              <Icon className="h-3.5 w-3.5" /> {label}
+              className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-2 ${tab === k ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+              <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
             </button>
           ))}
         </nav>
@@ -130,29 +132,29 @@ function AdminCRM() {
       <div className="flex flex-1 min-h-0">
         {tab === "crm" && (
           <>
-            <aside className="hidden w-64 shrink-0 overflow-y-auto border-r bg-card/40 p-4 lg:block">
+            <aside className="sidebar-scrollbar hidden w-64 shrink-0 overflow-y-auto border-r bg-card/40 p-4 lg:block">
               <FilterGroup title="Pipeline stage">
-                <FilterPill active={stageFilter === "all"} onClick={() => setStageFilter("all")} label="All stages" />
+                <FilterPill name="pipeline-stage" active={stageFilter === "all"} onClick={() => setStageFilter("all")} label="All stages" />
                 {STAGES.map((s) => (
-                  <FilterPill key={s.key} active={stageFilter === s.key} onClick={() => setStageFilter(s.key)} label={s.label} />
+                  <FilterPill key={s.key} name="pipeline-stage" active={stageFilter === s.key} onClick={() => setStageFilter(s.key)} label={s.label} />
                 ))}
               </FilterGroup>
               <FilterGroup title="Status">
                 {["all","pending","active","lapsed","suspended"].map((s) => (
-                  <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} label={s} />
+                  <FilterPill key={s} name="membership-status" active={statusFilter === s} onClick={() => setStatusFilter(s)} label={s} />
                 ))}
               </FilterGroup>
               <FilterGroup title="Tier">
-                <FilterPill active={tierFilter === "all"} onClick={() => setTierFilter("all")} label="All tiers" />
+                <FilterPill name="membership-tier" active={tierFilter === "all"} onClick={() => setTierFilter("all")} label="All tiers" />
                 {Object.entries(TIER_LABELS).map(([k, v]) => (
-                  <FilterPill key={k} active={tierFilter === k} onClick={() => setTierFilter(k)} label={v} />
+                  <FilterPill key={k} name="membership-tier" active={tierFilter === k} onClick={() => setTierFilter(k)} label={v} />
                 ))}
               </FilterGroup>
               {allTags.length > 0 && (
                 <FilterGroup title="Tags">
-                  <FilterPill active={tagFilter === "all"} onClick={() => setTagFilter("all")} label="All tags" />
+                  <FilterPill name="member-tag" active={tagFilter === "all"} onClick={() => setTagFilter("all")} label="All tags" />
                   {allTags.map((t) => (
-                    <FilterPill key={t} active={tagFilter === t} onClick={() => setTagFilter(t)} label={t} />
+                    <FilterPill key={t} name="member-tag" active={tagFilter === t} onClick={() => setTagFilter(t)} label={t} />
                   ))}
                 </FilterGroup>
               )}
@@ -168,8 +170,8 @@ function AdminCRM() {
                 <span className="text-xs text-muted-foreground">{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>
                 <BroadcastButton recipientIds={filtered.map((m) => m.id)} label={`Broadcast to ${filtered.length}`} />
               </div>
-              <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm">
+              <div className="sidebar-scrollbar min-h-0 flex-1 overflow-auto">
+                <table className="w-full min-w-[760px] text-sm">
                   <thead className="sticky top-0 z-10 border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="p-3">Member</th>
@@ -257,12 +259,18 @@ function FilterGroup({ title, children }: { title: string; children: React.React
     </div>
   );
 }
-function FilterPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function FilterPill({ name, active, onClick, label }: { name: string; active: boolean; onClick: () => void; label: string }) {
   return (
-    <button onClick={onClick}
-      className={`rounded-md px-2 py-1 text-left text-xs capitalize transition ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-      {label}
-    </button>
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs capitalize transition hover:bg-muted">
+      <input
+        type="radio"
+        name={name}
+        checked={active}
+        onChange={onClick}
+        className="h-3.5 w-3.5 shrink-0 accent-primary"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -1117,13 +1125,16 @@ function ProgramsTab() {
         record={editResource}
         fields={[
           { name: "title", label: "Title" },
-          { name: "description", label: "Description", multiline: true },
+          { name: "description", label: "Description", richText: true },
           { name: "cover_image_url", label: "Cover image URL" },
           { name: "executive_summary_url", label: "Executive summary URL" },
           { name: "file_url", label: "Full report/publication URL" },
         ]}
         onSave={async (vals) => {
-          const { error } = await supabase.from("knowledge_resources").update(vals as never).eq("id", editResource.id);
+          const { error } = await supabase
+            .from("knowledge_resources")
+            .update({ ...vals, description: sanitizeRichText(vals.description ?? "") } as never)
+            .eq("id", editResource.id);
           if (error) throw error;
           setEditResource(null); load();
         }}
@@ -1169,10 +1180,41 @@ function CreatePublicationDialog({
   const [community, setCommunity] = useState<CommunityOfPractice>("general");
   const [minTier, setMinTier] = useState<MembershipTier>("observer");
   const [fileUrl, setFileUrl] = useState("");
+  const [publicationPdf, setPublicationPdf] = useState<File | null>(null);
   const [summaryUrl, setSummaryUrl] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const coverImageInput = useRef<HTMLInputElement>(null);
+  const publicationPdfInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!coverImage) {
+      setCoverImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(coverImage);
+    setCoverImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [coverImage]);
+
+  const selectCoverImage = (file: File | null) => {
+    if (!file) {
+      setCoverImage(null);
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setCoverImage(null);
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverImage(null);
+      toast.error("Cover image must be 5 MB or smaller.");
+      return;
+    }
+    setCoverImage(file);
+  };
 
   const save = async () => {
     const normalizedTitle = title.trim();
@@ -1194,8 +1236,28 @@ function CreatePublicationDialog({
       }
     };
     const normalizedFileUrl = fileUrl.trim();
-    if (!isValidHttpUrl(normalizedFileUrl)) {
+    if (normalizedFileUrl && !isValidHttpUrl(normalizedFileUrl)) {
       toast.error("Enter a valid publication URL.");
+      return;
+    }
+    if (!normalizedFileUrl && !publicationPdf) {
+      toast.error("Upload a PDF publication or enter a publication URL.");
+      return;
+    }
+    if (normalizedFileUrl && publicationPdf) {
+      toast.error("Choose either a PDF upload or a publication URL, not both.");
+      return;
+    }
+    if (
+      publicationPdf &&
+      (publicationPdf.type !== "application/pdf" ||
+        !publicationPdf.name.toLowerCase().endsWith(".pdf"))
+    ) {
+      toast.error("Choose a valid PDF file.");
+      return;
+    }
+    if (publicationPdf && publicationPdf.size > 50 * 1024 * 1024) {
+      toast.error("PDF publications must be 50 MB or smaller.");
       return;
     }
     const normalizedSummaryUrl = summaryUrl.trim();
@@ -1209,17 +1271,24 @@ function CreatePublicationDialog({
       "image/webp": "webp",
       "image/gif": "gif",
     };
-    if (coverImage && !imageExtensions[coverImage.type]) {
-      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
-      return;
-    }
-    if (coverImage && coverImage.size > 5 * 1024 * 1024) {
-      toast.error("Cover images must be 5 MB or smaller.");
-      return;
-    }
-
     setSaving(true);
     try {
+      let publicationUrl = normalizedFileUrl;
+      let uploadedPdfPath: string | null = null;
+      if (publicationPdf) {
+        uploadedPdfPath = `${user.id}/${crypto.randomUUID()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-resource-pdfs")
+          .upload(uploadedPdfPath, publicationPdf, { contentType: "application/pdf" });
+        if (uploadError) {
+          toast.error(`Could not upload publication PDF: ${uploadError.message}`);
+          return;
+        }
+        publicationUrl = supabase.storage
+          .from("knowledge-resource-pdfs")
+          .getPublicUrl(uploadedPdfPath).data.publicUrl;
+      }
+
       let coverImageUrl: string | null = null;
       let uploadedImagePath: string | null = null;
       if (coverImage) {
@@ -1228,6 +1297,14 @@ function CreatePublicationDialog({
           .from("knowledge-resource-images")
           .upload(uploadedImagePath, coverImage, { contentType: coverImage.type });
         if (uploadError) {
+          if (uploadedPdfPath) {
+            const { error: cleanupError } = await supabase.storage
+              .from("knowledge-resource-pdfs")
+              .remove([uploadedPdfPath]);
+            if (cleanupError) {
+              toast.error(`Could not remove unused publication PDF: ${cleanupError.message}`);
+            }
+          }
           toast.error(`Could not upload cover image: ${uploadError.message}`);
           return;
         }
@@ -1238,17 +1315,25 @@ function CreatePublicationDialog({
 
       const publication: PublicationInsert = {
         title: normalizedTitle,
-        description: description.trim(),
+        description: sanitizeRichText(description.trim()),
         resource_type: resourceType,
         community_of_practice: community,
         min_tier_required: minTier,
-        file_url: normalizedFileUrl,
+        file_url: publicationUrl,
         executive_summary_url: normalizedSummaryUrl || null,
         cover_image_url: coverImageUrl,
         uploaded_by: user.id,
       };
       const { error } = await supabase.from("knowledge_resources").insert(publication);
       if (error) {
+        if (uploadedPdfPath) {
+          const { error: cleanupError } = await supabase.storage
+            .from("knowledge-resource-pdfs")
+            .remove([uploadedPdfPath]);
+          if (cleanupError) {
+            toast.error(`Could not remove unused publication PDF: ${cleanupError.message}`);
+          }
+        }
         if (uploadedImagePath) {
           const { error: cleanupError } = await supabase.storage
             .from("knowledge-resource-images")
@@ -1269,6 +1354,8 @@ function CreatePublicationDialog({
       setCommunity("general");
       setMinTier("observer");
       setFileUrl("");
+      setPublicationPdf(null);
+      if (publicationPdfInput.current) publicationPdfInput.current.value = "";
       setSummaryUrl("");
       setCoverImage(null);
       if (coverImageInput.current) coverImageInput.current.value = "";
@@ -1284,109 +1371,160 @@ function CreatePublicationDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add Knowledge Hub publication</DialogTitle>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
+          <DialogTitle className="font-display text-xl">Add Knowledge Hub publication</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Add publication details and provide its downloadable link.
+          </p>
         </DialogHeader>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="publication-title">Title</Label>
-            <Input
-              id="publication-title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              maxLength={250}
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="publication-description">Abstract / description</Label>
-            <Textarea
-              id="publication-description"
-              rows={5}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="publication-type">Publication type</Label>
-            <select
-              id="publication-type"
-              value={resourceType}
-              onChange={(event) => setResourceType(event.target.value as ResourceType)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="report">Report</option>
-              <option value="case_study">Case study</option>
-              <option value="policy_brief">Policy brief</option>
-              <option value="dataset">Dataset</option>
-              <option value="presentation">Presentation</option>
-              <option value="toolkit">Toolkit</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="publication-community">Community of practice</Label>
-            <select
-              id="publication-community"
-              value={community}
-              onChange={(event) => setCommunity(event.target.value as CommunityOfPractice)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="general">General</option>
-              {COPS.map((cop) => (
-                <option key={cop.key} value={cop.key}>{cop.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="publication-tier">Minimum membership tier</Label>
-            <select
-              id="publication-tier"
-              value={minTier}
-              onChange={(event) => setMinTier(event.target.value as MembershipTier)}
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-            >
-              {Object.entries(TIER_LABELS).map(([tier, label]) => (
-                <option key={tier} value={tier}>{label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="publication-file">Publication URL</Label>
-            <Input
-              id="publication-file"
-              type="url"
-              value={fileUrl}
-              onChange={(event) => setFileUrl(event.target.value)}
-              placeholder="https://…"
-              required
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="publication-summary">Executive summary URL (optional)</Label>
-            <Input
-              id="publication-summary"
-              type="url"
-              value={summaryUrl}
-              onChange={(event) => setSummaryUrl(event.target.value)}
-              placeholder="https://…"
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label htmlFor="publication-cover">Cover image (optional, max 5 MB)</Label>
-            <Input
-              ref={coverImageInput}
-              id="publication-cover"
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={(event) => setCoverImage(event.target.files?.[0] ?? null)}
-            />
-            {coverImage && (
-              <p className="text-xs text-muted-foreground">{coverImage.name}</p>
-            )}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-title">Title</Label>
+              <Input
+                id="publication-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                maxLength={250}
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <RichTextEditor
+                id="publication-description"
+                label="Abstract / description"
+                value={description}
+                onChange={setDescription}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-type">Publication type</Label>
+              <select
+                id="publication-type"
+                value={resourceType}
+                onChange={(event) => setResourceType(event.target.value as ResourceType)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="report">Report</option>
+                <option value="case_study">Case study</option>
+                <option value="policy_brief">Policy brief</option>
+                <option value="dataset">Dataset</option>
+                <option value="presentation">Presentation</option>
+                <option value="toolkit">Toolkit</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-community">Community of practice</Label>
+              <select
+                id="publication-community"
+                value={community}
+                onChange={(event) => setCommunity(event.target.value as CommunityOfPractice)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="general">General</option>
+                {COPS.map((cop) => (
+                  <option key={cop.key} value={cop.key}>
+                    {cop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-tier">Minimum membership tier</Label>
+              <select
+                id="publication-tier"
+                value={minTier}
+                onChange={(event) => setMinTier(event.target.value as MembershipTier)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                {Object.entries(TIER_LABELS).map(([tier, label]) => (
+                  <option key={tier} value={tier}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-pdf">Publication PDF (optional, max 50 MB)</Label>
+              <Input
+                ref={publicationPdfInput}
+                id="publication-pdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0] ?? null;
+                  setPublicationPdf(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {publicationPdf && (
+                <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-muted-foreground">{publicationPdf.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPublicationPdf(null)}
+                    className="shrink-0 text-muted-foreground underline hover:text-foreground"
+                  >
+                    Remove PDF
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-file">Or publication URL</Label>
+              <Input
+                id="publication-file"
+                type="url"
+                value={fileUrl}
+                onChange={(event) => setFileUrl(event.target.value)}
+                placeholder="https://…"
+              />
+              <p className="text-xs text-muted-foreground">Provide either a PDF upload or a URL.</p>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-summary">Executive summary URL (optional)</Label>
+              <Input
+                id="publication-summary"
+                type="url"
+                value={summaryUrl}
+                onChange={(event) => setSummaryUrl(event.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-cover">Cover image (optional, max 5 MB)</Label>
+              <Input
+                ref={coverImageInput}
+                id="publication-cover"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(event) => {
+                  selectCoverImage(event.currentTarget.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {coverImagePreview && (
+                <div className="space-y-2">
+                  <img
+                    src={coverImagePreview}
+                    alt="Publication cover preview"
+                    className="mt-2 max-h-48 w-full rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage(null)}
+                    className="text-sm text-muted-foreground underline hover:text-foreground"
+                  >
+                    Remove image
+                  </button>
+                  <p className="text-xs text-muted-foreground">{coverImage?.name}</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <DialogFooter>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
@@ -1402,13 +1540,18 @@ function CreatePublicationDialog({
 /* ---------- Reusable edit dialog ---------- */
 
 function EditDialog({
-  open, onClose, title, record, fields, onSave,
+  open,
+  onClose,
+  title,
+  record,
+  fields,
+  onSave,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   record: any;
-  fields: { name: string; label: string; multiline?: boolean }[];
+  fields: { name: string; label: string; multiline?: boolean; richText?: boolean }[];
   onSave: (vals: Record<string, any>) => Promise<void>;
 }) {
   const [vals, setVals] = useState<Record<string, any>>({});
@@ -1416,7 +1559,10 @@ function EditDialog({
   useEffect(() => {
     if (record) {
       const v: Record<string, any> = {};
-      fields.forEach((f) => { v[f.name] = record[f.name] ?? ""; });
+      fields.forEach((f) => {
+        const value = record[f.name] ?? "";
+        v[f.name] = f.richText ? sanitizeRichText(String(value)) : value;
+      });
       setVals(v);
     }
   }, [record]);
@@ -1424,28 +1570,129 @@ function EditDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           {fields.map((f) => (
             <div key={f.name} className="space-y-1">
-              <Label>{f.label}</Label>
-              {f.multiline ? (
-                <Textarea rows={4} value={vals[f.name] ?? ""} onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })} />
+              {!f.richText && <Label>{f.label}</Label>}
+              {f.richText ? (
+                <RichTextEditor
+                  id={`edit-${f.name}`}
+                  label={f.label}
+                  value={vals[f.name] ?? ""}
+                  onChange={(value) => setVals({ ...vals, [f.name]: value })}
+                />
+              ) : f.multiline ? (
+                <Textarea
+                  rows={4}
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })}
+                />
               ) : (
-                <Input value={vals[f.name] ?? ""} onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })} />
+                <Input
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })}
+                />
               )}
             </div>
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={saving} onClick={async () => {
-            setSaving(true);
-            try { await onSave(vals); toast.success("Saved"); } catch (e: any) { toast.error(e.message ?? "Failed"); } finally { setSaving(false); }
-          }}>{saving ? "Saving…" : "Save"}</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(vals);
+                toast.success("Saved");
+              } catch (e: any) {
+                toast.error(e.message ?? "Failed");
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function RichTextEditor({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const editor = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editor.current && editor.current.innerHTML !== value) {
+      editor.current.innerHTML = value;
+    }
+  }, [value]);
+
+  const updateValue = () => onChange(editor.current?.innerHTML ?? "");
+
+  return (
+    <>
+      <Label id={`${id}-label`}>{label}</Label>
+      <div className="overflow-hidden rounded-md border bg-background">
+        <div role="toolbar" aria-label="Description formatting" className="flex flex-wrap gap-1 border-b p-2">
+          {[
+            { command: "bold", label: "Bold", icon: Bold },
+            { command: "italic", label: "Italic", icon: Italic },
+            { command: "underline", label: "Underline", icon: Underline },
+            { command: "formatBlock", value: "h2", label: "Heading", icon: Heading2 },
+            { command: "insertUnorderedList", label: "Bulleted list", icon: List },
+            { command: "insertOrderedList", label: "Numbered list", icon: ListOrdered },
+          ].map(({ command, value: commandValue, label: buttonLabel, icon: Icon }) => (
+            <button
+              key={command}
+              type="button"
+              aria-label={buttonLabel}
+              title={buttonLabel}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                editor.current?.focus();
+                document.execCommand(command, false, commandValue);
+                updateValue();
+              }}
+              className="grid h-8 w-8 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+        <div
+          ref={editor}
+          id={id}
+          role="textbox"
+          aria-labelledby={`${id}-label`}
+          aria-multiline="true"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={updateValue}
+          onPaste={(event) => {
+            event.preventDefault();
+            document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+          }}
+          className="min-h-32 px-3 py-2 text-sm focus:outline-none [&_h2]:my-2 [&_h2]:text-lg [&_li]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_ul]:list-disc"
+        />
+      </div>
+    </>
   );
 }
 

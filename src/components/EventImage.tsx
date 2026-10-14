@@ -4,6 +4,7 @@ type EventImageProps = {
   src: string | null;
   title: string;
   className: string;
+  alt?: string;
   fit?: "cover" | "contain";
   showPlaceholder?: boolean;
 };
@@ -12,6 +13,7 @@ export function EventImage({
   src,
   title,
   className,
+  alt = `${title} event`,
   fit = "cover",
   showPlaceholder = true,
 }: EventImageProps) {
@@ -25,7 +27,7 @@ export function EventImage({
       {hasImage && (
         <img
           src={src}
-          alt={`${title} event`}
+          alt={alt}
           className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"}`}
           onError={() => setFailedImageUrl(src)}
         />
