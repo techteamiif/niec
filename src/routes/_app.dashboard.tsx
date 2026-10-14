@@ -2,12 +2,22 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { TierBadge } from "@/components/TierBadge";
 import { UserAvatar } from "@/components/Avatar";
+import { TierBadge } from "@/components/TierBadge";
 import { POST_TYPE_COLOR, POST_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
 import { capFor, nextTier } from "@/lib/entitlements";
 import { formatEventSchedule } from "@/lib/event-schedule";
-import { Calendar, MessageSquare, TrendingUp, Users, Sparkles, ArrowRight } from "lucide-react";
+import {
+  Award,
+  ArrowRight,
+  Building2,
+  Calendar,
+  MessageSquare,
+  Sparkles,
+  TrendingUp,
+  Users,
+  UsersRound,
+} from "lucide-react";
 import { format } from "date-fns";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
@@ -73,18 +83,31 @@ function Dashboard() {
   return (
     <div className="p-6 lg:p-10">
       {/* Welcome banner */}
-      <div className="rounded-2xl border bg-white p-8 text-black">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-xs uppercase tracking-widest text-black/60">Welcome back</div>
-            <h1 className="mt-1 font-display text-3xl md:text-4xl">{profile?.full_name || "Member"}</h1>
-            <div className="mt-3 flex items-center gap-3 text-sm text-black/80">
-              <TierBadge tier={profile?.membership_tier} />
-              <span>{profile?.organisation_name || "—"}</span>
-            </div>
+      <div className="relative flex min-h-[164px] flex-col justify-center gap-5 overflow-hidden rounded-[28px] border border-black/[0.04] bg-white px-6 py-7 text-black shadow-[0_3px_8px_rgba(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between sm:px-14 sm:py-8">
+        <div aria-hidden="true" className="absolute left-0 top-0 h-full aspect-square rounded-r-full bg-[#f4f4f4]" />
+        <div className="relative z-10">
+          <div className="text-[13px] font-semibold text-black">Welcome Back,</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight">
+              {profile?.full_name || "Member"}
+            </h1>
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-[#27F52F]/30 px-2 text-xs font-semibold text-[#003302]">
+              <Award aria-hidden="true" className="h-4 w-4" />
+              {TIER_LABELS[tier] ?? tier}
+            </span>
           </div>
-          <Link to="/community" className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
-            Open community
+          <div className="mt-1.5 flex items-center gap-1.5 text-[13px] font-medium text-[#003302]">
+            <Building2 aria-hidden="true" className="h-3.5 w-3.5" />
+            <span>{profile?.organisation_name || "—"}</span>
+          </div>
+        </div>
+        <div className="relative z-10">
+          <Link
+            to="/community"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-[11px] bg-[#003302] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-[#00682e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <UsersRound aria-hidden="true" className="h-[18px] w-[18px]" />
+            Open Community
           </Link>
         </div>
       </div>

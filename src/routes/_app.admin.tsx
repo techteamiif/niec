@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { TierBadge } from "@/components/TierBadge";
 import { UserAvatar } from "@/components/Avatar";
@@ -971,15 +972,19 @@ function ProgramsTab() {
   const [editEvent, setEditEvent] = useState<any | null>(null);
   const [editResource, setEditResource] = useState<any | null>(null);
   const [editDeal, setEditDeal] = useState<any | null>(null);
+  const [createResourceOpen, setCreateResourceOpen] = useState(false);
 
   const load = async () => {
-    const [{ data: e }, { data: b }, { data: r }, { data: d }] = await Promise.all([
+    const [{ data: e }, { data: b }, resourceResult, { data: d }] = await Promise.all([
       supabase.from("events").select("*").order("start_date", { ascending: false }).limit(30),
       supabase.from("mentorship_bookings").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("knowledge_resources").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("deal_opportunities").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
-    setEvents(e ?? []); setBookings(b ?? []); setResources(r ?? []); setDeals(d ?? []);
+    if (resourceResult.error) {
+      toast.error(`Unable to load Knowledge Hub publications: ${resourceResult.error.message}`);
+    }
+    setEvents(e ?? []); setBookings(b ?? []); setResources(resourceResult.data ?? []); setDeals(d ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -1040,7 +1045,12 @@ function ProgramsTab() {
       </section>
 
       <section className="rounded-xl border bg-card p-5">
-        <h3 className="mb-3 font-display text-lg inline-flex items-center gap-2"><BookOpen className="h-4 w-4" /> Knowledge resources <span className="text-xs text-muted-foreground">({resources.length})</span></h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-display text-lg inline-flex items-center gap-2"><BookOpen className="h-4 w-4" /> Knowledge resources <span className="text-xs text-muted-foreground">({resources.length})</span></h3>
+          <Button size="sm" onClick={() => setCreateResourceOpen(true)}>
+            <Plus aria-hidden="true" /> Add publication
+          </Button>
+        </div>
         <div className="space-y-2">
           {resources.map((r) => (
             <div key={r.id} className="flex items-center gap-3 border-b py-2 last:border-0 text-sm">
@@ -1056,6 +1066,12 @@ function ProgramsTab() {
           {resources.length === 0 && <div className="text-center text-xs text-muted-foreground py-4">No resources.</div>}
         </div>
       </section>
+
+      <CreatePublicationDialog
+        open={createResourceOpen}
+        onClose={() => setCreateResourceOpen(false)}
+        onCreated={load}
+      />
 
       <section className="rounded-xl border bg-card p-5">
         <h3 className="mb-3 font-display text-lg inline-flex items-center gap-2"><Briefcase className="h-4 w-4" /> Deal opportunities <span className="text-xs text-muted-foreground">({deals.length})</span></h3>
@@ -1129,6 +1145,257 @@ function ProgramsTab() {
         }}
       />
     </div>
+  );
+}
+
+type PublicationInsert = Database["public"]["Tables"]["knowledge_resources"]["Insert"];
+type ResourceType = Database["public"]["Enums"]["resource_type"];
+type CommunityOfPractice = Database["public"]["Enums"]["cop_type"];
+type MembershipTier = Database["public"]["Enums"]["membership_tier"];
+
+function CreatePublicationDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
+  const { user } = useAuth();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [resourceType, setResourceType] = useState<ResourceType>("report");
+  const [community, setCommunity] = useState<CommunityOfPractice>("general");
+  const [minTier, setMinTier] = useState<MembershipTier>("observer");
+  const [fileUrl, setFileUrl] = useState("");
+  const [summaryUrl, setSummaryUrl] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const coverImageInput = useRef<HTMLInputElement>(null);
+
+  const save = async () => {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+      toast.error("Enter a publication title.");
+      return;
+    }
+    if (!user) {
+      toast.error("You must be signed in to add a publication.");
+      return;
+    }
+
+    const isValidHttpUrl = (value: string) => {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" || url.protocol === "http:";
+      } catch {
+        return false;
+      }
+    };
+    const normalizedFileUrl = fileUrl.trim();
+    if (!isValidHttpUrl(normalizedFileUrl)) {
+      toast.error("Enter a valid publication URL.");
+      return;
+    }
+    const normalizedSummaryUrl = summaryUrl.trim();
+    if (normalizedSummaryUrl && !isValidHttpUrl(normalizedSummaryUrl)) {
+      toast.error("Enter a valid executive summary URL.");
+      return;
+    }
+    const imageExtensions: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+    };
+    if (coverImage && !imageExtensions[coverImage.type]) {
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (coverImage && coverImage.size > 5 * 1024 * 1024) {
+      toast.error("Cover images must be 5 MB or smaller.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let coverImageUrl: string | null = null;
+      let uploadedImagePath: string | null = null;
+      if (coverImage) {
+        uploadedImagePath = `${user.id}/${crypto.randomUUID()}.${imageExtensions[coverImage.type]}`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-resource-images")
+          .upload(uploadedImagePath, coverImage, { contentType: coverImage.type });
+        if (uploadError) {
+          toast.error(`Could not upload cover image: ${uploadError.message}`);
+          return;
+        }
+        coverImageUrl = supabase.storage
+          .from("knowledge-resource-images")
+          .getPublicUrl(uploadedImagePath).data.publicUrl;
+      }
+
+      const publication: PublicationInsert = {
+        title: normalizedTitle,
+        description: description.trim(),
+        resource_type: resourceType,
+        community_of_practice: community,
+        min_tier_required: minTier,
+        file_url: normalizedFileUrl,
+        executive_summary_url: normalizedSummaryUrl || null,
+        cover_image_url: coverImageUrl,
+        uploaded_by: user.id,
+      };
+      const { error } = await supabase.from("knowledge_resources").insert(publication);
+      if (error) {
+        if (uploadedImagePath) {
+          const { error: cleanupError } = await supabase.storage
+            .from("knowledge-resource-images")
+            .remove([uploadedImagePath]);
+          if (cleanupError) {
+            toast.error(`Could not remove unused cover image: ${cleanupError.message}`);
+          }
+        }
+        toast.error(`Could not add publication: ${error.message}`);
+        return;
+      }
+
+      toast.success("Publication added to the Knowledge Hub.");
+      onClose();
+      setTitle("");
+      setDescription("");
+      setResourceType("report");
+      setCommunity("general");
+      setMinTier("observer");
+      setFileUrl("");
+      setSummaryUrl("");
+      setCoverImage(null);
+      if (coverImageInput.current) coverImageInput.current.value = "";
+      await onCreated();
+    } catch (error) {
+      toast.error(
+        `Could not add publication: ${error instanceof Error ? error.message : "Unexpected error"}`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Knowledge Hub publication</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="publication-title">Title</Label>
+            <Input
+              id="publication-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              required
+              maxLength={250}
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="publication-description">Abstract / description</Label>
+            <Textarea
+              id="publication-description"
+              rows={5}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="publication-type">Publication type</Label>
+            <select
+              id="publication-type"
+              value={resourceType}
+              onChange={(event) => setResourceType(event.target.value as ResourceType)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="report">Report</option>
+              <option value="case_study">Case study</option>
+              <option value="policy_brief">Policy brief</option>
+              <option value="dataset">Dataset</option>
+              <option value="presentation">Presentation</option>
+              <option value="toolkit">Toolkit</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="publication-community">Community of practice</Label>
+            <select
+              id="publication-community"
+              value={community}
+              onChange={(event) => setCommunity(event.target.value as CommunityOfPractice)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="general">General</option>
+              {COPS.map((cop) => (
+                <option key={cop.key} value={cop.key}>{cop.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="publication-tier">Minimum membership tier</Label>
+            <select
+              id="publication-tier"
+              value={minTier}
+              onChange={(event) => setMinTier(event.target.value as MembershipTier)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              {Object.entries(TIER_LABELS).map(([tier, label]) => (
+                <option key={tier} value={tier}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="publication-file">Publication URL</Label>
+            <Input
+              id="publication-file"
+              type="url"
+              value={fileUrl}
+              onChange={(event) => setFileUrl(event.target.value)}
+              placeholder="https://…"
+              required
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="publication-summary">Executive summary URL (optional)</Label>
+            <Input
+              id="publication-summary"
+              type="url"
+              value={summaryUrl}
+              onChange={(event) => setSummaryUrl(event.target.value)}
+              placeholder="https://…"
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <Label htmlFor="publication-cover">Cover image (optional, max 5 MB)</Label>
+            <Input
+              ref={coverImageInput}
+              id="publication-cover"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(event) => setCoverImage(event.target.files?.[0] ?? null)}
+            />
+            {coverImage && (
+              <p className="text-xs text-muted-foreground">{coverImage.name}</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => void save()} disabled={saving}>
+            {saving ? "Adding…" : "Add publication"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

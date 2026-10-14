@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -14,6 +14,14 @@ export const Route = createFileRoute("/_app/knowledge")({
 });
 
 function KnowledgePage() {
+  const matches = useMatches();
+  if (matches.some((match) => match.routeId.startsWith("/_app/knowledge/"))) {
+    return <Outlet />;
+  }
+  return <KnowledgeIndex />;
+}
+
+function KnowledgeIndex() {
   const { profile, isStaff } = useAuth();
   const [items, setItems] = useState<KnowledgeResource[]>([]);
   const [type, setType] = useState("all");
@@ -76,30 +84,28 @@ function KnowledgePage() {
               key={r.id}
               to="/knowledge/$resourceId"
               params={{ resourceId: r.id }}
-              className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
+              className="group rounded-xl border bg-card p-5 transition-shadow hover:shadow-md"
             >
-              {r.cover_image_url ? (
-                <img src={r.cover_image_url} alt="" className="aspect-[16/9] w-full object-cover" />
-              ) : (
-                <div className="grid aspect-[16/9] place-items-center bg-primary/5 text-primary">
+              <div className="flex items-start gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                   <FileText className="h-8 w-8" />
                 </div>
-              )}
-              <div className="p-5">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.resource_type.replace(/_/g, " ")}</div>
-                <h3 className="mt-1 font-display text-lg leading-tight">{r.title}</h3>
-                <p className="mt-3 text-sm text-muted-foreground line-clamp-4">{r.description}</p>
-                {!unlocked && (
-                  <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                    Downloads require <strong>{TIER_LABELS[r.min_tier_required]}</strong> tier.
-                  </div>
-                )}
-                <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>↓ {r.downloads_count ?? 0} downloads</span>
-                  <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                    View resource <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.resource_type.replace(/_/g, " ")}</div>
+                  <h3 className="font-display text-base leading-tight">{r.title}</h3>
                 </div>
+              </div>
+              <p className="mt-3 line-clamp-3 text-xs text-muted-foreground">{r.description}</p>
+              {!unlocked && (
+                <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                  Preview locked — upgrade to <strong>{TIER_LABELS[r.min_tier_required]}</strong> to download.
+                </div>
+              )}
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">↓ {r.downloads_count ?? 0}</div>
+                <span className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                  View resource <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </span>
               </div>
             </Link>
           );

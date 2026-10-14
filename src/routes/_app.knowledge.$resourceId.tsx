@@ -1,13 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Download, FileText } from "lucide-react";
+import { format } from "date-fns";
+import { ArrowLeft, Download, FileText, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { UserAvatar } from "@/components/Avatar";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
+type ResourceAuthor = Pick<
+  Database["public"]["Tables"]["profiles"]["Row"],
+  "id" | "full_name" | "organisation_name" | "avatar_url"
+>;
 
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
   component: KnowledgeResourcePage,
@@ -17,12 +24,14 @@ function KnowledgeResourcePage() {
   const { resourceId } = Route.useParams();
   const { profile, isStaff } = useAuth();
   const [resource, setResource] = useState<KnowledgeResource | null>(null);
+  const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setResource(null);
+    setAuthor(null);
 
     void (async () => {
       const { data, error } = await supabase
@@ -35,6 +44,18 @@ function KnowledgeResourcePage() {
       if (error) toast.error(`Could not load resource: ${error.message}`);
       setResource(data);
       setLoading(false);
+
+      if (data?.uploaded_by) {
+        const { data: authorData, error: authorError } = await supabase
+          .from("profiles")
+          .select("id, full_name, organisation_name, avatar_url")
+          .eq("id", data.uploaded_by)
+          .maybeSingle();
+
+        if (!active) return;
+        if (authorError) toast.error(`Could not load author: ${authorError.message}`);
+        setAuthor(authorData);
+      }
     })();
 
     return () => {
@@ -82,6 +103,21 @@ function KnowledgeResourcePage() {
     ? tierMeets(profile?.membership_tier, resource.min_tier_required) || isStaff
     : false;
 
+  const share = async () => {
+    if (!resource) return;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: resource.title, url: window.location.href });
+        return;
+      }
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard.");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      toast.error("Could not share this resource.");
+    }
+  };
+
   return (
     <div className="p-6 lg:p-10">
       <Link
@@ -103,28 +139,45 @@ function KnowledgeResourcePage() {
           </p>
         </div>
       ) : (
-        <article className="mx-auto max-w-4xl overflow-hidden rounded-2xl border bg-card">
-          {resource.cover_image_url ? (
-            <img
-              src={resource.cover_image_url}
-              alt={`${resource.title} cover`}
-              className="max-h-[28rem] w-full object-cover"
-            />
-          ) : (
-            <div className="grid h-48 place-items-center bg-primary/5 text-primary">
-              <FileText className="h-12 w-12" />
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(270px,1fr)]">
+          <article className="min-w-0 rounded-2xl border bg-card p-6 lg:p-8">
+            <h1 className="font-display text-2xl font-bold leading-tight sm:text-3xl">
+              {resource.title}
+            </h1>
+            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2 text-sm text-muted-foreground">
+              <span className="font-medium text-primary">Published</span>
+              <span aria-hidden="true">·</span>
+              <time dateTime={resource.created_at}>
+                {format(new Date(resource.created_at), "yyyy-MM-dd")}
+              </time>
+              <span className="ml-1 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium capitalize text-sky-800">
+                {resource.resource_type.replace(/_/g, " ")}
+              </span>
             </div>
-          )}
-          <div className="p-6 lg:p-10">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              {resource.resource_type.replace(/_/g, " ")}
-              {resource.community_of_practice !== "general" &&
-                ` · ${resource.community_of_practice.replace(/_/g, " ")}`}
+
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-b pb-5">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-3 py-2 text-sm font-medium text-emerald-800">
+                <Download className="h-4 w-4" aria-hidden="true" />
+                {resource.downloads_count ?? 0} downloads
+              </span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => void share()}>
+                <Share2 aria-hidden="true" /> Share
+              </Button>
             </div>
-            <h1 className="mt-2 font-display text-3xl lg:text-4xl">{resource.title}</h1>
-            <p className="mt-6 whitespace-pre-wrap text-base leading-7 text-muted-foreground">
-              {resource.description || "No description is available for this resource yet."}
-            </p>
+
+            <section className="pt-6">
+              <h2 className="font-semibold">Abstract</h2>
+              <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-foreground/85">
+                {resource.description || "No description is available for this resource yet."}
+              </p>
+              {resource.cover_image_url && (
+                <img
+                  src={resource.cover_image_url}
+                  alt={`${resource.title} cover`}
+                  className="mt-6 max-h-[28rem] w-full rounded-lg object-cover"
+                />
+              )}
+            </section>
 
             <section className="mt-8 border-t pt-6">
               {!unlocked && (
@@ -132,28 +185,72 @@ function KnowledgeResourcePage() {
                   Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier.
                 </p>
               )}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button
+              <div className="flex flex-wrap gap-3">
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => void download(resource.executive_summary_url)}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold hover:bg-muted"
                 >
-                  <Download className="h-4 w-4" /> Download executive summary
-                </button>
-                <button
+                  <Download aria-hidden="true" /> Download executive summary
+                </Button>
+                <Button
                   type="button"
+                  className="bg-[#003302] text-white hover:bg-[#003302]/90"
                   onClick={() => void download(resource.file_url)}
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 >
-                  <Download className="h-4 w-4" /> Download full report/publication
-                </button>
+                  <FileText aria-hidden="true" /> Download PDF
+                </Button>
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {resource.downloads_count ?? 0} downloads
-              </p>
             </section>
-          </div>
-        </article>
+          </article>
+
+          <aside className="rounded-2xl border bg-card p-6 text-center">
+            <h2 className="text-base font-medium">About this Author</h2>
+            <div className="mt-6 flex justify-center">
+              {author ? (
+                <Link
+                  to="/member/$memberId"
+                  params={{ memberId: author.id }}
+                  aria-label={`View ${author.organisation_name || author.full_name}'s profile`}
+                >
+                  <UserAvatar
+                    name={author.organisation_name || author.full_name}
+                    src={author.avatar_url}
+                    size={104}
+                    className="bg-muted text-foreground"
+                  />
+                </Link>
+              ) : (
+                <div className="grid h-[104px] w-[104px] place-items-center rounded-full bg-muted text-sm font-medium text-muted-foreground">
+                  NIeC
+                </div>
+              )}
+            </div>
+            <p className="mt-5 text-lg font-medium">
+              {author?.organisation_name || author?.full_name || "NIeC Knowledge Team"}
+            </p>
+            {author?.organisation_name && author.full_name && (
+              <p className="mt-1 text-sm text-muted-foreground">{author.full_name}</p>
+            )}
+            <div className="mt-6 border-t pt-5 text-left">
+              <h3 className="text-sm font-semibold">About this resource</h3>
+              <dl className="mt-3 space-y-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Type</dt>
+                  <dd className="text-right capitalize">
+                    {resource.resource_type.replace(/_/g, " ")}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Community</dt>
+                  <dd className="text-right capitalize">
+                    {resource.community_of_practice.replace(/_/g, " ")}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );
