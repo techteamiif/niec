@@ -112,12 +112,12 @@ function Dashboard() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users}       label="Active members"  value={stats.members} accent="bg-primary/15 text-primary" />
         <StatCard icon={TrendingUp}  label="Open deals"      value={stats.deals}   accent="bg-gold/25 text-gold-foreground" />
         <StatCard icon={Calendar}    label="Upcoming events" value={stats.events}  accent="bg-success/20 text-primary" />
         <StatCard icon={MessageSquare} label="Engagement"    value={profile?.engagement_score ?? 0} accent="bg-secondary/15 text-secondary" />
-      </div>
+      </div> */}
 
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
         <section>
