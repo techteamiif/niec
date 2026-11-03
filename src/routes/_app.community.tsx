@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Pin, Plus, Heart, MessageCircle, Lock, Image as ImageIcon, X } from "lucide-react";
 import { format } from "date-fns";
 
-const SORT_OPTIONS = ["latest", "liked", "commented"] as const;
+const SORT_OPTIONS = ["latest", "liked"] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];
 
 export const Route = createFileRoute("/_app/community")({
@@ -54,9 +54,7 @@ function CommunityPage() {
       for (const option of sortPriority) {
         const difference = option === "latest"
           ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          : option === "liked"
-            ? b.likes_count - a.likes_count
-            : b.comments_count - a.comments_count;
+          : b.likes_count - a.likes_count;
         if (difference !== 0) return difference;
       }
 
