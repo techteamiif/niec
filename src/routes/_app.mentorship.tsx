@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -16,7 +16,12 @@ import { ArrowRight, GraduationCap, Search, Sparkles, CalendarCheck, X, Check } 
 import { format } from "date-fns";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
-export const Route = createFileRoute("/_app/mentorship")({ component: MentorshipPage });
+export const Route = createFileRoute("/_app/mentorship")({
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
+  component: MentorshipPage,
+});
 
 type Offer = {
   id: string;

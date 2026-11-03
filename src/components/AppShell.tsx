@@ -21,17 +21,17 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NiecLogo } from "@/components/brand/NiecLogo";
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: boolean };
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: boolean; comingSoon?: boolean };
 const NAV: NavItem[] = [
   { to: "/dashboard",  label: "Dashboard",     icon: LayoutDashboard },
   { to: "/community",  label: "Community",     icon: MessageSquare },
   { to: "/members",    label: "Members",       icon: Users },
-  { to: "/messages",   label: "Messages",      icon: Mail },
+  { to: "/messages",   label: "Messages",      icon: Mail, comingSoon: true },
   { to: "/events",     label: "Events",        icon: Calendar },
-  { to: "/deal-room",  label: "Deal Room",     icon: Briefcase },
+  { to: "/deal-room",  label: "Deal Room",     icon: Briefcase, comingSoon: true },
   { to: "/knowledge",  label: "Knowledge Hub", icon: BookOpen },
   { to: "/cops",       label: "CoPs",          icon: Layers },
-  { to: "/mentorship", label: "Mentorship",    icon: GraduationCap },
+  { to: "/mentorship", label: "Mentorship",    icon: GraduationCap, comingSoon: true },
   { to: "/profile",    label: "My Profile",    icon: User },
   { to: "/upgrade",    label: "Membership",    icon: CreditCard },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
@@ -89,8 +89,37 @@ export function AppShell() {
       </div>
 
       <nav className="sidebar-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-        {NAV.map(({ to, label, icon: Icon, badge }) => {
+        {NAV.map(({ to, label, icon: Icon, badge, comingSoon }) => {
           const active = path === to || path.startsWith(to + "/");
+          const itemContent = (
+            <>
+              <Icon className="h-4 w-4" />
+              <span className="flex-1">{label}</span>
+              {comingSoon && (
+                <span className="rounded-full bg-sidebar-accent/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sidebar-accent">
+                  Coming soon
+                </span>
+              )}
+              {badge && unread > 0 && (
+                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </>
+          );
+
+          if (comingSoon) {
+            return (
+              <div
+                key={to}
+                aria-disabled="true"
+                className="my-0.5 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60"
+              >
+                {itemContent}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={to} to={to} onClick={() => setOpen(false)}
@@ -101,13 +130,7 @@ export function AppShell() {
                   : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white",
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span className="flex-1">{label}</span>
-              {badge && unread > 0 && (
-                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
+              {itemContent}
             </Link>
           );
         })}

@@ -1,4 +1,4 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute, redirect, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,9 @@ import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 export const Route = createFileRoute("/_app/messages")({
   validateSearch: z.object({ to: z.string().uuid().optional() }),
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
   component: MessagesPage,
 });
 

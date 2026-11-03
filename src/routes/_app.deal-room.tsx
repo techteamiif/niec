@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -7,6 +7,9 @@ import { toast } from "sonner";
 import { ArrowRight, Briefcase, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_app/deal-room")({
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
   component: DealRoom,
 });
 
