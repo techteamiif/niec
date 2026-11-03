@@ -40,6 +40,7 @@ import { Route as AppMemberMemberIdRouteImport } from './routes/_app.member.$mem
 import { Route as AppKnowledgeResourceIdRouteImport } from './routes/_app.knowledge.$resourceId'
 import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
 import { Route as AppCopsCopRouteImport } from './routes/_app.cops.$cop'
+import { Route as AppCommunityPostIdRouteImport } from './routes/_app.community.$postId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -203,6 +204,11 @@ const AppCopsCopRoute = AppCopsCopRouteImport.update({
   path: '/$cop',
   getParentRoute: () => AppCopsRoute,
 } as any)
+const AppCommunityPostIdRoute = AppCommunityPostIdRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => AppCommunityRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -243,7 +249,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
-  '/community': typeof AppCommunityRoute
+  '/community': typeof AppCommunityRouteWithChildren
   '/cops': typeof AppCopsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/community/$postId': typeof AppCommunityPostIdRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
   '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
@@ -280,7 +287,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
-  '/community': typeof AppCommunityRoute
+  '/community': typeof AppCommunityRouteWithChildren
   '/cops': typeof AppCopsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
@@ -296,6 +303,7 @@ export interface FileRoutesByTo {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/community/$postId': typeof AppCommunityPostIdRoute
   '/cops/$cop': typeof AppCopsCopRoute
   '/event/$eventId': typeof AppEventEventIdRoute
   '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
@@ -319,7 +327,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/admin': typeof AppAdminRoute
-  '/_app/community': typeof AppCommunityRoute
+  '/_app/community': typeof AppCommunityRouteWithChildren
   '/_app/cops': typeof AppCopsRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/deal-room': typeof AppDealRoomRoute
@@ -335,6 +343,7 @@ export interface FileRoutesById {
   '/api/paystack-webhook': typeof ApiPaystackWebhookRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_app/community/$postId': typeof AppCommunityPostIdRoute
   '/_app/cops/$cop': typeof AppCopsCopRoute
   '/_app/event/$eventId': typeof AppEventEventIdRoute
   '/_app/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
@@ -374,6 +383,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/community/$postId'
     | '/cops/$cop'
     | '/event/$eventId'
     | '/knowledge/$resourceId'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/community/$postId'
     | '/cops/$cop'
     | '/event/$eventId'
     | '/knowledge/$resourceId'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/api/paystack-webhook'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_app/community/$postId'
     | '/_app/cops/$cop'
     | '/_app/event/$eventId'
     | '/_app/knowledge/$resourceId'
@@ -699,6 +711,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCopsCopRouteImport
       parentRoute: typeof AppCopsRoute
     }
+    '/_app/community/$postId': {
+      id: '/_app/community/$postId'
+      path: '/$postId'
+      fullPath: '/community/$postId'
+      preLoaderRoute: typeof AppCommunityPostIdRouteImport
+      parentRoute: typeof AppCommunityRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -737,6 +756,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppCommunityRouteChildren {
+  AppCommunityPostIdRoute: typeof AppCommunityPostIdRoute
+}
+
+const AppCommunityRouteChildren: AppCommunityRouteChildren = {
+  AppCommunityPostIdRoute: AppCommunityPostIdRoute,
+}
+
+const AppCommunityRouteWithChildren = AppCommunityRoute._addFileChildren(
+  AppCommunityRouteChildren,
+)
+
 interface AppCopsRouteChildren {
   AppCopsCopRoute: typeof AppCopsCopRoute
 }
@@ -774,7 +805,7 @@ const AppProfileRouteWithChildren = AppProfileRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppAdminRoute: typeof AppAdminRoute
-  AppCommunityRoute: typeof AppCommunityRoute
+  AppCommunityRoute: typeof AppCommunityRouteWithChildren
   AppCopsRoute: typeof AppCopsRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealRoomRoute: typeof AppDealRoomRoute
@@ -792,7 +823,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAdminRoute: AppAdminRoute,
-  AppCommunityRoute: AppCommunityRoute,
+  AppCommunityRoute: AppCommunityRouteWithChildren,
   AppCopsRoute: AppCopsRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppDealRoomRoute: AppDealRoomRoute,

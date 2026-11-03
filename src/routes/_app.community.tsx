@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -15,8 +15,15 @@ const SORT_OPTIONS = ["latest", "liked"] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];
 
 export const Route = createFileRoute("/_app/community")({
-  component: CommunityPage,
+  component: CommunityLayout,
 });
+
+function CommunityLayout() {
+  const matches = useMatches();
+  const isPostDetail = matches.some((match) => match.routeId.startsWith("/_app/community/"));
+  if (isPostDetail) return <Outlet />;
+  return <CommunityPage />;
+}
 
 function CommunityPage() {
   const { user, profile, isStaff } = useAuth();
@@ -62,10 +69,11 @@ function CommunityPage() {
     });
     setPosts(sortedPosts);
     if (user) {
-      const { data: l } = await supabase
+      const { data: l, error: likesError } = await supabase
         .from("post_likes")
         .select("post_id")
         .eq("user_id", user.id);
+      if (likesError) toast.error(`Could not load post reactions: ${likesError.message}`);
       setLiked(new Set((l ?? []).map((x: any) => x.post_id)));
     }
   };
@@ -77,7 +85,12 @@ function CommunityPage() {
     if (!user) return;
     if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     if (liked.has(postId)) {
-      await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      if (error) return toast.error(`Could not remove reaction: ${error.message}`);
       setLiked((s) => {
         const n = new Set(s);
         n.delete(postId);
@@ -163,14 +176,29 @@ function CommunityPage() {
                 </div>
               )}
               <div className="flex items-center gap-3">
-                <UserAvatar
-                  name={p.profiles?.full_name ?? "?"}
-                  src={p.profiles?.avatar_url}
-                  size={36}
-                />
+                <Link
+                  to="/member/$memberId"
+                  params={{ memberId: p.author_id }}
+                  search={{ postId: p.id }}
+                  aria-label={`View ${p.profiles?.full_name ?? "member"}'s profile`}
+                  className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <UserAvatar
+                    name={p.profiles?.full_name ?? "?"}
+                    src={p.profiles?.avatar_url}
+                    size={36}
+                  />
+                </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">{p.profiles?.full_name}</span>
+                    <Link
+                      to="/member/$memberId"
+                      params={{ memberId: p.author_id }}
+                      search={{ postId: p.id }}
+                      className="font-medium hover:text-primary"
+                    >
+                      {p.profiles?.full_name}
+                    </Link>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP p")}
@@ -191,15 +219,21 @@ function CommunityPage() {
                   </button>
                 )}
               </div>
-              <h3 className="mt-3 font-display text-lg">{p.title}</h3>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{p.content}</p>
-              {p.image_url && (
-                <img
-                  src={p.image_url}
-                  alt={p.title}
-                  className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
-                />
-              )}
+              <Link
+                to="/community/$postId"
+                params={{ postId: p.id }}
+                className="mt-3 block rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                <h3 className="font-display text-lg">{p.title}</h3>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{p.content}</p>
+                {p.image_url && (
+                  <img
+                    src={p.image_url}
+                    alt={p.title}
+                    className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
+                  />
+                )}
+              </Link>
               {p.tags?.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1">
                   {p.tags.map((t: string) => (

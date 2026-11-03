@@ -28,7 +28,7 @@ export function OnboardingChecklist() {
       const profileDone = !!(profile.bio && profile.organisation_name && profile.role_title);
       setSteps([
         { key: "profile",  label: "Complete your profile",        to: "/profile",     done: profileDone },
-        { key: "cops",     label: "Join 2 Communities of Practice", to: "/cops",      done: (copCount ?? 0) >= 2 },
+        { key: "cops",     label: "Join a Community of Practice", to: "/cops",      done: (copCount ?? 0) >= 1 },
         { key: "post",     label: "Introduce yourself in the feed", to: "/community", done: (postCount ?? 0) >= 1 },
         { key: "event",    label: "RSVP to an upcoming event",     to: "/events",     done: (rsvpCount ?? 0) >= 1 },
         { key: "mentor",   label: "Request a mentor or browse offers", to: "/mentorship", done: (bookingCount ?? 0) >= 1 },

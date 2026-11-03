@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -42,9 +44,10 @@ function StatCard({ icon: Icon, label, value, accent }: any) {
 }
 
 function Dashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, isStaff } = useAuth();
   const [stats, setStats] = useState({ members: 0, deals: 0, events: 0 });
   const [posts, setPosts] = useState<any[]>([]);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [events, setEvents] = useState<any[]>([]);
   const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(null);
 
@@ -68,6 +71,17 @@ function Dashboard() {
       setStats({ members: m.count ?? 0, deals: d.count ?? 0, events: e.count ?? 0 });
       setPosts(p.data ?? []);
       setEvents(ev.data ?? []);
+      if (user && p.data?.length) {
+        const { data: likes, error } = await supabase
+          .from("post_likes")
+          .select("post_id")
+          .eq("user_id", user.id)
+          .in("post_id", p.data.map((post) => post.id));
+        if (error) toast.error(`Could not load post reactions: ${error.message}`);
+        setLikedPosts(new Set((likes ?? []).map((like) => like.post_id)));
+      } else {
+        setLikedPosts(new Set());
+      }
     })();
     if (user) {
       supabase.rpc("get_tier_usage", { _user_id: user.id }).then(({ data }) => {
@@ -76,6 +90,35 @@ function Dashboard() {
       });
     }
   }, [user]);
+
+  const toggleLike = async (postId: string) => {
+    if (!user || !requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    const isLiked = likedPosts.has(postId);
+    if (isLiked) {
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      if (error) return toast.error(`Could not remove reaction: ${error.message}`);
+      setLikedPosts((current) => {
+        const next = new Set(current);
+        next.delete(postId);
+        return next;
+      });
+      setPosts((current) => current.map((post) => post.id === postId
+        ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+        : post));
+      return;
+    }
+
+    const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+    if (error) return toast.error(`Could not react to post: ${error.message}`);
+    setLikedPosts((current) => new Set(current).add(postId));
+    setPosts((current) => current.map((post) => post.id === postId
+      ? { ...post, likes_count: post.likes_count + 1 }
+      : post));
+  };
 
   const tier = profile?.membership_tier ?? "observer";
   const copCap = capFor(tier, "cops.join") ?? 0;
@@ -134,28 +177,68 @@ function Dashboard() {
               </div>
             )}
             {posts.map((p) => (
-              <article key={p.id} className="cursor-pointer rounded-xl border bg-card p-5 transition hover:shadow-sm">
+              <article
+                key={p.id}
+                className="rounded-xl border bg-card p-5 transition hover:shadow-sm"
+              >
                 <div className="flex items-center gap-3">
-                  <UserAvatar name={p.profiles?.full_name ?? "?"} src={p.profiles?.avatar_url} size={32} />
+                  <Link
+                    to="/member/$memberId"
+                    params={{ memberId: p.author_id }}
+                    search={{ postId: p.id }}
+                    aria-label={`View ${p.profiles?.full_name ?? "member"}'s profile`}
+                    className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <UserAvatar name={p.profiles?.full_name ?? "?"} src={p.profiles?.avatar_url} size={32} />
+                  </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium">{p.profiles?.full_name}</span>
+                      <Link
+                        to="/member/$memberId"
+                        params={{ memberId: p.author_id }}
+                        search={{ postId: p.id }}
+                        className="font-medium hover:text-primary"
+                      >
+                        {p.profiles?.full_name}
+                      </Link>
                     </div>
                     <div className="text-xs text-muted-foreground">{p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP")}</div>
                   </div>
                   <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${POST_TYPE_COLOR[p.post_type]}`}>{POST_TYPE_LABELS[p.post_type]}</span>
                 </div>
-                <h3 className="mt-3 font-display text-lg">{p.title}</h3>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.content}</p>
+                <Link
+                  to="/community/$postId"
+                  params={{ postId: p.id }}
+                  className="mt-3 block rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <h3 className="font-display text-lg">{p.title}</h3>
+                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.content}</p>
+                  {p.image_url && (
+                    <img
+                      src={p.image_url}
+                      alt={p.title}
+                      className="mt-3 max-h-[320px] w-full rounded-lg bg-muted object-contain"
+                    />
+                  )}
+                </Link>
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <Heart aria-hidden="true" className="h-3.5 w-3.5" />
+                  <button
+                    type="button"
+                    onClick={() => toggleLike(p.id)}
+                    aria-pressed={likedPosts.has(p.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${likedPosts.has(p.id) ? "text-destructive" : "hover:bg-muted"}`}
+                  >
+                    <Heart aria-hidden="true" className={`h-3.5 w-3.5 ${likedPosts.has(p.id) ? "fill-current" : ""}`} />
                     {p.likes_count}
-                  </span>
-                  <span className="inline-flex items-center gap-1.5">
+                  </button>
+                  <Link
+                    to="/community/$postId"
+                    params={{ postId: p.id }}
+                    className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 hover:bg-muted"
+                  >
                     <MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />
                     {p.comments_count}
-                  </span>
+                  </Link>
                 </div>
               </article>
             ))}

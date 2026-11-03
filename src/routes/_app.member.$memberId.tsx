@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { z } from "zod";
 import { format } from "date-fns";
 import { ArrowLeft, Building2, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
@@ -28,6 +29,7 @@ type MemberProfile = Pick<
 >;
 
 export const Route = createFileRoute("/_app/member/$memberId")({
+  validateSearch: z.object({ postId: z.string().uuid().optional() }),
   component: MemberDetailPage,
 });
 
@@ -43,6 +45,7 @@ function externalUrl(value: string | null) {
 
 function MemberDetailPage() {
   const { memberId } = Route.useParams();
+  const { postId } = Route.useSearch();
   const { user } = useAuth();
   const [member, setMember] = useState<MemberProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,12 +84,22 @@ function MemberDetailPage() {
 
   return (
     <div className="p-6 lg:p-10">
-      <Link
-        to="/members"
-        className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Member directory
-      </Link>
+      {postId ? (
+        <Link
+          to="/community/$postId"
+          params={{ postId }}
+          className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to post
+        </Link>
+      ) : (
+        <Link
+          to="/members"
+          className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" /> Member directory
+        </Link>
+      )}
 
       {loading ? (
         <div className="rounded-xl border bg-card p-8 text-sm text-muted-foreground">

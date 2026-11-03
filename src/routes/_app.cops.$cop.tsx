@@ -6,7 +6,7 @@ import { COPS, COP_SLUG_REDIRECTS, initials } from "@/lib/niec";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { toast } from "sonner";
-import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye } from "lucide-react";
+import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye, Heart, MessageCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,7 @@ function CopWorkspace() {
   const [members, setMembers] = useState<any[]>([]);
   const [chairs, setChairs] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
   const [events, setEvents] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
@@ -70,6 +71,17 @@ function CopWorkspace() {
     setMembers(mem.data ?? []);
     setChairs(role.data ?? []);
     setPosts(p.data ?? []);
+    if (user && p.data?.length) {
+      const { data: likes, error: likesError } = await supabase
+        .from("post_likes")
+        .select("post_id")
+        .eq("user_id", user.id)
+        .in("post_id", p.data.map((post) => post.id));
+      if (likesError) toast.error(`Could not load post reactions: ${likesError.message}`);
+      setLikedPostIds(new Set((likes ?? []).map((like) => like.post_id)));
+    } else {
+      setLikedPostIds(new Set());
+    }
     setEvents((e.data ?? []).filter((ev: any) => !ev.community_of_practice || ev.community_of_practice === cop));
     setResources(r.data ?? []);
     if (wg.error) {
@@ -164,6 +176,38 @@ function CopWorkspace() {
     const { error } = await supabase.from("community_posts").update({ pinned_in_cop: !current }).eq("id", postId);
     if (error) return toast.error(error.message);
     load();
+  };
+
+  const togglePostLike = async (postId: string) => {
+    if (!user || !requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (likedPostIds.has(postId)) {
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      if (error) return toast.error(`Could not remove reaction: ${error.message}`);
+      setLikedPostIds((current) => {
+        const next = new Set(current);
+        next.delete(postId);
+        return next;
+      });
+      setPosts((current) => current.map((post) =>
+        post.id === postId
+          ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+          : post,
+      ));
+      return;
+    }
+
+    const { error } = await supabase
+      .from("post_likes")
+      .insert({ post_id: postId, user_id: user.id });
+    if (error) return toast.error(`Could not react to post: ${error.message}`);
+    setLikedPostIds((current) => new Set(current).add(postId));
+    setPosts((current) => current.map((post) =>
+      post.id === postId ? { ...post, likes_count: post.likes_count + 1 } : post,
+    ));
   };
 
   const vote = async (pollId: string, idx: number, multi: boolean) => {
@@ -297,7 +341,14 @@ function CopWorkspace() {
               <h2 className="mt-6 font-display text-lg">Pinned</h2>
               <div className="mt-3 space-y-3">
                 {posts.filter((p) => p.pinned_in_cop).slice(0, 3).map((p) => (
-                  <PostCard key={p.id} post={p} canManage={canManage} onPin={togglePin} />
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    canManage={canManage}
+                    liked={likedPostIds.has(p.id)}
+                    onLike={togglePostLike}
+                    onPin={togglePin}
+                  />
                 ))}
                 {posts.filter((p) => p.pinned_in_cop).length === 0 && (
                   <p className="text-sm text-muted-foreground">No pinned posts yet.</p>
@@ -338,7 +389,16 @@ function CopWorkspace() {
         {/* Feed */}
         <TabsContent value="feed" className="mt-6">
           <div className="space-y-3">
-            {posts.map((p) => <PostCard key={p.id} post={p} canManage={canManage} onPin={togglePin} />)}
+            {posts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                canManage={canManage}
+                liked={likedPostIds.has(p.id)}
+                onLike={togglePostLike}
+                onPin={togglePin}
+              />
+            ))}
             {posts.length === 0 && <p className="text-sm text-muted-foreground">No posts yet. Start the conversation from the <Link to="/community" className="text-primary underline">Community</Link> feed.</p>}
           </div>
         </TabsContent>
@@ -542,34 +602,84 @@ function CopWorkspace() {
   );
 }
 
-function PostCard({ post, canManage, onPin }: { post: any; canManage: boolean; onPin: (id: string, current: boolean) => void }) {
+function PostCard({
+  post,
+  canManage,
+  liked,
+  onLike,
+  onPin,
+}: {
+  post: any;
+  canManage: boolean;
+  liked: boolean;
+  onLike: (id: string) => void;
+  onPin: (id: string, current: boolean) => void;
+}) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-start gap-3">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={post.profiles?.avatar_url ?? undefined} />
-          <AvatarFallback>{initials(post.profiles?.full_name ?? "")}</AvatarFallback>
-        </Avatar>
+        <Link
+          to="/member/$memberId"
+          params={{ memberId: post.author_id }}
+          search={{ postId: post.id }}
+          aria-label={`View ${post.profiles?.full_name ?? "member"}'s profile`}
+          className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={post.profiles?.avatar_url ?? undefined} />
+            <AvatarFallback>{initials(post.profiles?.full_name ?? "")}</AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-medium">{post.profiles?.full_name}</div>
+            <Link
+              to="/member/$memberId"
+              params={{ memberId: post.author_id }}
+              search={{ postId: post.id }}
+              className="text-sm font-medium hover:text-primary"
+            >
+              {post.profiles?.full_name}
+            </Link>
             {canManage && (
               <Button size="sm" variant="ghost" onClick={() => onPin(post.id, post.pinned_in_cop)}>
                 <Pin className={`h-4 w-4 ${post.pinned_in_cop ? "fill-current text-gold" : ""}`} />
               </Button>
             )}
           </div>
-          <div className="mt-1 font-medium">{post.title}</div>
-          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
-          {post.image_url && (
-            <img
-              src={post.image_url}
-              alt={post.title}
-              className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
-            />
-          )}
-          <div className="mt-2 text-xs text-muted-foreground">
-            {post.likes_count} likes · {post.comments_count} comments · {new Date(post.created_at).toLocaleDateString()}
+          <Link
+            to="/community/$postId"
+            params={{ postId: post.id }}
+            className="mt-1 block rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <div className="font-medium">{post.title}</div>
+            <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
+            {post.image_url && (
+              <img
+                src={post.image_url}
+                alt={post.title}
+                className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
+              />
+            )}
+          </Link>
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => onLike(post.id)}
+              aria-pressed={liked}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${liked ? "text-destructive" : "hover:bg-muted"}`}
+            >
+              <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
+              {post.likes_count}
+            </button>
+            <Link
+              to="/community/$postId"
+              params={{ postId: post.id }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 hover:bg-muted"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {post.comments_count}
+            </Link>
+            <span className="ml-auto">{new Date(post.created_at).toLocaleDateString()}</span>
           </div>
         </div>
       </div>

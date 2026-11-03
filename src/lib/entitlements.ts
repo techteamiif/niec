@@ -39,7 +39,7 @@ export const FEATURES: Record<FeatureKey, Feature> = {
   "messages.send":        { key: "messages.send",        label: "Direct message members",        minTier: "contributor" },
   "cops.join":            { key: "cops.join",            label: "Join Communities of Practice",  minTier: "contributor",
                             caps: { contributor: 1, growth_partner: 3, anchor: 999, strategic_partner: 999 }, capPeriod: "total",
-                            description: "Enterprise: 1 CoP · Growth Partner: 3 · Anchor+: unlimited." },
+                            description: "Maximum total memberships: Observer 0 · Enterprise 1 · Growth Partner 3 · Anchor Partner and Strategic Partner unlimited (6 CoPs currently available)." },
   "events.register":      { key: "events.register",      label: "Register for gated events",     minTier: "observer", description: "Each event has its own minimum tier." },
   "knowledge.download":   { key: "knowledge.download",   label: "Download knowledge resources",  minTier: "observer", description: "Each resource has its own minimum tier." },
   "mentorship.book":      { key: "mentorship.book",      label: "Book mentorship sessions",      minTier: "contributor",
