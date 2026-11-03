@@ -13,6 +13,8 @@ import {
   Building2,
   Calendar,
   MessageSquare,
+  MessageCircle,
+  Heart,
   Sparkles,
   TrendingUp,
   Users,
@@ -132,7 +134,7 @@ function Dashboard() {
               </div>
             )}
             {posts.map((p) => (
-              <article key={p.id} className="rounded-xl border bg-card p-5 transition hover:shadow-sm">
+              <article key={p.id} className="cursor-pointer rounded-xl border bg-card p-5 transition hover:shadow-sm">
                 <div className="flex items-center gap-3">
                   <UserAvatar name={p.profiles?.full_name ?? "?"} src={p.profiles?.avatar_url} size={32} />
                   <div className="flex-1 min-w-0">
@@ -146,8 +148,14 @@ function Dashboard() {
                 <h3 className="mt-3 font-display text-lg">{p.title}</h3>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{p.content}</p>
                 <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>♥ {p.likes_count}</span>
-                  <span>💬 {p.comments_count}</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Heart aria-hidden="true" className="h-3.5 w-3.5" />
+                    {p.likes_count}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                    {p.comments_count}
+                  </span>
                 </div>
               </article>
             ))}

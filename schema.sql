@@ -1969,10 +1969,6 @@ CREATE POLICY "Members view their own payments" ON "public"."membership_payments
 
 
 
-CREATE POLICY "Staff can update applications" ON "public"."membership_applications" FOR UPDATE TO "authenticated" USING ("public"."is_staff"("auth"."uid"())) WITH CHECK ("public"."is_staff"("auth"."uid"()));
-
-
-
 CREATE POLICY "Staff can view all applications" ON "public"."membership_applications" FOR SELECT TO "authenticated" USING ("public"."is_staff"("auth"."uid"()));
 
 
@@ -3087,7 +3083,7 @@ GRANT ALL ON TABLE "public"."member_notes" TO "service_role";
 
 
 GRANT ALL ON TABLE "public"."membership_applications" TO "anon";
-GRANT ALL ON TABLE "public"."membership_applications" TO "authenticated";
+GRANT SELECT ON TABLE "public"."membership_applications" TO "authenticated";
 GRANT ALL ON TABLE "public"."membership_applications" TO "service_role";
 
 
@@ -3200,7 +3196,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
 
 
 

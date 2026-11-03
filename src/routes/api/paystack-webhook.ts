@@ -55,9 +55,6 @@ export const Route = createFileRoute("/api/paystack-webhook")({
         if (!row) return new Response("ok", { status: 200 });
 
         if (evt.event === "charge.success") {
-          // Already processed (by the verify call or an earlier webhook delivery)
-          if (row.status === "success") return new Response("ok", { status: 200 });
-
           // Never trust the event blindly: amount and currency must match what we initialised
           if (evt.data.amount !== row.amount_kobo || evt.data.currency !== "NGN") {
             console.error("[paystack:webhook] amount mismatch", reference, evt.data.amount, row.amount_kobo);
@@ -69,7 +66,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
           }
 
           // Conditional update makes this idempotent under concurrent deliveries
-          const { data: updated } = await supabaseAdmin
+          const { data: updated, error: paymentUpdateError } = await supabaseAdmin
             .from("membership_payments")
             .update({
               status: "success",
@@ -80,18 +77,34 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             .neq("status", "success")
             .select("id");
 
-          if (updated && updated.length > 0 && row.user_id) {
-            await supabaseAdmin
+          if (paymentUpdateError) {
+            console.error("[paystack:webhook] payment update failed", reference, paymentUpdateError.message);
+            return new Response("Could not update payment", { status: 500 });
+          }
+
+          if (row.user_id) {
+            const { data: updatedProfile, error: profileUpdateError } = await supabaseAdmin
               .from("profiles")
               .update({ membership_tier: row.tier } as never)
-              .eq("id", row.user_id);
-            await supabaseAdmin.from("notifications").insert({
-              recipient_id: row.user_id,
-              type: "tier_upgrade" as never,
-              title: "Membership payment received",
-              message: "Thank you, your NIEC membership payment was confirmed and your membership tier has been updated.",
-              link: "/dashboard",
-            } as never);
+              .eq("id", row.user_id)
+              .select("id")
+              .maybeSingle();
+            if (profileUpdateError || !updatedProfile) {
+              console.error("[paystack:webhook] membership tier update failed", reference, profileUpdateError?.message ?? "Profile not found");
+              return new Response("Could not update membership tier", { status: 500 });
+            }
+            if (updated && updated.length > 0) {
+              const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
+                recipient_id: row.user_id,
+                type: "tier_upgrade" as never,
+                title: "Membership payment received",
+                message: "Thank you, your NIEC membership payment was confirmed and your membership tier has been updated.",
+                link: "/dashboard",
+              } as never);
+              if (notificationError) {
+                console.error("[paystack:webhook] notification insert failed", notificationError.message);
+              }
+            }
           }
         } else if (evt.event === "charge.failed" && row.status === "pending") {
           await supabaseAdmin

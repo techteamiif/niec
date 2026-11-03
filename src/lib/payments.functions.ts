@@ -52,6 +52,7 @@ export const initMembershipPayment = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error("Sign in to your NIEC account before making a membership payment.");
     const price = TIER_PRICES[data.tier]!;
     const requested = Math.round(data.amountKobo ?? price.minKobo);
     const amountKobo = Math.min(Math.max(requested, price.minKobo), price.maxKobo);

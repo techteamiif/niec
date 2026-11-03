@@ -13,7 +13,7 @@ import { formatEventSchedule } from "@/lib/event-schedule";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
   ArrowRight, Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
-  CheckCircle2, XCircle, UserPlus, History, Users as UsersIcon, Tag as TagIcon,
+  History, Users as UsersIcon, Tag as TagIcon,
   Network, MessageSquare, Calendar, BookOpen, Briefcase, Award, Activity, Vote, Lightbulb, HeartHandshake, Plus, Pencil, Star, FileText, CreditCard,
   Bold, Heading2, Italic, List, ListOrdered, Underline,
 } from "lucide-react";
@@ -43,7 +43,7 @@ type Role = { user_id: string; role: "member" | "admin" | "super_admin" };
 
 function AdminCRM() {
   const { isStaff, isSuperAdmin, user } = useAuth();
-  const [tab, setTab] = useState<"crm" | "applications" | "pipeline" | "cops" | "content" | "programs" | "recognition" | "audit" | "analytics">("crm");
+  const [tab, setTab] = useState<"crm" | "applications" | "cops" | "content" | "programs" | "recognition" | "audit" | "analytics">("crm");
   const [members, setMembers] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [search, setSearch] = useState("");
@@ -100,11 +100,11 @@ function AdminCRM() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl">NIEC CRM &amp; Admin Console</h1>
-            <p className="text-xs text-muted-foreground">Manage members, pipeline, role assignments and platform activity.</p>
+            <p className="text-xs text-muted-foreground">Manage members, applications, role assignments and platform activity.</p>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <Stat label="Total" value={counts.total} />
-            <Stat label="Pending" value={counts.pending} tone="bg-blue-100 text-blue-800" />
+            <Stat label="Pending setup" value={counts.pending} tone="bg-blue-100 text-blue-800" />
             <Stat label="Active" value={counts.active} tone="bg-success/20 text-primary" />
             <Stat label="Suspended" value={counts.suspended} tone="bg-destructive/15 text-destructive" />
           </div>
@@ -113,7 +113,6 @@ function AdminCRM() {
           {([
             { k: "crm", label: "CRM", icon: UsersIcon },
             { k: "applications", label: "Applications", icon: FileText },
-            { k: "pipeline", label: `Pipeline (${counts.pending})`, icon: UserPlus },
             { k: "cops", label: "CoP Health", icon: Network },
             { k: "content", label: "Content", icon: MessageSquare },
             { k: "programs", label: "Programs", icon: Calendar },
@@ -219,7 +218,6 @@ function AdminCRM() {
         )}
 
         {tab === "applications" && <ApplicationsTab members={members} />}
-        {tab === "pipeline" && <PipelineBoard members={members} actor={user!.id} onChange={load} />}
         {tab === "cops" && <CopHealthTab members={members} />}
         {tab === "content" && <ContentTab actor={user!.id} />}
         {tab === "programs" && <ProgramsTab />}
@@ -271,78 +269,6 @@ function FilterPill({ name, active, onClick, label }: { name: string; active: bo
       />
       <span>{label}</span>
     </label>
-  );
-}
-
-/* ---------- Pipeline (kanban-lite) ---------- */
-
-function PipelineBoard({ members, actor, onChange }: { members: Profile[]; actor: string; onChange: () => void }) {
-  const pending = members.filter((m) => m.membership_status === "pending");
-
-  const approve = async (p: Profile) => {
-    const tier = (p.application_data?.requested_tier as string)
-      || (p.application_data?.proposed_tier as string)
-      || "contributor";
-    const { error } = await supabase.from("profiles").update({
-      membership_status: "active", approved_at: new Date().toISOString(), approved_by: actor,
-      membership_tier: tier as any, crm_stage: "onboarding",
-    }).eq("id", p.id);
-    if (error) return toast.error(error.message);
-    await supabase.from("notifications").insert([
-      {
-        recipient_id: p.id, type: "tier_upgrade",
-        title: "Welcome to NIEC", message: `Your membership has been approved at the ${TIER_LABELS[tier] ?? tier} tier.`,
-        link: "/dashboard",
-      },
-      {
-        recipient_id: p.id, type: "welcome",
-        title: "Complete your profile", message: "Add your bio, sectors and SDG focus so we can match you with peers and opportunities.",
-        link: "/profile",
-      },
-    ]);
-    await logAudit({ actorId: actor, action: "member.approve", targetType: "profile", targetId: p.id, metadata: { tier } });
-    toast.success("Member approved"); onChange();
-  };
-  const reject = async (p: Profile) => {
-    const { error } = await supabase.from("profiles").update({ membership_status: "suspended", crm_stage: "churned" }).eq("id", p.id);
-    if (error) return toast.error(error.message);
-    await logAudit({ actorId: actor, action: "member.reject", targetType: "profile", targetId: p.id });
-    toast.success("Application rejected"); onChange();
-  };
-
-  return (
-    <div className="flex-1 overflow-auto p-6">
-      <h2 className="mb-4 font-display text-xl">Onboarding pipeline</h2>
-      {pending.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">No pending applications.</div>
-      ) : (
-        <div className="grid gap-3">
-          {pending.map((p) => {
-            const reqTier = (p.application_data?.requested_tier as string) || (p.application_data?.proposed_tier as string);
-            return (
-            <div key={p.id} className="flex items-center gap-4 rounded-xl border bg-card p-4">
-              <UserAvatar name={p.full_name || p.email} src={p.avatar_url} size={40} />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{p.full_name || "(no name)"}</div>
-                <div className="text-xs text-muted-foreground">
-                  {p.email} · {p.organisation_name || "—"} · applied {formatDistanceToNow(new Date(p.joined_at), { addSuffix: true })}
-                </div>
-                {reqTier && (
-                  <div className="mt-1 text-[11px] text-muted-foreground">Requested tier: <b>{TIER_LABELS[reqTier] ?? reqTier}</b></div>
-                )}
-              </div>
-              <button onClick={() => approve(p)} className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-                <CheckCircle2 className="h-3 w-3" /> Approve
-              </button>
-              <button onClick={() => reject(p)} className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                <XCircle className="h-3 w-3" /> Reject
-              </button>
-            </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -483,6 +409,10 @@ function MemberDrawer({
   const saveStage = async (val: string) => { setStage(val); await updateProfile({ crm_stage: val }, "member.stage_change", { from: member.crm_stage, to: val }); };
   const saveTier = async (val: string) => { setTier(val); await updateProfile({ membership_tier: val as any }, "member.tier_change", { from: member.membership_tier, to: val }); };
   const saveStatus = async (val: string) => {
+    if (member.membership_status === "pending" && val === "active") {
+      toast.error("Membership activates automatically after application submission.");
+      return;
+    }
     setStatus(val);
     await updateProfile({ membership_status: val as any },
       val === "suspended" ? "member.suspend" : "member.reactivate",
@@ -562,7 +492,7 @@ function MemberDrawer({
           <Pick label="Tier" value={tier} onChange={saveTier}
             options={Object.entries(TIER_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
           <Pick label="Status" value={status} onChange={saveStatus}
-            options={["pending","active","lapsed","suspended"].map((s) => ({ value: s, label: s }))} />
+            options={(status === "pending" ? ["pending", "suspended"] : ["active", "lapsed", "suspended"]).map((s) => ({ value: s, label: s }))} />
         </div>
 
         <Section title="Tags" icon={TagIcon}>
@@ -1868,13 +1798,6 @@ function BroadcastButton({ recipientIds, label }: { recipientIds: string[]; labe
 type AppRow = any;
 type PayRow = any;
 
-const APP_STATUSES = [
-  { key: "submitted", label: "Submitted", color: "bg-blue-100 text-blue-800" },
-  { key: "reviewing", label: "In review", color: "bg-purple-100 text-purple-800" },
-  { key: "approved", label: "Approved", color: "bg-success/20 text-primary" },
-  { key: "rejected", label: "Rejected", color: "bg-destructive/15 text-destructive" },
-] as const;
-
 function money(kobo: number) {
   return "₦" + Math.round((kobo ?? 0) / 100).toLocaleString("en-NG");
 }
@@ -1883,7 +1806,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [pays, setPays] = useState<PayRow[]>([]);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
   const [open, setOpen] = useState<AppRow | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -1917,12 +1839,11 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return apps.filter((a) => {
-      if (status !== "all" && a.status !== status) return false;
       if (!needle) return true;
       return [a.full_name, a.email, a.organisation_name, a.tier_label]
         .some((v) => String(v ?? "").toLowerCase().includes(needle));
     });
-  }, [apps, q, status]);
+  }, [apps, q]);
 
   const totals = useMemo(() => {
     const paid = pays.filter((p) => p.status === "success");
@@ -1934,16 +1855,11 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
     };
   }, [apps, pays, payByEmail]);
 
-  const setAppStatus = async (id: string, next: string) => {
-    const { error } = await supabase.from("membership_applications").update({ status: next } as never).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Application updated");
-    setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status: next } : a)));
-    setOpen((o: AppRow | null) => (o && o.id === id ? { ...o, status: next } : o));
-  };
-
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+      <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+        Applications are retained for records. Membership activates automatically on submission, and paid tiers are granted after payment verification.
+      </p>
       <div className="mb-5 grid gap-3 sm:grid-cols-4">
         <Stat label="Applications" value={totals.apps} />
         <Stat label="Awaiting payment" value={totals.pendingPay} tone="bg-gold/25 text-gold-foreground" />
@@ -1957,11 +1873,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, organisation…"
             className="h-9 w-72 rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary" />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-          <option value="all">All statuses</option>
-          {APP_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">
@@ -1974,19 +1885,17 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
               <th className="px-4 py-3">Fee</th>
               <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3">Account tier</th>
-              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Submitted</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>}
+            {loading && <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No applications yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No applications yet.</td></tr>
             )}
             {rows.map((a) => {
               const pay = payByEmail.get(String(a.email).toLowerCase());
               const prof = profileByEmail.get(String(a.email).toLowerCase());
-              const st = APP_STATUSES.find((s) => s.key === a.status) ?? APP_STATUSES[0];
               return (
                 <tr key={a.id} onClick={() => setOpen(a)} className="cursor-pointer border-t hover:bg-muted/40">
                   <td className="px-4 py-3">
@@ -2011,9 +1920,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3">{prof ? <TierBadge tier={prof.membership_tier} /> : <span className="text-xs text-muted-foreground">No account</span>}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-0.5 text-xs ${st.color}`}>{st.label}</span>
-                  </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {a.created_at ? format(new Date(a.created_at), "d MMM yyyy") : "—"}
                   </td>
@@ -2032,14 +1938,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
                 <DialogTitle>{open.organisation_name} — {open.tier_label || TIER_LABELS[open.requested_tier]}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 text-sm">
-                <div className="flex flex-wrap gap-2">
-                  {APP_STATUSES.map((s) => (
-                    <button key={s.key} onClick={() => setAppStatus(open.id, s.key)}
-                      className={`rounded-md px-3 py-1.5 text-xs ${open.status === s.key ? s.color : "border hover:bg-muted"}`}>
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
                 <Detail label="Contact" value={`${open.full_name} · ${open.role_title || "—"}`} />
                 <Detail label="Email" value={open.email} />
                 <Detail label="Phone" value={open.phone || "—"} />

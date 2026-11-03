@@ -156,7 +156,7 @@ export function AppShell() {
             <div className="mt-0.5">
               <TierBadge
                 tier={profile.membership_tier}
-                className={profile.membership_tier === "growth_partner" ? "text-white" : undefined}
+                className={["growth_partner", "anchor"].includes(profile.membership_tier ?? "") ? "text-white" : undefined}
               />
             </div>
           </div>
