@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { tierMeets, TIER_LABELS, TIER_RANK } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
@@ -43,6 +44,7 @@ function EventsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<EventEditData | null>(null);
   const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [lockedEventTier, setLockedEventTier] = useState<Database["public"]["Enums"]["membership_tier"] | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
   const [search, setSearch] = useState("");
@@ -249,6 +251,7 @@ function EventsPage() {
           </div>
         ) : filtered.map((ev) => {
           const canManageEvent = isStaff || (!!user && ev.created_by === user.id);
+          const canAccessEvent = isStaff || tierMeets(profile?.membership_tier, ev.min_tier_required);
           return (
             <div key={ev.id} className="overflow-hidden rounded-xl border bg-card">
               <div className="relative">
@@ -339,13 +342,23 @@ function EventsPage() {
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     Min tier: {TIER_LABELS[ev.min_tier_required]}
                   </div>
-                  <Link
-                    to="/event/$eventId"
-                    params={{ eventId: ev.id }}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                  >
-                    See details <ArrowRight className="h-3.5 w-3.5" />
-                  </Link>
+                  {canAccessEvent ? (
+                    <Link
+                      to="/event/$eventId"
+                      params={{ eventId: ev.id }}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      See details <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setLockedEventTier(ev.min_tier_required)}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      See details <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -362,6 +375,15 @@ function EventsPage() {
           userId={user.id}
         />
       )}
+      <TierAccessDialog
+        open={lockedEventTier !== null}
+        onOpenChange={(open) => {
+          if (!open) setLockedEventTier(null);
+        }}
+        itemType="event"
+        requiredTier={lockedEventTier ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
       <AlertDialog open={!!eventToDelete} onOpenChange={(open) => { if (!open && !deleting) setEventToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -511,6 +533,12 @@ function CreateEvent({
 }) {
   const { profile, isStaff } = useAuth();
   const [form, setForm] = useState<EventFormState>(() => eventFormDefaults(event));
+  const availableMembershipTiers = Object.entries(TIER_LABELS).filter(
+    ([tier]) =>
+      event ||
+      isStaff ||
+      (TIER_RANK[tier] ?? 0) <= (TIER_RANK[profile?.membership_tier ?? "observer"] ?? 0),
+  );
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -939,7 +967,7 @@ function CreateEvent({
               }
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
-              {Object.entries(TIER_LABELS).map(([k, v]) => (
+              {availableMembershipTiers.map(([k, v]) => (
                 <option key={k} value={k}>
                   {v}
                 </option>

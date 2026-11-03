@@ -9,6 +9,7 @@ import { tierMeets, TIER_LABELS, COPS } from "@/lib/niec";
 import { richTextToPlainText } from "@/lib/rich-text";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 
@@ -30,6 +31,7 @@ function KnowledgeIndex() {
   const [type, setType] = useState("all");
   const [cop, setCop] = useState("all");
   const [search, setSearch] = useState("");
+  const [lockedTier, setLockedTier] = useState<KnowledgeResource["min_tier_required"] | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -87,6 +89,12 @@ function KnowledgeIndex() {
               key={r.id}
               to="/knowledge/$resourceId"
               params={{ resourceId: r.id }}
+              onClick={(event) => {
+                if (!unlocked) {
+                  event.preventDefault();
+                  setLockedTier(r.min_tier_required);
+                }
+              }}
               className="group flex items-stretch gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md"
             >
               <EventImage
@@ -106,7 +114,7 @@ function KnowledgeIndex() {
                 />
                 {!unlocked && (
                   <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                    Preview locked — upgrade to <strong>{TIER_LABELS[r.min_tier_required]}</strong> to download.
+                    Download access requires <strong>{TIER_LABELS[r.min_tier_required]}</strong> tier or above.
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-4">
@@ -121,6 +129,15 @@ function KnowledgeIndex() {
         })}
         {filtered.length === 0 && <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">No resources match — try clearing filters or search terms.</div>}
       </div>
+      <TierAccessDialog
+        open={lockedTier !== null}
+        onOpenChange={(open) => {
+          if (!open) setLockedTier(null);
+        }}
+        itemType="resource"
+        requiredTier={lockedTier ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }

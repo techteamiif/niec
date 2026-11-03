@@ -1361,7 +1361,7 @@ function CreatePublicationDialog({
               </select>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="publication-tier">Minimum membership tier</Label>
+              <Label htmlFor="publication-tier">Membership tier</Label>
               <select
                 id="publication-tier"
                 value={minTier}
@@ -1374,6 +1374,9 @@ function CreatePublicationDialog({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-muted-foreground">
+                Members at this tier or above can access the publication.
+              </p>
             </div>
             <div className="space-y-1 sm:col-span-2">
               <Label htmlFor="publication-pdf">Publication PDF (optional, max 50 MB)</Label>

@@ -10,6 +10,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 type EventRecord = Pick<
   Database["public"]["Tables"]["events"]["Row"],
@@ -56,6 +57,7 @@ function EventDetailPage() {
   const [updatingAttendance, setUpdatingAttendance] = useState(false);
   const [tab, setTab] = useState<"details" | "attendees">("details");
   const [loading, setLoading] = useState(true);
+  const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const canViewAttendees = !!event && (isStaff || event.created_by === user?.id);
 
   const load = useCallback(async () => {
@@ -138,6 +140,10 @@ function EventDetailPage() {
   }, [canViewAttendees, tab]);
 
   const register = () => {
+    if (event && !allowed) {
+      setTierDialogOpen(true);
+      return;
+    }
     if (event && !event.registration_link?.trim()) {
       toast.error("This event does not have a registration link yet.");
     }
@@ -146,7 +152,7 @@ function EventDetailPage() {
   const setAttendance = async (response: Exclude<AttendanceResponse, null>) => {
     if (!user || !event || updatingAttendance) return;
     if (!allowed) {
-      toast.error(`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`);
+      setTierDialogOpen(true);
       return;
     }
     const previousResponse = attendanceResponse;
@@ -199,7 +205,9 @@ function EventDetailPage() {
   };
 
   const ended = event ? new Date(event.end_date ?? event.start_date).getTime() < Date.now() : false;
-  const allowed = event ? tierMeets(profile?.membership_tier, event.min_tier_required) : false;
+  const allowed = event
+    ? isStaff || tierMeets(profile?.membership_tier, event.min_tier_required)
+    : false;
   const isAttending = attendanceResponse === "yes";
 
   return (
@@ -284,7 +292,7 @@ function EventDetailPage() {
                     <>
                     <button
                       onClick={() => setAttendance("yes")}
-                      disabled={!allowed || updatingAttendance}
+                      disabled={updatingAttendance}
                       aria-pressed={isAttending}
                       title={
                         allowed
@@ -301,7 +309,7 @@ function EventDetailPage() {
                     </button>
                     <button
                       onClick={() => setAttendance("no")}
-                      disabled={!allowed || updatingAttendance}
+                      disabled={updatingAttendance}
                       aria-pressed={attendanceResponse === "no"}
                       title={
                         allowed
@@ -346,9 +354,9 @@ function EventDetailPage() {
                   )
                 ) : (
                   <button
-                    disabled
+                    onClick={() => setTierDialogOpen(true)}
                     title={`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`}
-                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground opacity-50"
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                   >
                     Tier locked
                   </button>
@@ -492,6 +500,13 @@ function EventDetailPage() {
           ) : null}
         </>
       )}
+      <TierAccessDialog
+        open={tierDialogOpen}
+        onOpenChange={setTierDialogOpen}
+        itemType="event"
+        requiredTier={event?.min_tier_required ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }

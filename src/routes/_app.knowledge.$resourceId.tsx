@@ -10,6 +10,7 @@ import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { UserAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
@@ -27,6 +28,7 @@ function KnowledgeResourcePage() {
   const [resource, setResource] = useState<KnowledgeResource | null>(null);
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tierDialogOpen, setTierDialogOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -67,7 +69,7 @@ function KnowledgeResourcePage() {
   const download = async (url: string | null) => {
     if (!resource) return;
     if (!tierMeets(profile?.membership_tier, resource.min_tier_required) && !isStaff) {
-      toast.error(`Requires ${TIER_LABELS[resource.min_tier_required]} tier`);
+      setTierDialogOpen(true);
       return;
     }
     if (!url) {
@@ -261,6 +263,13 @@ function KnowledgeResourcePage() {
           </aside>
         </div>
       )}
+      <TierAccessDialog
+        open={tierDialogOpen}
+        onOpenChange={setTierDialogOpen}
+        itemType="resource"
+        requiredTier={resource?.min_tier_required ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }
