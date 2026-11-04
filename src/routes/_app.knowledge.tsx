@@ -101,6 +101,7 @@ function KnowledgeIndex() {
                 src={r.cover_image_url}
                 title={r.title}
                 alt={`${r.title} cover`}
+                placeholderIcon="file"
                 className="h-24 w-20 shrink-0 self-start overflow-hidden rounded-md sm:h-28 sm:w-24"
               />
               <div className="flex min-w-0 flex-1 flex-col">
