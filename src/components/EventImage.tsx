@@ -23,7 +23,7 @@ export function EventImage({
   if (!hasImage && !showPlaceholder) return null;
 
   return (
-    <div className={`bg-[#D4A017] ${className}`} aria-hidden={!hasImage}>
+    <div className={`bg-[#E5ECDC] ${className}`} aria-hidden={!hasImage}>
       {hasImage && (
         <img
           src={src}

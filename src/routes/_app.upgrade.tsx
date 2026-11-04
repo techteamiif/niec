@@ -1,12 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { Check, Lock, Sparkles } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Check, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { TIER_LABELS, TIER_RANK } from "@/lib/niec";
-import { FEATURES, TIER_ORDER, nextTier, type Tier } from "@/lib/entitlements";
+import { FEATURES, TIER_ORDER, type Tier } from "@/lib/entitlements";
 import { TierBadge } from "@/components/TierBadge";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/upgrade")({
   component: UpgradePage,
@@ -25,43 +22,15 @@ function tierIncludesFeature(t: Tier, minTier: Tier) {
 }
 
 function UpgradePage() {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const current = (profile?.membership_tier ?? "observer") as Tier;
-  const [selected, setSelected] = useState<Tier>(nextTier(current) ?? current);
-  const [note, setNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(null);
-  const upgradeRequestRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase.rpc("get_tier_usage", { _user_id: user.id }).then(({ data }) => {
-      const row = Array.isArray(data) ? data[0] : data;
-      if (row) setUsage(row as any);
-    });
-  }, [user]);
-
-  const submit = async () => {
-    if (!selected || selected === current) return toast.error("Pick a higher tier than your current one.");
-    setSubmitting(true);
-    const { error } = await supabase.rpc("request_tier_upgrade", { _requested: selected, _note: note || undefined });
-    setSubmitting(false);
-    if (error) return toast.error(error.message);
-    toast.success("Upgrade request sent to IIF admins.");
-    setNote("");
-  };
-
-  const chooseUpgrade = (tier: Tier) => {
-    setSelected(tier);
-    upgradeRequestRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   return (
     <div className="p-6 lg:p-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl">Your NIEC membership</h1>
-          <p className="text-sm text-muted-foreground">Compare tiers and request an upgrade — an IIF admin will follow up.</p>
+          <p className="text-sm text-muted-foreground">Compare membership tiers and benefits.</p>
         </div>
         {/* <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Current tier:</span>
@@ -84,21 +53,14 @@ function UpgradePage() {
             <article
               key={t}
               className={`flex h-full min-h-50 flex-col rounded-xl border bg-card p-5 transition ${
-                isCurrent
-                  ? "border-primary ring-1 ring-primary"
-                  : "border-border"
+                isCurrent ? "border-primary ring-1 ring-primary" : "border-border"
               } ${rankDiff < 0 ? "opacity-70" : ""}`}
             >
-              <button
-                type="button"
-                onClick={() => rankDiff > 0 && setSelected(t)}
-                disabled={rankDiff <= 0}
-                className={`flex-1 text-left ${rankDiff > 0 ? "rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" : "cursor-default"}`}
-              >
+              <div className="flex-1 text-left">
                 <TierBadge tier={t} />
                 <div className="mt-3 font-display text-lg">{TIER_LABELS[t]}</div>
                 <p className="mt-1 min-h-12 text-xs text-muted-foreground">{TIER_BLURB[t]}</p>
-              </button>
+              </div>
               {isCurrent ? (
                 <button
                   type="button"
@@ -124,10 +86,10 @@ function UpgradePage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => chooseUpgrade(t)}
-                    className="mt-auto w-full rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
+                    disabled
+                    className="mt-auto w-full cursor-not-allowed rounded-full border px-3 py-2 text-xs font-semibold text-muted-foreground"
                   >
-                    Upgrade
+                    Contact IIF to discuss
                   </button>
                 )
               ) : (
@@ -148,7 +110,10 @@ function UpgradePage() {
               <tr className="border-b bg-muted/20 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <th className="px-5 py-3 font-medium">Feature</th>
                 {TIER_ORDER.map((t) => (
-                  <th key={t} className={`px-3 py-3 text-center font-medium ${t === current ? "bg-primary/5" : ""}`}>
+                  <th
+                    key={t}
+                    className={`px-3 py-3 text-center font-medium ${t === current ? "bg-primary/5" : ""}`}
+                  >
                     {TIER_LABELS[t]}
                   </th>
                 ))}
@@ -159,17 +124,24 @@ function UpgradePage() {
                 <tr key={f.key} className="border-b last:border-0">
                   <td className="px-5 py-3">
                     <div className="font-medium">{f.label}</div>
-                    {f.description && <div className="text-xs text-muted-foreground">{f.description}</div>}
+                    {f.description && (
+                      <div className="text-xs text-muted-foreground">{f.description}</div>
+                    )}
                   </td>
                   {TIER_ORDER.map((t) => {
                     const has = tierIncludesFeature(t, f.minTier);
                     const cap = f.caps?.[t];
                     return (
-                      <td key={t} className={`px-3 py-3 text-center ${t === current ? "bg-primary/5" : ""}`}>
+                      <td
+                        key={t}
+                        className={`px-3 py-3 text-center ${t === current ? "bg-primary/5" : ""}`}
+                      >
                         {has ? (
                           cap != null ? (
                             <span className="text-xs font-semibold text-primary">
-                              {cap >= 999 ? "Unlimited" : `${cap}${f.capPeriod === "monthly" ? "/mo" : ""}`}
+                              {cap >= 999
+                                ? "Unlimited"
+                                : `${cap}${f.capPeriod === "monthly" ? "/mo" : ""}`}
                             </span>
                           ) : (
                             <Check className="mx-auto h-4 w-4 text-primary" />
@@ -187,31 +159,7 @@ function UpgradePage() {
         </div>
       </div>
 
-      <div ref={upgradeRequestRef} className="mt-8 scroll-mt-6 rounded-xl border bg-card p-6">
-        <div className="mb-3 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <h2 className="font-display text-lg">Request an upgrade</h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Tell us a bit about why you'd like to upgrade to <strong>{TIER_LABELS[selected]}</strong>. An IIF admin will reach out to discuss next steps.
-        </p>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={4}
-          placeholder="Optional — share context (organisation focus, deal-flow needs, mentorship interest, etc.)"
-          className="mt-3 w-full rounded-md border bg-background p-3 text-sm"
-        />
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-          <button
-            onClick={submit}
-            disabled={submitting || selected === current}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {submitting ? "Sending…" : `Request ${TIER_LABELS[selected]}`}
-          </button>
-        </div>
-      </div>
+      {/* Upgrade request form disabled for now. */}
     </div>
   );
 }

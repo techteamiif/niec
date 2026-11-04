@@ -35,13 +35,12 @@ export function TierAccessDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <div className="mb-1 grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
+          <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
             <Lock aria-hidden="true" className="h-5 w-5" />
           </div>
           <DialogTitle>Upgrade to access {itemType === "event" ? "this event" : "this resource"}</DialogTitle>
           <DialogDescription>
-            {itemLabel} is available to {requiredLabel} members and above. Your current membership is{" "}
-            {currentLabel}, so you can’t access it yet. Upgrade your membership to continue.
+            {itemLabel} is available to {requiredLabel} members. Upgrade your membership to continue.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -49,7 +48,7 @@ export function TierAccessDialog({
             Not now
           </Button>
           <Button asChild>
-            <Link to="/upgrade">View upgrade options</Link>
+            <Link to="/upgrade">Upgrade</Link>
           </Button>
         </DialogFooter>
       </DialogContent>
