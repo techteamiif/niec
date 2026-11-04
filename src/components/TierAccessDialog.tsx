@@ -23,13 +23,18 @@ export function TierAccessDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  itemType: "event" | "resource";
+  itemType: "event" | "resource" | "post";
   requiredTier: MembershipTier;
   currentTier: MembershipTier | null | undefined;
 }) {
   const requiredLabel = TIER_LABELS[requiredTier] ?? requiredTier;
   const currentLabel = TIER_LABELS[currentTier ?? "observer"] ?? "Observer";
-  const itemLabel = itemType === "event" ? "This event" : "This resource";
+  const isPost = itemType === "post";
+  const itemLabel = isPost
+    ? "Creating community posts"
+    : itemType === "event"
+      ? "This event"
+      : "This resource";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -38,9 +43,15 @@ export function TierAccessDialog({
           <div className="mb-2 grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
             <Lock aria-hidden="true" className="h-5 w-5" />
           </div>
-          <DialogTitle>Upgrade to access {itemType === "event" ? "this event" : "this resource"}</DialogTitle>
+          <DialogTitle>
+            {isPost
+              ? "Upgrade to create a post"
+              : `Upgrade to access ${itemType === "event" ? "this event" : "this resource"}`}
+          </DialogTitle>
           <DialogDescription>
-            {itemLabel} is available to {requiredLabel} members. Upgrade your membership to continue.
+            {isPost
+              ? `${itemLabel} is available to ${requiredLabel} members and above. Upgrade your membership to continue.`
+              : `${itemLabel} is available to ${requiredLabel} members. Upgrade your membership to continue.`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

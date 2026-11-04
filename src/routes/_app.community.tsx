@@ -10,6 +10,7 @@ import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { toast } from "sonner";
 import { Pin, Plus, Heart, MessageCircle, Lock, Image as ImageIcon, X } from "lucide-react";
 import { format } from "date-fns";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 const SORT_OPTIONS = ["latest", "liked"] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];
@@ -33,6 +34,7 @@ function CommunityPage() {
   const [copFilter, setCopFilter] = useState<string>("all");
   const [sort, setSort] = useState<SortOption[]>([]);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [createPostDialogOpen, setCreatePostDialogOpen] = useState(false);
   const [openComments, setOpenComments] = useState<Set<string>>(new Set());
 
   const toggleComments = (id: string) =>
@@ -122,6 +124,15 @@ function CommunityPage() {
     else load();
   };
 
+  const openPostComposer = () => {
+    if (!can(profile?.membership_tier, "community.post") && !isStaff) {
+      setCreatePostDialogOpen(true);
+      return;
+    }
+    setComposerOpen(true);
+  };
+  const canCreatePost = can(profile?.membership_tier, "community.post") || isStaff;
+
   return (
     <div className="p-6 lg:p-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
@@ -129,28 +140,18 @@ function CommunityPage() {
           <h1 className="font-display text-3xl">Community</h1>
           <p className="text-sm text-muted-foreground">The NIEC member feed.</p>
         </div>
-        {can(profile?.membership_tier, "community.post") || isStaff ? (
-          <button
-            onClick={() => setComposerOpen(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> Create post
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => requireEnterpriseForWrite(profile?.membership_tier, isStaff)}
-              title="Upgrade to Enterprise to post"
-              className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
-            >
-              <Lock className="h-4 w-4" /> Create post
-            </button>
-            <Link to="/upgrade" className="text-sm font-medium text-primary hover:underline">
-              Upgrade
-            </Link>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={openPostComposer}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold ${canCreatePost ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border text-muted-foreground hover:bg-muted"}`}
+        >
+          {canCreatePost ? (
+            <Plus className="h-4 w-4" />
+          ) : (
+            <Lock className="h-4 w-4" />
+          )}
+          Create post
+        </button>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -355,6 +356,13 @@ function CommunityPage() {
           }}
         />
       )}
+      <TierAccessDialog
+        open={createPostDialogOpen}
+        onOpenChange={setCreatePostDialogOpen}
+        itemType="post"
+        requiredTier="contributor"
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }
