@@ -461,7 +461,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <p className="mt-4 text-black/75">
             {mode === "onboarding"
               ? "Kindly complete your onboarding"
-              : "Apply for membership in Nigeria's premier impact economy network — connecting capital, conviction, and community for Africa's new economy."}
+              : "Apply for membership in Nigeria's premier impact economy network — connecting capital and community for Africa's new economy."}
           </p>
           {/* <div className="mt-5 flex flex-wrap justify-center gap-2">
             {["Deal Flow","Policy Influence","GIIS · Summit · ACII","SDG Reporting","Market Intelligence"].map(p => (
