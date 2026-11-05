@@ -4,7 +4,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import type { Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -215,7 +214,6 @@ function MessagesPage() {
                     >
                       {p?.full_name ?? "Member"}
                     </div>
-                    {p && <AccountTypeBadge applicationData={p.application_data} />}
                     {unread > 0 && (
                       <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
                         {unread > 99 ? "99+" : unread}
@@ -244,9 +242,6 @@ function MessagesPage() {
                 />
                 <div>
                   <div className="text-sm font-medium">{activeProfile?.full_name ?? "Member"}</div>
-                  {activeProfile && (
-                    <AccountTypeBadge applicationData={activeProfile.application_data} />
-                  )}
                   <div className="text-xs text-muted-foreground">
                     {activeProfile?.organisation_name}
                   </div>

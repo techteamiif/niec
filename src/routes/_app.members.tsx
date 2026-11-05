@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/Avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
 import { MapPin, Search, MessageCircle } from "lucide-react";
@@ -104,7 +103,6 @@ function MembersPage() {
             >
               <UserAvatar name={m.full_name} src={m.avatar_url} size={72} />
               <div className="mt-3 font-medium">{m.full_name || "—"}</div>
-              <AccountTypeBadge applicationData={m.application_data} />
               {m.role_title && (
                 <div className="mt-1 text-sm text-muted-foreground">{m.role_title}</div>
               )}

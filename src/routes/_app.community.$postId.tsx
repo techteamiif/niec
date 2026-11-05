@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { ArrowLeft, Heart, Pin } from "lucide-react";
 import { CommentsThread } from "@/components/CommentsThread";
 import { UserAvatar } from "@/components/Avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -150,7 +149,6 @@ function CommunityPostPage() {
                 >
                   {post.profiles?.full_name ?? "Member"}
                 </Link>
-                <AccountTypeBadge applicationData={post.profiles?.application_data} />
                 <div className="text-xs text-muted-foreground">
                   <div className="truncate">
                     {post.profiles?.organisation_name || "—"} ·{" "}

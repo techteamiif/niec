@@ -5,7 +5,6 @@ import { ArrowLeft, Calendar, MapPin, Video } from "lucide-react";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EventImage } from "@/components/EventImage";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -497,7 +496,6 @@ function EventDetailPage() {
                         <p className="truncate text-sm font-medium">
                           {attendee.profiles?.full_name ?? "Member"}
                         </p>
-                        <AccountTypeBadge applicationData={attendee.profiles?.application_data} />
                         <p className="text-xs text-muted-foreground">
                           Attending {format(new Date(attendee.registered_at), "PPP")}
                         </p>

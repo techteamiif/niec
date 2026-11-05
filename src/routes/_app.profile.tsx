@@ -2,7 +2,6 @@ import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-route
 import { Building2, Globe, Linkedin, MapPin, Pencil } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { MemberBadges } from "@/components/MemberBadges";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { TierBadge } from "@/components/TierBadge";
 import { useAuth } from "@/lib/auth";
 import { ORG_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
@@ -118,7 +117,6 @@ function ProfilePage() {
             ) : (
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-3xl">{profile.full_name || "Member"}</h1>
-                <AccountTypeBadge applicationData={profile.application_data} />
               </div>
             )}
             {!isOrganisation && profile.role_title && (

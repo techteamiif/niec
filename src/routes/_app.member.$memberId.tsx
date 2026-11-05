@@ -4,7 +4,6 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { ArrowLeft, Building2, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -158,7 +157,6 @@ function MemberDetailPage() {
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="font-display text-3xl">{member.full_name || "Member"}</h1>
-                  <AccountTypeBadge applicationData={member.application_data} />
                 </div>
               )}
               {!isOrganisation && member.role_title && (

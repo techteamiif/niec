@@ -11,7 +11,6 @@ import { UserAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
@@ -241,7 +240,6 @@ function KnowledgeResourcePage() {
             <p className="mt-5 text-lg font-medium">
               {author?.organisation_name || author?.full_name || "NIeC Knowledge Team"}
             </p>
-            {author && <AccountTypeBadge applicationData={author.application_data} />}
             {author?.organisation_name && author.full_name && (
               <p className="mt-1 text-sm text-muted-foreground">{author.full_name}</p>
             )}

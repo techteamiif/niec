@@ -28,7 +28,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -509,7 +508,6 @@ function CopWorkspace() {
                       </Avatar>
                       <div>
                         <div className="text-sm font-medium">{c.profiles?.full_name}</div>
-                        <AccountTypeBadge applicationData={c.profiles?.application_data} />
                         <div className="text-xs text-muted-foreground capitalize inline-flex items-center gap-1">
                           <Crown className="h-3 w-3" /> {c.role.replace("_", " ")}
                         </div>
@@ -749,7 +747,6 @@ function CopWorkspace() {
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {r.profiles?.full_name} · {new Date(r.created_at).toLocaleDateString()}
-                        <AccountTypeBadge applicationData={r.profiles?.application_data} />
                       </div>
                     </div>
                   </div>
@@ -856,7 +853,6 @@ function CopWorkspace() {
                 </Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">{m.profiles?.full_name}</div>
-                  <AccountTypeBadge applicationData={m.profiles?.application_data} />
                   <div className="truncate text-xs text-muted-foreground">
                     {m.profiles?.organisation_name}
                   </div>
@@ -938,7 +934,6 @@ function PostCard({
             >
               {post.profiles?.full_name}
             </Link>
-            <AccountTypeBadge applicationData={post.profiles?.application_data} />
             {canManage && (
               <Button size="sm" variant="ghost" onClick={() => onPin(post.id, post.pinned_in_cop)}>
                 <Pin className={`h-4 w-4 ${post.pinned_in_cop ? "fill-current text-gold" : ""}`} />

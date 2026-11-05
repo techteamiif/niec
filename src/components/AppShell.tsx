@@ -22,7 +22,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -201,7 +200,6 @@ export function AppShell() {
             <div className="truncate text-sm font-medium text-white">
               {profile.full_name || "Member"}
             </div>
-            <AccountTypeBadge applicationData={profile.application_data} />
             <div className="mt-0.5">
               <TierBadge
                 tier={profile.membership_tier}

@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import type { Json } from "@/integrations/supabase/types";
 import {
   Dialog,
@@ -375,7 +374,6 @@ function MentorCard({
         </Avatar>
         <div className="flex-1 min-w-0">
           <div className="font-medium">{offer.profiles?.full_name}</div>
-          <AccountTypeBadge applicationData={offer.profiles?.application_data} />
           <div className="text-xs text-muted-foreground">{offer.profiles?.organisation_name}</div>
         </div>
       </div>

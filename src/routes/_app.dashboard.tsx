@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { POST_TYPE_COLOR, POST_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
 import { capFor, nextTier } from "@/lib/entitlements";
 import { formatEventSchedule } from "@/lib/event-schedule";
@@ -164,7 +163,6 @@ function Dashboard() {
             <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight">
               {profile?.full_name || "Member"}
             </h1>
-            <AccountTypeBadge applicationData={profile?.application_data} />
             <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-[#27F52F]/30 px-2 text-xs font-semibold text-[#003302]">
               <Award aria-hidden="true" className="h-4 w-4" />
               {TIER_LABELS[tier] ?? tier}
@@ -236,7 +234,6 @@ function Dashboard() {
                       >
                         {p.profiles?.full_name}
                       </Link>
-                      <AccountTypeBadge applicationData={p.profiles?.application_data} />
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP")}

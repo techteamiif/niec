@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
-import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { CommentsThread } from "@/components/CommentsThread";
 import { COPS, POST_TYPE_COLOR, POST_TYPE_LABELS } from "@/lib/niec";
 import { can } from "@/lib/entitlements";
@@ -198,7 +197,6 @@ function CommunityPage() {
                     >
                       {p.profiles?.full_name}
                     </Link>
-                    <AccountTypeBadge applicationData={p.profiles?.application_data} />
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP p")}
