@@ -2,28 +2,38 @@ import { Link, Outlet, useRouterState, useNavigate } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, MessageSquare, Users, Calendar, Briefcase,
-  BookOpen, Layers, User, Bell, Settings, LogOut, Menu, X, Search, Mail, GraduationCap, Sparkles,
+  BookOpen, Layers, User, Bell, Settings, LogOut, Menu, X, Search, Mail, GraduationCap, CreditCard,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { TierBadge } from "@/components/TierBadge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NiecLogo } from "@/components/brand/NiecLogo";
 
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: boolean };
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; badge?: boolean; comingSoon?: boolean };
 const NAV: NavItem[] = [
   { to: "/dashboard",  label: "Dashboard",     icon: LayoutDashboard },
   { to: "/community",  label: "Community",     icon: MessageSquare },
   { to: "/members",    label: "Members",       icon: Users },
-  { to: "/messages",   label: "Messages",      icon: Mail },
+  { to: "/messages",   label: "Messages",      icon: Mail, comingSoon: true },
   { to: "/events",     label: "Events",        icon: Calendar },
-  { to: "/deal-room",  label: "Deal Room",     icon: Briefcase },
+  { to: "/deal-room",  label: "Deal Room",     icon: Briefcase, comingSoon: true },
   { to: "/knowledge",  label: "Knowledge Hub", icon: BookOpen },
   { to: "/cops",       label: "CoPs",          icon: Layers },
-  { to: "/mentorship", label: "Mentorship",    icon: GraduationCap },
+  { to: "/mentorship", label: "Mentorship",    icon: GraduationCap, comingSoon: true },
   { to: "/profile",    label: "My Profile",    icon: User },
-  { to: "/upgrade",    label: "Membership",    icon: Sparkles },
+  { to: "/upgrade",    label: "Membership",    icon: CreditCard },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
 ] as const;
 
@@ -33,10 +43,17 @@ export function AppShell() {
   const path = useRouterState({ select: (r) => r.location.pathname });
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
   }, [loading, user, navigate]);
+
+  useEffect(() => {
+    if (!loading && user && profile && !isStaff && profile.crm_stage !== "applicant") {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [loading, user, profile, isStaff, navigate]);
 
   useEffect(() => {
     if (!user) return;
@@ -58,22 +75,51 @@ export function AppShell() {
     return () => { supabase.removeChannel(ch); };
   }, [user]);
 
-  if (loading || !user || !profile) {
+  if (loading || !user || !profile || (!isStaff && profile.crm_stage !== "applicant")) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
   const Sidebar = (
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
+      <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-4">
         <Link to="/dashboard" className="flex items-center">
           <NiecLogo variant="horizontal" theme="dark" size={36} withTagline />
         </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)}><X className="h-5 w-5" /></button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV.map(({ to, label, icon: Icon, badge }) => {
+      <nav className="sidebar-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
+        {NAV.map(({ to, label, icon: Icon, badge, comingSoon }) => {
           const active = path === to || path.startsWith(to + "/");
+          const itemContent = (
+            <>
+              <Icon className="h-4 w-4" />
+              <span className="flex-1">{label}</span>
+              {comingSoon && (
+                <span className="rounded-full bg-sidebar-accent/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sidebar-accent">
+                  Coming soon
+                </span>
+              )}
+              {badge && unread > 0 && (
+                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </>
+          );
+
+          if (comingSoon) {
+            return (
+              <div
+                key={to}
+                aria-disabled="true"
+                className="my-0.5 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60"
+              >
+                {itemContent}
+              </div>
+            );
+          }
+
           return (
             <Link
               key={to} to={to} onClick={() => setOpen(false)}
@@ -84,12 +130,7 @@ export function AppShell() {
                   : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white",
               )}
             >
-              {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-[3px] rounded-r-full bg-sidebar-accent" />}
-              <Icon className="h-4 w-4" />
-              <span className="flex-1">{label}</span>
-              {badge && unread > 0 && (
-                <span className="rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">{unread}</span>
-              )}
+              {itemContent}
             </Link>
           );
         })}
@@ -107,14 +148,24 @@ export function AppShell() {
         )}
       </nav>
 
-      <div className="border-t border-sidebar-border p-3">
+      <div className="shrink-0 border-t border-sidebar-border p-3">
         <div className="flex items-center gap-3 rounded-md px-2 py-2">
           <UserAvatar name={profile.full_name || profile.email} src={profile.avatar_url} size={36} />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-white">{profile.full_name || "Member"}</div>
-            <div className="mt-0.5"><TierBadge tier={profile.membership_tier} /></div>
+            <div className="mt-0.5">
+              <TierBadge
+                tier={profile.membership_tier}
+                className={["growth_partner", "anchor"].includes(profile.membership_tier ?? "") ? "text-white" : undefined}
+              />
+            </div>
           </div>
-          <button onClick={signOut} title="Sign out" className="rounded p-1.5 text-sidebar-muted hover:bg-white/10 hover:text-white">
+          <button
+            type="button"
+            onClick={() => setConfirmLogout(true)}
+            title="Sign out"
+            className="rounded p-1.5 text-sidebar-muted hover:bg-white/10 hover:text-white"
+          >
             <LogOut className="h-4 w-4" />
           </button>
         </div>
@@ -123,8 +174,27 @@ export function AppShell() {
   );
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="hidden lg:block">{Sidebar}</div>
+    <div className="flex min-h-screen bg-background lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+      <AlertDialog open={confirmLogout} onOpenChange={setConfirmLogout}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out of your account?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void signOut()}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <div className="hidden lg:block lg:h-dvh lg:shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
@@ -132,8 +202,8 @@ export function AppShell() {
         </div>
       )}
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/80 px-4 backdrop-blur lg:px-8">
+      <main className="flex min-w-0 flex-1 flex-col lg:h-dvh lg:min-h-0 lg:overflow-y-auto">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b bg-card/80 px-6 backdrop-blur lg:px-10">
           <button className="lg:hidden" onClick={() => setOpen(true)}><Menu className="h-5 w-5" /></button>
           <form
             onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const q = String(fd.get("q") || "").trim(); navigate({ to: "/members", search: q ? { q } : {} }); }}
@@ -147,7 +217,23 @@ export function AppShell() {
             />
           </form>
           <div className="ml-auto flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="hidden md:inline">{profile.organisation_name || "—"}</span>
+            {/* <span className="hidden md:inline">{profile.organisation_name || "—"}</span> */}
+            <Link
+              to="/notifications"
+              aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+              title="Notifications"
+              className={cn(
+                "relative rounded-md p-2 transition hover:bg-muted",
+                path.startsWith("/notifications") ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Bell className="h-5 w-5" />
+              {unread > 0 && (
+                <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-destructive px-1 text-center text-[10px] leading-4 text-destructive-foreground">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
         <div className="flex-1">
@@ -155,9 +241,9 @@ export function AppShell() {
             <div className="p-6 lg:p-10">
               <div className="mx-auto max-w-2xl rounded-2xl border bg-card p-8 text-center shadow-sm">
                 <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20 text-gold-foreground">⏳</div>
-                <h1 className="font-display text-2xl">Your application is under review</h1>
+                <h1 className="font-display text-2xl">Complete your onboarding</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  An IIF admin will review your membership shortly. You'll receive a notification when you're approved.
+                  Finish your onboarding to activate your account and access features available to your membership tier.
                 </p>
                 <button onClick={signOut} className="mt-6 inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm hover:bg-muted">
                   <LogOut className="h-4 w-4" /> Sign out

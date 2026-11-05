@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -27,39 +27,40 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, isStaff } = useAuth();
   const navigate = useNavigate();
   const next = Route.useSearch().next ?? "/dashboard";
+  const navigationStarted = useRef(false);
   const [mode, setMode] = useState<"signin" | "magic">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [resetting, setResetting] = useState(false);
-
-  const sendReset = async () => {
-    if (!email) { toast.error("Enter your email above first."); return; }
-    setResetting(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
-    });
-    setResetting(false);
-    if (error) toast.error(error.message);
-    else toast.success("Password reset email sent", { description: "Check your inbox." });
-  };
 
   useEffect(() => {
-    if (!loading && user) navigate({ href: next });
-  }, [loading, user, navigate, next]);
+    if (loading || !user || !profile || navigationStarted.current) return;
+    navigationStarted.current = true;
+    const destination = !isStaff && profile.crm_stage !== "applicant" ? "/onboarding" : next;
+    navigate({ href: destination });
+  }, [loading, user, profile, isStaff, navigate, next]);
 
   const handle = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ href: next });
+        const [{ data: memberProfile, error: profileError }, { data: roles, error: rolesError }] = await Promise.all([
+          supabase.rpc("get_my_profile").maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", data.user.id),
+        ]);
+        if (profileError) throw profileError;
+        if (rolesError) throw rolesError;
+        navigationStarted.current = true;
+        const staff = (roles ?? []).some(({ role }) => role === "admin" || role === "super_admin");
+        const destination = !staff && memberProfile?.crm_stage !== "applicant" ? "/onboarding" : next;
+        navigate({ href: destination });
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -79,20 +80,20 @@ function LoginPage() {
     <div className="min-h-screen bg-[#F7FBFA]">
       <PublicHeader />
 
-      <section className="bg-primary px-6 py-14 text-center text-white">
+      {/* <section className="bg-primary px-6 py-14 text-center text-white">
         <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-3xl md:text-5xl">
-            {mode === "signin" ? <>Welcome back to <span className="text-gold">NIEC</span></> : <>Magic link <span className="text-gold">sign-in</span></>}
+          <h1 className="font-display text-3xl md:text-5xl text-gold">
+            {mode === "signin" ? <>Welcome back</> : <>Magic link <span className="text-gold">sign-in</span></>}
           </h1>
-          <p className="mt-4 text-white/75">
-            Sign in to your member account to access the community feed, Communities of Practice, events, Deal Room and Knowledge Hub.
-          </p>
         </div>
-      </section>
+      </section> */}
 
       <main className="mx-auto max-w-lg space-y-6 px-6 py-10">
         <section className="rounded-2xl border bg-white p-6 shadow-sm md:p-8">
-          <h2 className="font-display text-xl text-primary">Member sign-in</h2>
+          <h2 className="font-display text-xl text-primary">Welcome back</h2>
+          <p className="mt-2 text-sm text-black/75">
+            Sign in to continue connecting with the NIEC community and access your member benefits.
+          </p>
           <form onSubmit={handle} className="mt-5 space-y-4">
             <div>
               <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email *</label>
@@ -104,9 +105,9 @@ function LoginPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Password *</label>
-                  <button type="button" onClick={sendReset} disabled={resetting} className="text-xs text-primary hover:underline disabled:opacity-60">
-                    {resetting ? "Sending…" : "Forgot password?"}
-                  </button>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
                 </div>
                 <div className="relative mt-1.5">
                   <input
@@ -138,14 +139,14 @@ function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-4 text-center text-sm">
+          {/* <div className="mt-4 text-center text-sm">
             <button onClick={() => setMode(mode === "signin" ? "magic" : "signin")} className="text-muted-foreground hover:text-primary hover:underline">
               {mode === "signin" ? "Use a magic link instead" : "Use password instead"}
             </button>
-          </div>
+          </div> */}
 
           <div className="mt-5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" /> Your account is protected by IIF member security
+            <ShieldCheck className="h-3.5 w-3.5" /> Your account is protected
           </div>
         </section>
 

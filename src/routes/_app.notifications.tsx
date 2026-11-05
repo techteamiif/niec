@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 export const Route = createFileRoute("/_app/notifications")({
   component: NotificationsPage,
@@ -67,7 +67,7 @@ function NotificationsPage() {
                 </div>
                 <div className="mt-1 font-medium">{n.title}</div>
                 <div className="text-sm text-muted-foreground">{n.message}</div>
-                {n.link && <div className="mt-1 text-xs text-primary">Open →</div>}
+                {n.link && <div className="mt-1 inline-flex items-center gap-1 text-xs text-primary">Open <ArrowRight className="h-3 w-3" /></div>}
               </div>
               {!n.is_read && (
                 <span

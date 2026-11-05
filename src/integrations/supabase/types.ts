@@ -101,6 +101,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_url: string | null
           is_pinned: boolean
           likes_count: number
           pinned_in_cop: boolean
@@ -117,6 +118,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_pinned?: boolean
           likes_count?: number
           pinned_in_cop?: boolean
@@ -133,6 +135,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           is_pinned?: boolean
           likes_count?: number
           pinned_in_cop?: boolean
@@ -338,16 +341,19 @@ export type Database = {
       }
       event_attendees: {
         Row: {
+          attending: boolean
           event_id: string
           member_id: string
           registered_at: string
         }
         Insert: {
+          attending?: boolean
           event_id: string
           member_id: string
           registered_at?: string
         }
         Update: {
+          attending?: boolean
           event_id?: string
           member_id?: string
           registered_at?: string
@@ -440,10 +446,14 @@ export type Database = {
           end_date: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
+          image_url: string | null
           is_virtual: boolean
           location: string | null
           max_attendees: number | null
           min_tier_required: Database["public"]["Enums"]["membership_tier"]
+          is_paid: boolean
+          registration_link: string | null
+          schedule: Json
           start_date: string
           title: string
           virtual_link: string | null
@@ -456,10 +466,14 @@ export type Database = {
           end_date: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
           is_virtual?: boolean
           location?: string | null
           max_attendees?: number | null
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
+          is_paid?: boolean
+          registration_link?: string | null
+          schedule?: Json
           start_date: string
           title: string
           virtual_link?: string | null
@@ -472,10 +486,14 @@ export type Database = {
           end_date?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
           is_virtual?: boolean
           location?: string | null
           max_attendees?: number | null
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
+          is_paid?: boolean
+          registration_link?: string | null
+          schedule?: Json
           start_date?: string
           title?: string
           virtual_link?: string | null
@@ -493,9 +511,11 @@ export type Database = {
       knowledge_resources: {
         Row: {
           community_of_practice: Database["public"]["Enums"]["cop_type"]
+          cover_image_url: string | null
           created_at: string
           description: string
           downloads_count: number
+          executive_summary_url: string | null
           file_url: string
           id: string
           min_tier_required: Database["public"]["Enums"]["membership_tier"]
@@ -505,9 +525,11 @@ export type Database = {
         }
         Insert: {
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
+          cover_image_url?: string | null
           created_at?: string
           description?: string
           downloads_count?: number
+          executive_summary_url?: string | null
           file_url?: string
           id?: string
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
@@ -517,9 +539,11 @@ export type Database = {
         }
         Update: {
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
+          cover_image_url?: string | null
           created_at?: string
           description?: string
           downloads_count?: number
+          executive_summary_url?: string | null
           file_url?: string
           id?: string
           min_tier_required?: Database["public"]["Enums"]["membership_tier"]
@@ -976,6 +1000,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1002,6 +1027,7 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           crm_stage?: string
           crm_tags?: string[]
           email: string
@@ -1028,6 +1054,7 @@ export type Database = {
           approved_by?: string | null
           avatar_url?: string | null
           bio?: string | null
+          cover_image_url?: string | null
           crm_stage?: string
           crm_tags?: string[]
           email?: string
@@ -1277,6 +1304,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1312,6 +1340,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1357,6 +1386,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["membership_tier"]
       }
       get_event_virtual_link: { Args: { _event_id: string }; Returns: string }
+      get_event_registration_link: { Args: { _event_id: string }; Returns: string | null }
       get_my_profile: {
         Args: never
         Returns: {
@@ -1365,6 +1395,7 @@ export type Database = {
           approved_by: string | null
           avatar_url: string | null
           bio: string | null
+          cover_image_url: string | null
           crm_stage: string
           crm_tags: string[]
           email: string
@@ -1475,6 +1506,9 @@ export type Database = {
         | "webinar"
         | "boot_camp"
         | "policy_roundtable"
+        | "onsite"
+        | "online"
+        | "hybrid"
       instrument_type:
         | "equity"
         | "debt"
@@ -1680,6 +1714,9 @@ export const Constants = {
         "webinar",
         "boot_camp",
         "policy_roundtable",
+        "onsite",
+        "online",
+        "hybrid",
       ],
       instrument_type: [
         "equity",

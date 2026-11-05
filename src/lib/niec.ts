@@ -2,7 +2,7 @@
 
 export const TIER_LABELS: Record<string, string> = {
   observer: "Observer",
-  contributor: "Contributor",
+  contributor: "Enterprise",
   growth_partner: "Growth Partner",
   anchor: "Anchor",
   strategic_partner: "Strategic Partner",

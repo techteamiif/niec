@@ -1,12 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS, EOI_URL } from "@/lib/niec";
 import { toast } from "sonner";
-import { Briefcase, Lock } from "lucide-react";
+import { ArrowRight, Briefcase, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/_app/deal-room")({
+  beforeLoad: () => {
+    throw redirect({ to: "/dashboard" });
+  },
   component: DealRoom,
 });
 
@@ -46,7 +49,7 @@ function DealRoom() {
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20"><Lock className="h-5 w-5 text-gold-foreground" /></div>
           <h1 className="font-display text-2xl">Deal Room is tier-locked</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Upgrade your NIEC membership to Contributor to preview deals, or Growth Partner and above for the full pipeline.
+            Upgrade your NIEC membership to Enterprise to preview deals, or Growth Partner and above for the full pipeline.
           </p>
           <div className="mt-6 flex justify-center gap-2">
             <Link to="/upgrade" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Upgrade membership</Link>
@@ -91,7 +94,7 @@ function DealRoom() {
       {!fullAccess && (
         <div className="mb-4 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
           You're viewing <strong>teaser mode</strong>. Upgrade to <strong>Growth Partner</strong> to see ticket sizes, instruments, deal descriptions and to express interest.{" "}
-          <Link to="/upgrade" className="text-primary hover:underline">Upgrade →</Link>
+          <Link to="/upgrade" className="inline-flex items-center gap-1 text-primary hover:underline">Upgrade <ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
       )}
 

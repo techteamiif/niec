@@ -5,6 +5,7 @@ import { Check, CreditCard, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { initMembershipPayment, verifyMembershipPayment } from "@/lib/payments.functions";
 import { PublicHeader } from "@/components/PublicHeader";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -36,6 +37,7 @@ const naira = (n: number) => "₦" + n.toLocaleString("en-NG");
 
 function PaymentPage() {
   const { tier, email, name, reference } = Route.useSearch();
+  const { refresh } = useAuth();
   const navigate = useNavigate();
   const startPayment = useServerFn(initMembershipPayment);
   const verify = useServerFn(verifyMembershipPayment);
@@ -55,10 +57,13 @@ function PaymentPage() {
     if (!reference) return;
     setBusy(true);
     verify({ data: { reference } })
-      .then((r) => setResult({ status: r.ok ? r.status : "failed" }))
+      .then(async (r) => {
+        if (r.ok && r.status === "success") await refresh();
+        setResult({ status: r.ok ? r.status : "failed" });
+      })
       .catch(() => setResult({ status: "failed" }))
       .finally(() => setBusy(false));
-  }, [reference, verify]);
+  }, [reference, verify, refresh]);
 
   const pay = async () => {
     if (!plan) return toast.error("Select a payable membership tier first.");
@@ -102,11 +107,10 @@ function PaymentPage() {
               </div>
               <h1 className="mt-5 font-display text-2xl text-primary">Payment confirmed</h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                Thank you. Your NIEC membership payment has been received and your tier has been recorded. An IIF admin will complete your onboarding shortly.
+                Thank you. Your NIEC membership payment has been received and your tier has been updated.
               </p>
               <div className="mt-7 flex justify-center gap-3">
-                <Link to="/login" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Sign in</Link>
-                <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Back to home</Link>
+                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Continue to Dashboard</Link>
               </div>
             </>
           ) : (

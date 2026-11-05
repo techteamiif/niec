@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type AppRole = "member" | "admin" | "super_admin";
 
@@ -8,12 +9,16 @@ export interface Profile {
   id: string;
   full_name: string;
   email: string;
+  crm_stage: string;
   organisation_name: string;
   organisation_type: string;
   role_title: string;
   membership_tier: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
   membership_status: "pending" | "active" | "lapsed" | "suspended";
+  application_data: Json;
   avatar_url: string | null;
+  cover_image_url: string | null;
+  phone: string | null;
   bio: string | null;
   location: string;
   sdg_focus: string[] | null;
@@ -44,14 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadProfile = async (uid: string) => {
+  const loadProfile = useCallback(async (uid: string) => {
     const [{ data: p }, { data: r }] = await Promise.all([
       supabase.rpc("get_my_profile").maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
     setProfile((p as Profile) ?? null);
     setRoles(((r ?? []) as { role: AppRole }[]).map((x) => x.role));
-  };
+  }, []);
 
 
   useEffect(() => {
@@ -72,11 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setLoading(false);
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [loadProfile]);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (user) await loadProfile(user.id);
-  };
+  }, [loadProfile, user]);
   const signOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";

@@ -1,21 +1,38 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Calendar, Check, Download, MapPin, Video, X } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Video } from "lucide-react";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { EventImage } from "@/components/EventImage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
-type EventRecord = Database["public"]["Tables"]["events"]["Row"];
+type EventRecord = Pick<
+  Database["public"]["Tables"]["events"]["Row"],
+  | "id"
+  | "title"
+  | "description"
+  | "event_type"
+  | "start_date"
+  | "end_date"
+  | "schedule"
+  | "location"
+  | "is_virtual"
+  | "max_attendees"
+  | "min_tier_required"
+  | "created_by"
+  | "is_paid"
+  | "image_url"
+  | "virtual_link"
+  | "registration_link"
+>;
+type AttendanceResponse = "yes" | "no" | null;
 type EventAttendee = {
-  member_id: string;
-  registered_at: string;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
-};
-type EventRsvp = {
   member_id: string;
   registered_at: string;
   profiles: { full_name: string | null; avatar_url: string | null } | null;
@@ -30,56 +47,26 @@ function formatEventType(eventType: string) {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-function downloadICS(event: EventRecord) {
-  const dt = (value: string) =>
-    new Date(value)
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}/, "");
-  const escape = (value: string) =>
-    value.replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
-  const location = event.is_virtual ? (event.virtual_link ?? "Virtual") : (event.location ?? "");
-  const contents = [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//NIEC//EN",
-    "BEGIN:VEVENT",
-    `UID:${event.id}@niec`,
-    `DTSTAMP:${dt(new Date().toISOString())}`,
-    `DTSTART:${dt(event.start_date)}`,
-    `DTEND:${dt(event.end_date ?? event.start_date)}`,
-    `SUMMARY:${escape(event.title)}`,
-    `DESCRIPTION:${escape(event.description ?? "")}`,
-    `LOCATION:${escape(location)}`,
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ].join("\r\n");
-  const url = URL.createObjectURL(new Blob([contents], { type: "text/calendar;charset=utf-8" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${event.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 function EventDetailPage() {
   const { eventId } = Route.useParams();
   const { user, profile, isStaff } = useAuth();
   const [event, setEvent] = useState<EventRecord | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [attendeeCount, setAttendeeCount] = useState(0);
-  const [isAttending, setIsAttending] = useState(false);
+  const [attendanceResponse, setAttendanceResponse] = useState<AttendanceResponse>(null);
   const [updatingAttendance, setUpdatingAttendance] = useState(false);
-  const [registered, setRegistered] = useState(false);
   const [tab, setTab] = useState<"details" | "attendees">("details");
   const [loading, setLoading] = useState(true);
+  const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const canViewAttendees = !!event && (isStaff || event.created_by === user?.id);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("events")
-      .select("*")
+      .select(
+        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, created_by, is_paid, image_url",
+      )
       .eq("id", eventId)
       .maybeSingle();
     if (error) {
@@ -88,21 +75,25 @@ function EventDetailPage() {
       setLoading(false);
       return;
     }
-    setEvent(data);
-
-    if (user) {
-      const { data: registration, error: registrationError } = await supabase
-        .from("event_registrations")
-        .select("id")
-        .eq("event_id", eventId)
-        .eq("member_id", user.id)
-        .maybeSingle();
-      if (registrationError)
-        toast.error(`Could not check your registration: ${registrationError.message}`);
-      setRegistered(!!registration);
-    } else {
-      setRegistered(false);
+    if (!data) {
+      setEvent(null);
+      setLoading(false);
+      return;
     }
+    const [
+      { data: virtualLink, error: virtualLinkError },
+      { data: registrationLink, error: registrationLinkError },
+    ] = await Promise.all([
+      supabase.rpc("get_event_virtual_link", { _event_id: eventId }),
+      supabase.rpc("get_event_registration_link", { _event_id: eventId }),
+    ]);
+    if (virtualLinkError) toast.error(`Could not load online event link: ${virtualLinkError.message}`);
+    if (registrationLinkError) toast.error(`Could not load registration link: ${registrationLinkError.message}`);
+    setEvent({
+      ...data,
+      virtual_link: virtualLink ?? null,
+      registration_link: registrationLink ?? null,
+    });
 
     const { data: count, error: countError } = await supabase
       .from("event_attendee_counts")
@@ -112,11 +103,12 @@ function EventDetailPage() {
     if (countError) toast.error(`Could not load attendee count: ${countError.message}`);
     setAttendeeCount(count?.attendee_count ?? 0);
 
-    if (isStaff || data?.created_by === user?.id) {
+    if (isStaff || data.created_by === user?.id) {
       const { data: attendeeRows, error: attendeeError } = await supabase
         .from("event_attendees")
         .select("member_id, registered_at, profiles:member_id(full_name, avatar_url)")
         .eq("event_id", eventId)
+        .eq("attending", true)
         .order("registered_at");
       if (attendeeError) toast.error(`Could not load attendees: ${attendeeError.message}`);
       setAttendees(attendeeRows ?? []);
@@ -127,14 +119,14 @@ function EventDetailPage() {
     if (user) {
       const { data: rsvp, error: rsvpError } = await supabase
         .from("event_attendees")
-        .select("member_id")
+        .select("attending")
         .eq("event_id", eventId)
         .eq("member_id", user.id)
         .maybeSingle();
       if (rsvpError) toast.error(`Could not check your attendance: ${rsvpError.message}`);
-      setIsAttending(!!rsvp);
+      setAttendanceResponse(rsvp ? (rsvp.attending ? "yes" : "no") : null);
     } else {
-      setIsAttending(false);
+      setAttendanceResponse(null);
     }
     setLoading(false);
   }, [eventId, isStaff, user]);
@@ -147,58 +139,76 @@ function EventDetailPage() {
     if (!canViewAttendees && tab === "attendees") setTab("details");
   }, [canViewAttendees, tab]);
 
-  const register = async () => {
-    if (!user || !event) return;
-    if (!tierMeets(profile?.membership_tier, event.min_tier_required)) {
-      toast.error(`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`);
+  const register = () => {
+    if (event && !allowed) {
+      setTierDialogOpen(true);
       return;
     }
-    const { error } = await supabase
-      .from("event_registrations")
-      .insert({ event_id: event.id, member_id: user.id });
-    if (error) return toast.error(error.message);
-    toast.success("You're registered");
-    await load();
+    if (event && !event.registration_link?.trim()) {
+      toast.error("This event does not have a registration link yet.");
+    }
   };
 
-  const toggleAttendance = async () => {
+  const setAttendance = async (response: Exclude<AttendanceResponse, null>) => {
     if (!user || !event || updatingAttendance) return;
     if (!allowed) {
-      toast.error(`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`);
+      setTierDialogOpen(true);
       return;
     }
-    setUpdatingAttendance(true);
-    const result = isAttending
-      ? await supabase
-          .from("event_attendees")
-          .delete()
-          .eq("event_id", event.id)
-          .eq("member_id", user.id)
-      : await supabase.from("event_attendees").insert({
-          event_id: event.id,
-          member_id: user.id,
-        });
-    setUpdatingAttendance(false);
-    if (result.error) return toast.error(result.error.message);
-    toast.success(isAttending ? "Attendance RSVP removed" : "You're on the attendee list");
-    await load();
-  };
+    const previousResponse = attendanceResponse;
+    const previousCount = attendeeCount;
+    const previousAttendee = attendees.find((attendee) => attendee.member_id === user.id);
+    const previousAttendees = attendees;
+    const wasAttending = previousResponse === "yes";
+    const willAttend = response === "yes";
+    const countChange = Number(willAttend) - Number(wasAttending);
 
-  const cancel = async () => {
-    if (!user || !event) return;
-    if (!confirm(`Cancel your registration for "${event.title}"?`)) return;
-    const { error } = await supabase
-      .from("event_registrations")
-      .delete()
-      .eq("event_id", event.id)
-      .eq("member_id", user.id);
-    if (error) return toast.error(error.message);
-    toast.success("Registration cancelled");
-    await load();
+    setUpdatingAttendance(true);
+    setAttendanceResponse(response);
+    setAttendeeCount((count) => Math.max(0, count + countChange));
+    if (canViewAttendees && user) {
+      setAttendees((current) =>
+        willAttend
+          ? [
+              ...current.filter((attendee) => attendee.member_id !== user.id),
+              previousAttendee ?? {
+                  member_id: user.id,
+                  registered_at: new Date().toISOString(),
+                  profiles: profile
+                    ? { full_name: profile.full_name, avatar_url: profile.avatar_url }
+                    : null,
+                },
+            ]
+          : current.filter((attendee) => attendee.member_id !== user.id),
+      );
+    }
+
+    const { error } = await supabase.from("event_attendees").upsert(
+      {
+        event_id: event.id,
+        member_id: user.id,
+        attending: response === "yes",
+      },
+      { onConflict: "event_id,member_id" },
+    );
+    setUpdatingAttendance(false);
+    if (error) {
+      setAttendanceResponse(previousResponse);
+      setAttendeeCount(previousCount);
+      if (canViewAttendees && user) {
+        setAttendees(previousAttendees);
+      }
+      toast.error(error.message);
+      return;
+    }
+    toast.success(response === "yes" ? "You're on the attendee list" : "Your response was saved");
   };
 
   const ended = event ? new Date(event.end_date ?? event.start_date).getTime() < Date.now() : false;
-  const allowed = event ? tierMeets(profile?.membership_tier, event.min_tier_required) : false;
+  const allowed = event
+    ? isStaff || tierMeets(profile?.membership_tier, event.min_tier_required)
+    : false;
+  const isAttending = attendanceResponse === "yes";
 
   return (
     <div className="p-6 lg:p-10">
@@ -228,7 +238,17 @@ function EventDetailPage() {
                 <h1 className="font-display text-3xl">{event.title}</h1>
               </div>
               <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                {event.is_virtual ? (
+                {event.event_type === "onsite" ||
+                event.event_type === "hybrid" ||
+                !event.is_virtual ? (
+                  <span className="inline-flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {event.location || "Location to be announced"}
+                  </span>
+                ) : null}
+                {event.event_type === "online" ||
+                event.event_type === "hybrid" ||
+                event.is_virtual ? (
                   <span className="inline-flex items-center gap-2">
                     <Video className="h-4 w-4" />
                     {event.virtual_link ? (
@@ -241,77 +261,106 @@ function EventDetailPage() {
                         Join virtual event
                       </a>
                     ) : (
-                      "Virtual event"
+                      "Online event"
                     )}
                   </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {event.location || "Location to be announced"}
-                  </span>
-                )}
+                ) : null}
                 <span className="rounded bg-muted px-2.5 py-1 text-xs">
                   {formatEventType(event.event_type)}
                 </span>
+                <span className="rounded bg-muted px-2.5 py-1 text-xs">
+                  {event.is_paid ? "Paid" : "Free"}
+                </span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {attendeeCount} {attendeeCount === 1 ? "person" : "people"} will be attending
-              </p>
+              <div className="mt-8 flex flex-col items-start gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {isAttending
+                    ? attendeeCount === 1
+                      ? "You will be attending this event"
+                      : `You and ${attendeeCount - 1} ${
+                          attendeeCount === 2 ? "other" : "others"
+                        } will be attending`
+                    : attendeeCount > 0
+                      ? `${attendeeCount} ${attendeeCount === 1 ? "person" : "people"} will be attending.`
+                      : attendanceResponse === "no"
+                        ? "No attendees yet."
+                        : "Be the first to show interest."}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="mr-1 text-sm text-foreground">Will you be attending?</p>
+                  {!ended && (
+                    <>
+                    <button
+                      onClick={() => setAttendance("yes")}
+                      disabled={updatingAttendance}
+                      aria-pressed={isAttending}
+                      title={
+                        allowed
+                          ? ""
+                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                      }
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                        isAttending
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/90"
+                      }`}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      onClick={() => setAttendance("no")}
+                      disabled={updatingAttendance}
+                      aria-pressed={attendanceResponse === "no"}
+                      title={
+                        allowed
+                          ? ""
+                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                      }
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                        attendanceResponse === "no"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/90"
+                      }`}
+                    >
+                      No
+                    </button>
+                    </>
+                  )}
+                </div>
+              </div>
               {/* <p className="mt-2 text-sm text-muted-foreground">
                 Convenings, deal rooms, CoP meetings, boot camps and policy roundtables.
               </p> */}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {registered && (
-                <button
-                  onClick={() => downloadICS(event)}
-                  className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-                >
-                  <Download className="h-4 w-4" /> Add to calendar
-                </button>
-              )}
-              {registered && !ended && (
-                <button
-                  onClick={cancel}
-                  className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-4 py-2 text-sm font-semibold text-destructive hover:bg-destructive/10"
-                >
-                  <X className="h-4 w-4" /> Cancel registration
-                </button>
-              )}
-              {!registered && !ended && (
-                <button
-                  disabled={!allowed}
-                  onClick={register}
-                  title={
-                    allowed ? "" : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                  }
-                  className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {allowed ? "Register" : "Tier locked"}
-                </button>
-              )}
-              {!ended && (
-                <button
-                  onClick={toggleAttendance}
-                  disabled={!allowed || updatingAttendance}
-                  aria-pressed={isAttending}
-                  title={
-                    allowed ? "" : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                  }
-                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-semibold transition ${
-                    isAttending
-                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
-                      : "hover:bg-muted"
-                  } disabled:cursor-wait disabled:opacity-60`}
-                >
-                  {isAttending && <Check className="h-4 w-4" />}
-                  {updatingAttendance
-                    ? "Updating…"
-                    : isAttending
-                      ? "You're attending"
-                      : "I will be attending"}
-                </button>
-              )}
+              {!ended &&
+                (allowed ? (
+                  event.registration_link?.trim() ? (
+                    <a
+                      href={event.registration_link.trim()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Register
+                    </a>
+                  ) : (
+                    <button
+                      onClick={register}
+                      className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Register
+                    </button>
+                  )
+                ) : (
+                  <button
+                    onClick={() => setTierDialogOpen(true)}
+                    title={`Requires ${TIER_LABELS[event.min_tier_required]} tier or above`}
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Tier locked
+                  </button>
+                ))}
               {ended && (
                 <span className="rounded-md bg-muted px-4 py-2 text-sm font-semibold text-muted-foreground">
                   Event ended
@@ -344,41 +393,25 @@ function EventDetailPage() {
               <section className="rounded-xl border bg-card p-6">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
                   <Calendar className="h-4 w-4" />
-                  {format(new Date(event.start_date), "MMMM do, yyyy 'at' h:mm a")}
+                  {formatEventSchedule(event.schedule, event.start_date, event.end_date).map(
+                    (line, index) => (
+                      <span key={`${line}-${index}`}>{line}</span>
+                    ),
+                  )}
                 </div>
                 {/* <h2 className="mt-3 font-display text-2xl">{event.title}</h2> */}
+                <EventImage
+                  src={event.image_url}
+                  title={event.title}
+                  fit="contain"
+                  showPlaceholder={false}
+                  className="mx-auto my-5 aspect-[4/5] w-full max-w-md overflow-hidden rounded-xl"
+                />
                 {event.description && (
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                     {event.description}
                   </p>
                 )}
-                {/* <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  {event.is_virtual ? (
-                    <span className="inline-flex items-center gap-2">
-                      <Video className="h-4 w-4" />
-                      {event.virtual_link ? (
-                        <a
-                          className="text-primary underline"
-                          href={event.virtual_link}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Join virtual event
-                        </a>
-                      ) : (
-                        "Virtual event"
-                      )}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {event.location || "Location to be announced"}
-                    </span>
-                  )}
-                  <span className="rounded bg-muted px-2.5 py-1 text-xs">
-                    {formatEventType(event.event_type)}
-                  </span>
-                </div> */}
               </section>
 
               <aside className="space-y-4">
@@ -386,14 +419,15 @@ function EventDetailPage() {
                   <h2 className="font-display text-lg">Other information</h2>
                   <dl className="mt-4 space-y-4 text-sm">
                     <div>
-                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {/* <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Date and time
-                      </dt>
-                      <dd className="mt-1">{format(new Date(event.start_date), "PPP p")}</dd>
-                      {event.end_date && (
-                        <dd className="mt-1 text-muted-foreground">
-                          Until {format(new Date(event.end_date), "PPP p")}
-                        </dd>
+                      </dt> */}
+                      {formatEventSchedule(event.schedule, event.start_date, event.end_date).map(
+                        (line, index) => (
+                          <dd key={`${line}-${index}`} className="mt-1">
+                            {line}
+                          </dd>
+                        ),
                       )}
                     </div>
                     <div>
@@ -401,6 +435,12 @@ function EventDetailPage() {
                         Minimum membership tier
                       </dt>
                       <dd className="mt-1">{TIER_LABELS[event.min_tier_required]}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Amount
+                      </dt>
+                      <dd className="mt-1">{event.is_paid ? "Paid" : "Free"}</dd>
                     </div>
                     {event.max_attendees && (
                       <div>
@@ -460,6 +500,13 @@ function EventDetailPage() {
           ) : null}
         </>
       )}
+      <TierAccessDialog
+        open={tierDialogOpen}
+        onOpenChange={setTierDialogOpen}
+        itemType="event"
+        requiredTier={event?.min_tier_required ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }

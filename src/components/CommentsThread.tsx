@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
-import { Pencil, Trash2, Check, X } from "lucide-react";
+import { Pencil, Trash2, Check, X, Send, MessageCircle } from "lucide-react";
+import { tierMeets } from "@/lib/niec";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 
 interface CommentRow {
   id: string;
@@ -18,9 +20,11 @@ interface CommentRow {
 export function CommentsThread({
   postId,
   onCountChange,
+  panelLayout = false,
 }: {
   postId: string;
   onCountChange?: (delta: number) => void;
+  panelLayout?: boolean;
 }) {
   const { user, profile, isStaff } = useAuth();
   const [comments, setComments] = useState<CommentRow[]>([]);
@@ -29,8 +33,13 @@ export function CommentsThread({
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const draftRef = useRef<HTMLTextAreaElement>(null);
 
-  const canPost = !!user && profile?.membership_status === "active";
+  const canPost =
+    !!user &&
+    (isStaff ||
+      (profile?.membership_status === "active" &&
+        tierMeets(profile.membership_tier, "contributor")));
 
   const load = async () => {
     setLoading(true);
@@ -52,6 +61,7 @@ export function CommentsThread({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !draft.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setBusy(true);
     const { error } = await supabase
       .from("comments")
@@ -59,17 +69,20 @@ export function CommentsThread({
     setBusy(false);
     if (error) return toast.error(error.message);
     setDraft("");
+    if (draftRef.current) draftRef.current.style.height = "auto";
     onCountChange?.(1);
     load();
   };
 
   const startEdit = (c: CommentRow) => {
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     setEditingId(c.id);
     setEditValue(c.content);
   };
 
   const saveEdit = async (id: string) => {
     if (!editValue.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase
       .from("comments")
       .update({ content: editValue.trim() })
@@ -81,6 +94,7 @@ export function CommentsThread({
   };
 
   const remove = async (id: string) => {
+    if (!isStaff && !requireEnterpriseForWrite(profile?.membership_tier, false)) return;
     if (!confirm("Delete this comment?")) return;
     const { error } = await supabase.from("comments").delete().eq("id", id);
     if (error) return toast.error(error.message);
@@ -89,17 +103,23 @@ export function CommentsThread({
   };
 
   return (
-    <div className="mt-4 space-y-3 border-t pt-4">
-      {loading ? (
-        <div className="text-xs text-muted-foreground">Loading comments…</div>
-      ) : comments.length === 0 ? (
-        <div className="text-xs text-muted-foreground">No comments yet. Be the first to reply.</div>
-      ) : (
-        <ul className="space-y-3">
+    <div className={`mt-4 flex flex-1 flex-col border-t pt-4 ${panelLayout ? "min-h-0" : ""}`}>
+      <div className={panelLayout ? "comment-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1" : "flex-1"}>
+        {loading ? (
+          <div className="text-xs text-muted-foreground">Loading comments…</div>
+        ) : comments.length === 0 ? (
+          <div className={`flex h-full flex-col items-center justify-center gap-3 px-4 text-center text-sm text-muted-foreground ${panelLayout ? "" : "min-h-48"}`}>
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-muted/60 text-muted-foreground/70">
+              <MessageCircle aria-hidden="true" className="h-5 w-5" />
+            </div>
+            <p>No comments yet. Be the first to reply.</p>
+          </div>
+        ) : (
+          <ul className="space-y-3">
           {comments.map((c) => {
             const mine = user?.id === c.author_id;
-            const canEdit = mine;
-            const canDelete = mine || isStaff;
+            const canEdit = mine && (isStaff || tierMeets(profile?.membership_tier, "contributor"));
+            const canDelete = isStaff || (mine && tierMeets(profile?.membership_tier, "contributor"));
             const isEditing = editingId === c.id;
             return (
               <li key={c.id} className="flex gap-3">
@@ -142,6 +162,14 @@ export function CommentsThread({
                           </button>
                         </div>
                       </div>
+                    ) : user && profile?.membership_tier === "observer" ? (
+                      <button
+                        type="button"
+                        onClick={() => requireEnterpriseForWrite(profile.membership_tier, isStaff)}
+                        className="text-left text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Upgrade to Enterprise to comment.
+                      </button>
                     ) : (
                       <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{c.content}</p>
                     )}
@@ -170,23 +198,34 @@ export function CommentsThread({
               </li>
             );
           })}
-        </ul>
-      )}
+          </ul>
+        )}
+      </div>
 
       {canPost ? (
-        <form onSubmit={submit} className="flex gap-2">
+        <form onSubmit={submit} className={`flex shrink-0 gap-2 ${panelLayout ? "items-end pt-3" : "items-center"}`}>
           <textarea
+            ref={draftRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (panelLayout) {
+                e.currentTarget.style.height = "auto";
+                e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 160)}px`;
+              }
+            }}
             placeholder="Write a comment…"
-            rows={2}
-            className="flex-1 rounded-md border bg-background p-2 text-sm"
+            rows={1}
+            className={`min-h-10 flex-1 resize-none rounded-2xl border border-border/70 bg-background px-4 py-2 text-sm outline-none transition-[border-color,box-shadow] focus-visible:border-muted-foreground/30 focus-visible:ring-1 focus-visible:ring-muted-foreground/15 ${panelLayout ? "comment-scrollbar max-h-40 overflow-y-auto" : ""}`}
           />
           <button
+            type="submit"
             disabled={busy || !draft.trim()}
-            className="self-end rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+            aria-label={busy ? "Sending comment" : "Send comment"}
+            title={busy ? "Sending comment" : "Send comment"}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
           >
-            {busy ? "Posting…" : "Comment"}
+            <Send aria-hidden="true" className="h-4 w-4" />
           </button>
         </form>
       ) : (

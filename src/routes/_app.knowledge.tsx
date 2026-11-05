@@ -1,28 +1,49 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { RichTextContent } from "@/components/RichTextContent";
+import { EventImage } from "@/components/EventImage";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS, COPS } from "@/lib/niec";
-import { Download, FileText } from "lucide-react";
+import { richTextToPlainText } from "@/lib/rich-text";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
+
+type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 
 export const Route = createFileRoute("/_app/knowledge")({
   component: KnowledgePage,
 });
 
 function KnowledgePage() {
+  const matches = useMatches();
+  if (matches.some((match) => match.routeId.startsWith("/_app/knowledge/"))) {
+    return <Outlet />;
+  }
+  return <KnowledgeIndex />;
+}
+
+function KnowledgeIndex() {
   const { profile, isStaff } = useAuth();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<KnowledgeResource[]>([]);
   const [type, setType] = useState("all");
   const [cop, setCop] = useState("all");
   const [search, setSearch] = useState("");
+  const [lockedTier, setLockedTier] = useState<KnowledgeResource["min_tier_required"] | null>(null);
 
   useEffect(() => {
     (async () => {
       let q = supabase.from("knowledge_resources").select("*").order("created_at", { ascending: false });
-      if (type !== "all") q = q.eq("resource_type", type as any);
-      if (cop !== "all") q = q.eq("community_of_practice", cop as any);
-      const { data } = await q;
+      if (type !== "all") q = q.eq("resource_type", type as Database["public"]["Enums"]["resource_type"]);
+      if (cop !== "all") q = q.eq("community_of_practice", cop as Database["public"]["Enums"]["cop_type"]);
+      const { data, error } = await q;
+      if (error) {
+        setItems([]);
+        toast.error(`Unable to load resources: ${error.message}`);
+        return;
+      }
       setItems(data ?? []);
     })();
   }, [type, cop]);
@@ -32,21 +53,9 @@ function KnowledgePage() {
     const s = search.toLowerCase();
     return (
       (r.title ?? "").toLowerCase().includes(s) ||
-      (r.description ?? "").toLowerCase().includes(s) ||
-      (r.tags ?? []).join(" ").toLowerCase().includes(s)
+      richTextToPlainText(r.description ?? "").toLowerCase().includes(s)
     );
   });
-
-  const download = async (r: any) => {
-    if (!tierMeets(profile?.membership_tier, r.min_tier_required) && !isStaff) {
-      toast.error(`Requires ${TIER_LABELS[r.min_tier_required]} tier`);
-      return;
-    }
-    await supabase.rpc("increment_resource_download", { _resource_id: r.id });
-    setItems((prev) => prev.map((x) => x.id === r.id ? { ...x, downloads_count: (x.downloads_count ?? 0) + 1 } : x));
-    if (r.file_url) window.open(r.file_url, "_blank");
-    else toast.info("No file attached yet.");
-  };
 
   return (
     <div className="p-6 lg:p-10">
@@ -58,7 +67,7 @@ function KnowledgePage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search title, description, tags…"
+          placeholder="Search title or description…"
           className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm"
         />
         <select value={type} onChange={(e) => setType(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
@@ -76,33 +85,60 @@ function KnowledgePage() {
         {filtered.map((r) => {
           const unlocked = tierMeets(profile?.membership_tier, r.min_tier_required) || isStaff;
           return (
-            <div key={r.id} className={"rounded-xl border bg-card p-5 " + (unlocked ? "" : "opacity-90")}>
-              <div className="flex items-start gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary">
-                  <FileText className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
+            <Link
+              key={r.id}
+              to="/knowledge/$resourceId"
+              params={{ resourceId: r.id }}
+              onClick={(event) => {
+                if (!unlocked) {
+                  event.preventDefault();
+                  setLockedTier(r.min_tier_required);
+                }
+              }}
+              className="group flex items-stretch gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md"
+            >
+              <EventImage
+                src={r.cover_image_url}
+                title={r.title}
+                alt={`${r.title} cover`}
+                placeholderIcon="file"
+                className="h-24 w-20 shrink-0 self-start overflow-hidden rounded-md sm:h-28 sm:w-24"
+              />
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{r.resource_type.replace(/_/g, " ")}</div>
                   <h3 className="font-display text-base leading-tight">{r.title}</h3>
                 </div>
-              </div>
-              <p className="mt-3 text-xs text-muted-foreground line-clamp-3">{r.description}</p>
-              {!unlocked && (
-                <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                  Preview locked — upgrade to <strong>{TIER_LABELS[r.min_tier_required]}</strong> to download.
+                <RichTextContent
+                  content={r.description}
+                  className="mt-3 line-clamp-3 text-xs text-muted-foreground [&_h2]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
+                />
+                {!unlocked && (
+                  <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                    Download access requires <strong>{TIER_LABELS[r.min_tier_required]}</strong> tier or above.
+                  </div>
+                )}
+                <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">↓ {r.downloads_count ?? 0}</div>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:underline">
+                    View resource <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                  </span>
                 </div>
-              )}
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">↓ {r.downloads_count}</div>
-                <button onClick={() => download(r)} className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-60" disabled={!unlocked}>
-                  <Download className="h-3 w-3" /> {unlocked ? "Download" : "Locked"}
-                </button>
               </div>
-            </div>
+            </Link>
           );
         })}
         {filtered.length === 0 && <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">No resources match — try clearing filters or search terms.</div>}
       </div>
+      <TierAccessDialog
+        open={lockedTier !== null}
+        onOpenChange={(open) => {
+          if (!open) setLockedTier(null);
+        }}
+        itemType="resource"
+        requiredTier={lockedTier ?? "observer"}
+        currentTier={profile?.membership_tier}
+      />
     </div>
   );
 }

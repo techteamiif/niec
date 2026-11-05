@@ -1,17 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { TierBadge } from "@/components/TierBadge";
 import { UserAvatar } from "@/components/Avatar";
 import { TIER_LABELS, ORG_TYPE_LABELS } from "@/lib/niec";
+import { sanitizeRichText } from "@/lib/rich-text";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
-  Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
-  CheckCircle2, XCircle, UserPlus, History, Users as UsersIcon, Tag as TagIcon,
+  ArrowRight, Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
+  History, Users as UsersIcon, Tag as TagIcon,
   Network, MessageSquare, Calendar, BookOpen, Briefcase, Award, Activity, Vote, Lightbulb, HeartHandshake, Plus, Pencil, Star, FileText, CreditCard,
+  Bold, Heading2, Italic, List, ListOrdered, Underline,
 } from "lucide-react";
 import { COPS } from "@/lib/niec";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -39,7 +43,7 @@ type Role = { user_id: string; role: "member" | "admin" | "super_admin" };
 
 function AdminCRM() {
   const { isStaff, isSuperAdmin, user } = useAuth();
-  const [tab, setTab] = useState<"crm" | "applications" | "pipeline" | "cops" | "content" | "programs" | "recognition" | "audit" | "analytics">("crm");
+  const [tab, setTab] = useState<"crm" | "applications" | "cops" | "content" | "programs" | "recognition" | "audit" | "analytics">("crm");
   const [members, setMembers] = useState<Profile[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [search, setSearch] = useState("");
@@ -96,20 +100,19 @@ function AdminCRM() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl">NIEC CRM &amp; Admin Console</h1>
-            <p className="text-xs text-muted-foreground">Manage members, pipeline, role assignments and platform activity.</p>
+            <p className="text-xs text-muted-foreground">Manage members, applications, role assignments and platform activity.</p>
           </div>
           <div className="flex items-center gap-2 text-xs">
             <Stat label="Total" value={counts.total} />
-            <Stat label="Pending" value={counts.pending} tone="bg-blue-100 text-blue-800" />
+            <Stat label="Pending setup" value={counts.pending} tone="bg-blue-100 text-blue-800" />
             <Stat label="Active" value={counts.active} tone="bg-success/20 text-primary" />
             <Stat label="Suspended" value={counts.suspended} tone="bg-destructive/15 text-destructive" />
           </div>
         </div>
-        <nav className="mt-4 flex flex-wrap gap-1 rounded-lg border bg-background p-1 text-sm">
+        <nav className="sidebar-scrollbar mt-4 flex flex-nowrap gap-1 overflow-x-auto rounded-lg border bg-background p-1 text-sm">
           {([
             { k: "crm", label: "CRM", icon: UsersIcon },
             { k: "applications", label: "Applications", icon: FileText },
-            { k: "pipeline", label: `Pipeline (${counts.pending})`, icon: UserPlus },
             { k: "cops", label: "CoP Health", icon: Network },
             { k: "content", label: "Content", icon: MessageSquare },
             { k: "programs", label: "Programs", icon: Calendar },
@@ -118,8 +121,8 @@ function AdminCRM() {
             { k: "analytics", label: "Analytics", icon: Activity },
           ] as const).map(({ k, label, icon: Icon }) => (
             <button key={k} onClick={() => setTab(k)}
-              className={`inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 ${tab === k ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-              <Icon className="h-3.5 w-3.5" /> {label}
+              className={`inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-2 ${tab === k ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+              <Icon className="h-3.5 w-3.5 shrink-0" /> {label}
             </button>
           ))}
         </nav>
@@ -128,29 +131,29 @@ function AdminCRM() {
       <div className="flex flex-1 min-h-0">
         {tab === "crm" && (
           <>
-            <aside className="hidden w-64 shrink-0 overflow-y-auto border-r bg-card/40 p-4 lg:block">
+            <aside className="sidebar-scrollbar hidden w-64 shrink-0 overflow-y-auto border-r bg-card/40 p-4 lg:block">
               <FilterGroup title="Pipeline stage">
-                <FilterPill active={stageFilter === "all"} onClick={() => setStageFilter("all")} label="All stages" />
+                <FilterPill name="pipeline-stage" active={stageFilter === "all"} onClick={() => setStageFilter("all")} label="All stages" />
                 {STAGES.map((s) => (
-                  <FilterPill key={s.key} active={stageFilter === s.key} onClick={() => setStageFilter(s.key)} label={s.label} />
+                  <FilterPill key={s.key} name="pipeline-stage" active={stageFilter === s.key} onClick={() => setStageFilter(s.key)} label={s.label} />
                 ))}
               </FilterGroup>
               <FilterGroup title="Status">
                 {["all","pending","active","lapsed","suspended"].map((s) => (
-                  <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} label={s} />
+                  <FilterPill key={s} name="membership-status" active={statusFilter === s} onClick={() => setStatusFilter(s)} label={s} />
                 ))}
               </FilterGroup>
               <FilterGroup title="Tier">
-                <FilterPill active={tierFilter === "all"} onClick={() => setTierFilter("all")} label="All tiers" />
+                <FilterPill name="membership-tier" active={tierFilter === "all"} onClick={() => setTierFilter("all")} label="All tiers" />
                 {Object.entries(TIER_LABELS).map(([k, v]) => (
-                  <FilterPill key={k} active={tierFilter === k} onClick={() => setTierFilter(k)} label={v} />
+                  <FilterPill key={k} name="membership-tier" active={tierFilter === k} onClick={() => setTierFilter(k)} label={v} />
                 ))}
               </FilterGroup>
               {allTags.length > 0 && (
                 <FilterGroup title="Tags">
-                  <FilterPill active={tagFilter === "all"} onClick={() => setTagFilter("all")} label="All tags" />
+                  <FilterPill name="member-tag" active={tagFilter === "all"} onClick={() => setTagFilter("all")} label="All tags" />
                   {allTags.map((t) => (
-                    <FilterPill key={t} active={tagFilter === t} onClick={() => setTagFilter(t)} label={t} />
+                    <FilterPill key={t} name="member-tag" active={tagFilter === t} onClick={() => setTagFilter(t)} label={t} />
                   ))}
                 </FilterGroup>
               )}
@@ -166,8 +169,8 @@ function AdminCRM() {
                 <span className="text-xs text-muted-foreground">{filtered.length} result{filtered.length === 1 ? "" : "s"}</span>
                 <BroadcastButton recipientIds={filtered.map((m) => m.id)} label={`Broadcast to ${filtered.length}`} />
               </div>
-              <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm">
+              <div className="sidebar-scrollbar min-h-0 flex-1 overflow-auto">
+                <table className="w-full min-w-[760px] text-sm">
                   <thead className="sticky top-0 z-10 border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="p-3">Member</th>
@@ -215,7 +218,6 @@ function AdminCRM() {
         )}
 
         {tab === "applications" && <ApplicationsTab members={members} />}
-        {tab === "pipeline" && <PipelineBoard members={members} actor={user!.id} onChange={load} />}
         {tab === "cops" && <CopHealthTab members={members} />}
         {tab === "content" && <ContentTab actor={user!.id} />}
         {tab === "programs" && <ProgramsTab />}
@@ -255,84 +257,18 @@ function FilterGroup({ title, children }: { title: string; children: React.React
     </div>
   );
 }
-function FilterPill({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function FilterPill({ name, active, onClick, label }: { name: string; active: boolean; onClick: () => void; label: string }) {
   return (
-    <button onClick={onClick}
-      className={`rounded-md px-2 py-1 text-left text-xs capitalize transition ${active ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
-      {label}
-    </button>
-  );
-}
-
-/* ---------- Pipeline (kanban-lite) ---------- */
-
-function PipelineBoard({ members, actor, onChange }: { members: Profile[]; actor: string; onChange: () => void }) {
-  const pending = members.filter((m) => m.membership_status === "pending");
-
-  const approve = async (p: Profile) => {
-    const tier = (p.application_data?.requested_tier as string)
-      || (p.application_data?.proposed_tier as string)
-      || "contributor";
-    const { error } = await supabase.from("profiles").update({
-      membership_status: "active", approved_at: new Date().toISOString(), approved_by: actor,
-      membership_tier: tier as any, crm_stage: "onboarding",
-    }).eq("id", p.id);
-    if (error) return toast.error(error.message);
-    await supabase.from("notifications").insert([
-      {
-        recipient_id: p.id, type: "tier_upgrade",
-        title: "Welcome to NIEC", message: `Your membership has been approved at the ${TIER_LABELS[tier] ?? tier} tier.`,
-        link: "/dashboard",
-      },
-      {
-        recipient_id: p.id, type: "welcome",
-        title: "Complete your profile", message: "Add your bio, sectors and SDG focus so we can match you with peers and opportunities.",
-        link: "/profile",
-      },
-    ]);
-    await logAudit({ actorId: actor, action: "member.approve", targetType: "profile", targetId: p.id, metadata: { tier } });
-    toast.success("Member approved"); onChange();
-  };
-  const reject = async (p: Profile) => {
-    const { error } = await supabase.from("profiles").update({ membership_status: "suspended", crm_stage: "churned" }).eq("id", p.id);
-    if (error) return toast.error(error.message);
-    await logAudit({ actorId: actor, action: "member.reject", targetType: "profile", targetId: p.id });
-    toast.success("Application rejected"); onChange();
-  };
-
-  return (
-    <div className="flex-1 overflow-auto p-6">
-      <h2 className="mb-4 font-display text-xl">Onboarding pipeline</h2>
-      {pending.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">No pending applications.</div>
-      ) : (
-        <div className="grid gap-3">
-          {pending.map((p) => {
-            const reqTier = (p.application_data?.requested_tier as string) || (p.application_data?.proposed_tier as string);
-            return (
-            <div key={p.id} className="flex items-center gap-4 rounded-xl border bg-card p-4">
-              <UserAvatar name={p.full_name || p.email} src={p.avatar_url} size={40} />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{p.full_name || "(no name)"}</div>
-                <div className="text-xs text-muted-foreground">
-                  {p.email} · {p.organisation_name || "—"} · applied {formatDistanceToNow(new Date(p.joined_at), { addSuffix: true })}
-                </div>
-                {reqTier && (
-                  <div className="mt-1 text-[11px] text-muted-foreground">Requested tier: <b>{TIER_LABELS[reqTier] ?? reqTier}</b></div>
-                )}
-              </div>
-              <button onClick={() => approve(p)} className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-                <CheckCircle2 className="h-3 w-3" /> Approve
-              </button>
-              <button onClick={() => reject(p)} className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs hover:bg-muted">
-                <XCircle className="h-3 w-3" /> Reject
-              </button>
-            </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-xs capitalize transition hover:bg-muted">
+      <input
+        type="radio"
+        name={name}
+        checked={active}
+        onChange={onClick}
+        className="h-3.5 w-3.5 shrink-0 accent-primary"
+      />
+      <span>{label}</span>
+    </label>
   );
 }
 
@@ -473,6 +409,10 @@ function MemberDrawer({
   const saveStage = async (val: string) => { setStage(val); await updateProfile({ crm_stage: val }, "member.stage_change", { from: member.crm_stage, to: val }); };
   const saveTier = async (val: string) => { setTier(val); await updateProfile({ membership_tier: val as any }, "member.tier_change", { from: member.membership_tier, to: val }); };
   const saveStatus = async (val: string) => {
+    if (member.membership_status === "pending" && val === "active") {
+      toast.error("Membership activates automatically after application submission.");
+      return;
+    }
     setStatus(val);
     await updateProfile({ membership_status: val as any },
       val === "suspended" ? "member.suspend" : "member.reactivate",
@@ -552,7 +492,7 @@ function MemberDrawer({
           <Pick label="Tier" value={tier} onChange={saveTier}
             options={Object.entries(TIER_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
           <Pick label="Status" value={status} onChange={saveStatus}
-            options={["pending","active","lapsed","suspended"].map((s) => ({ value: s, label: s }))} />
+            options={(status === "pending" ? ["pending", "suspended"] : ["active", "lapsed", "suspended"]).map((s) => ({ value: s, label: s }))} />
         </div>
 
         <Section title="Tags" icon={TagIcon}>
@@ -780,7 +720,7 @@ function CopHealthTab({ members }: { members: Profile[] }) {
                 <td className="p-3">{s.rfcs}</td>
                 <td className="p-3">{s.wgs}</td>
                 <td className="p-3">{s.polls}</td>
-                <td className="p-3"><a href={`/cops/${s.cop.key}`} className="text-xs text-primary hover:underline">Open →</a></td>
+                <td className="p-3"><a href={`/cops/${s.cop.key}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a></td>
               </tr>
             ))}
           </tbody>
@@ -901,7 +841,7 @@ function ContentTab({ actor }: { actor: string }) {
               </select>
               <button onClick={() => setEditRfc(r)} className="rounded p-1 hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
               <button onClick={() => removeRfc(r)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
-              <a href={`/cops/${r.cop}`} className="text-xs text-primary hover:underline">Open →</a>
+              <a href={`/cops/${r.cop}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a>
             </div>
           ))}
           {rfcs.length === 0 && <div className="rounded-xl border bg-card p-6 text-center text-xs text-muted-foreground">No proposals yet.</div>}
@@ -970,15 +910,19 @@ function ProgramsTab() {
   const [editEvent, setEditEvent] = useState<any | null>(null);
   const [editResource, setEditResource] = useState<any | null>(null);
   const [editDeal, setEditDeal] = useState<any | null>(null);
+  const [createResourceOpen, setCreateResourceOpen] = useState(false);
 
   const load = async () => {
-    const [{ data: e }, { data: b }, { data: r }, { data: d }] = await Promise.all([
+    const [{ data: e }, { data: b }, resourceResult, { data: d }] = await Promise.all([
       supabase.from("events").select("*").order("start_date", { ascending: false }).limit(30),
       supabase.from("mentorship_bookings").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("knowledge_resources").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("deal_opportunities").select("*").order("created_at", { ascending: false }).limit(30),
     ]);
-    setEvents(e ?? []); setBookings(b ?? []); setResources(r ?? []); setDeals(d ?? []);
+    if (resourceResult.error) {
+      toast.error(`Unable to load Knowledge Hub publications: ${resourceResult.error.message}`);
+    }
+    setEvents(e ?? []); setBookings(b ?? []); setResources(resourceResult.data ?? []); setDeals(d ?? []);
   };
   useEffect(() => { load(); }, []);
 
@@ -1003,7 +947,9 @@ function ProgramsTab() {
             <div key={e.id} className="flex items-center gap-3 border-b py-2 last:border-0 text-sm">
               <div className="min-w-0 flex-1">
                 <div className="truncate font-medium">{e.is_featured && "⭐ "}{e.title}</div>
-                <div className="text-[11px] text-muted-foreground">{format(new Date(e.start_date), "PPp")} · {e.event_type} · {e.status}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")} · {e.event_type} · {e.status}
+                </div>
               </div>
               <button onClick={() => toggleField("events", e.id, "is_featured", !e.is_featured)} title="Feature" className="rounded p-1 hover:bg-muted"><Star className={`h-3.5 w-3.5 ${e.is_featured ? "fill-gold text-gold" : ""}`} /></button>
               <select value={e.status} onChange={(ev) => toggleField("events", e.id, "status", ev.target.value)} className="h-7 rounded border bg-background px-2 text-xs">
@@ -1037,7 +983,12 @@ function ProgramsTab() {
       </section>
 
       <section className="rounded-xl border bg-card p-5">
-        <h3 className="mb-3 font-display text-lg inline-flex items-center gap-2"><BookOpen className="h-4 w-4" /> Knowledge resources <span className="text-xs text-muted-foreground">({resources.length})</span></h3>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-display text-lg inline-flex items-center gap-2"><BookOpen className="h-4 w-4" /> Knowledge resources <span className="text-xs text-muted-foreground">({resources.length})</span></h3>
+          <Button size="sm" onClick={() => setCreateResourceOpen(true)}>
+            <Plus aria-hidden="true" /> Add publication
+          </Button>
+        </div>
         <div className="space-y-2">
           {resources.map((r) => (
             <div key={r.id} className="flex items-center gap-3 border-b py-2 last:border-0 text-sm">
@@ -1053,6 +1004,12 @@ function ProgramsTab() {
           {resources.length === 0 && <div className="text-center text-xs text-muted-foreground py-4">No resources.</div>}
         </div>
       </section>
+
+      <CreatePublicationDialog
+        open={createResourceOpen}
+        onClose={() => setCreateResourceOpen(false)}
+        onCreated={load}
+      />
 
       <section className="rounded-xl border bg-card p-5">
         <h3 className="mb-3 font-display text-lg inline-flex items-center gap-2"><Briefcase className="h-4 w-4" /> Deal opportunities <span className="text-xs text-muted-foreground">({deals.length})</span></h3>
@@ -1098,11 +1055,16 @@ function ProgramsTab() {
         record={editResource}
         fields={[
           { name: "title", label: "Title" },
-          { name: "description", label: "Description", multiline: true },
-          { name: "file_url", label: "File URL" },
+          { name: "description", label: "Description", richText: true },
+          { name: "cover_image_url", label: "Cover image URL" },
+          { name: "executive_summary_url", label: "Executive summary URL" },
+          { name: "file_url", label: "Full report/publication URL" },
         ]}
         onSave={async (vals) => {
-          const { error } = await supabase.from("knowledge_resources").update(vals as never).eq("id", editResource.id);
+          const { error } = await supabase
+            .from("knowledge_resources")
+            .update({ ...vals, description: sanitizeRichText(vals.description ?? "") } as never)
+            .eq("id", editResource.id);
           if (error) throw error;
           setEditResource(null); load();
         }}
@@ -1127,16 +1089,402 @@ function ProgramsTab() {
   );
 }
 
+type PublicationInsert = Database["public"]["Tables"]["knowledge_resources"]["Insert"];
+type ResourceType = Database["public"]["Enums"]["resource_type"];
+type CommunityOfPractice = Database["public"]["Enums"]["cop_type"];
+type MembershipTier = Database["public"]["Enums"]["membership_tier"];
+
+function CreatePublicationDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => Promise<void>;
+}) {
+  const { user } = useAuth();
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [resourceType, setResourceType] = useState<ResourceType>("report");
+  const [community, setCommunity] = useState<CommunityOfPractice>("general");
+  const [minTier, setMinTier] = useState<MembershipTier>("observer");
+  const [fileUrl, setFileUrl] = useState("");
+  const [publicationPdf, setPublicationPdf] = useState<File | null>(null);
+  const [summaryUrl, setSummaryUrl] = useState("");
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const coverImageInput = useRef<HTMLInputElement>(null);
+  const publicationPdfInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!coverImage) {
+      setCoverImagePreview(null);
+      return;
+    }
+    const previewUrl = URL.createObjectURL(coverImage);
+    setCoverImagePreview(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [coverImage]);
+
+  const selectCoverImage = (file: File | null) => {
+    if (!file) {
+      setCoverImage(null);
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
+      setCoverImage(null);
+      toast.error("Choose a JPEG, PNG, WebP, or GIF image.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setCoverImage(null);
+      toast.error("Cover image must be 5 MB or smaller.");
+      return;
+    }
+    setCoverImage(file);
+  };
+
+  const save = async () => {
+    const normalizedTitle = title.trim();
+    if (!normalizedTitle) {
+      toast.error("Enter a publication title.");
+      return;
+    }
+    if (!user) {
+      toast.error("You must be signed in to add a publication.");
+      return;
+    }
+
+    const isValidHttpUrl = (value: string) => {
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" || url.protocol === "http:";
+      } catch {
+        return false;
+      }
+    };
+    const normalizedFileUrl = fileUrl.trim();
+    if (normalizedFileUrl && !isValidHttpUrl(normalizedFileUrl)) {
+      toast.error("Enter a valid publication URL.");
+      return;
+    }
+    if (!normalizedFileUrl && !publicationPdf) {
+      toast.error("Upload a PDF publication or enter a publication URL.");
+      return;
+    }
+    if (normalizedFileUrl && publicationPdf) {
+      toast.error("Choose either a PDF upload or a publication URL, not both.");
+      return;
+    }
+    if (
+      publicationPdf &&
+      (publicationPdf.type !== "application/pdf" ||
+        !publicationPdf.name.toLowerCase().endsWith(".pdf"))
+    ) {
+      toast.error("Choose a valid PDF file.");
+      return;
+    }
+    if (publicationPdf && publicationPdf.size > 50 * 1024 * 1024) {
+      toast.error("PDF publications must be 50 MB or smaller.");
+      return;
+    }
+    const normalizedSummaryUrl = summaryUrl.trim();
+    if (normalizedSummaryUrl && !isValidHttpUrl(normalizedSummaryUrl)) {
+      toast.error("Enter a valid executive summary URL.");
+      return;
+    }
+    const imageExtensions: Record<string, string> = {
+      "image/jpeg": "jpg",
+      "image/png": "png",
+      "image/webp": "webp",
+      "image/gif": "gif",
+    };
+    setSaving(true);
+    try {
+      let publicationUrl = normalizedFileUrl;
+      let uploadedPdfPath: string | null = null;
+      if (publicationPdf) {
+        uploadedPdfPath = `${user.id}/${crypto.randomUUID()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-resource-pdfs")
+          .upload(uploadedPdfPath, publicationPdf, { contentType: "application/pdf" });
+        if (uploadError) {
+          toast.error(`Could not upload publication PDF: ${uploadError.message}`);
+          return;
+        }
+        publicationUrl = supabase.storage
+          .from("knowledge-resource-pdfs")
+          .getPublicUrl(uploadedPdfPath).data.publicUrl;
+      }
+
+      let coverImageUrl: string | null = null;
+      let uploadedImagePath: string | null = null;
+      if (coverImage) {
+        uploadedImagePath = `${user.id}/${crypto.randomUUID()}.${imageExtensions[coverImage.type]}`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-resource-images")
+          .upload(uploadedImagePath, coverImage, { contentType: coverImage.type });
+        if (uploadError) {
+          if (uploadedPdfPath) {
+            const { error: cleanupError } = await supabase.storage
+              .from("knowledge-resource-pdfs")
+              .remove([uploadedPdfPath]);
+            if (cleanupError) {
+              toast.error(`Could not remove unused publication PDF: ${cleanupError.message}`);
+            }
+          }
+          toast.error(`Could not upload cover image: ${uploadError.message}`);
+          return;
+        }
+        coverImageUrl = supabase.storage
+          .from("knowledge-resource-images")
+          .getPublicUrl(uploadedImagePath).data.publicUrl;
+      }
+
+      const publication: PublicationInsert = {
+        title: normalizedTitle,
+        description: sanitizeRichText(description.trim()),
+        resource_type: resourceType,
+        community_of_practice: community,
+        min_tier_required: minTier,
+        file_url: publicationUrl,
+        executive_summary_url: normalizedSummaryUrl || null,
+        cover_image_url: coverImageUrl,
+        uploaded_by: user.id,
+      };
+      const { error } = await supabase.from("knowledge_resources").insert(publication);
+      if (error) {
+        if (uploadedPdfPath) {
+          const { error: cleanupError } = await supabase.storage
+            .from("knowledge-resource-pdfs")
+            .remove([uploadedPdfPath]);
+          if (cleanupError) {
+            toast.error(`Could not remove unused publication PDF: ${cleanupError.message}`);
+          }
+        }
+        if (uploadedImagePath) {
+          const { error: cleanupError } = await supabase.storage
+            .from("knowledge-resource-images")
+            .remove([uploadedImagePath]);
+          if (cleanupError) {
+            toast.error(`Could not remove unused cover image: ${cleanupError.message}`);
+          }
+        }
+        toast.error(`Could not add publication: ${error.message}`);
+        return;
+      }
+
+      toast.success("Publication added to the Knowledge Hub.");
+      onClose();
+      setTitle("");
+      setDescription("");
+      setResourceType("report");
+      setCommunity("general");
+      setMinTier("observer");
+      setFileUrl("");
+      setPublicationPdf(null);
+      if (publicationPdfInput.current) publicationPdfInput.current.value = "";
+      setSummaryUrl("");
+      setCoverImage(null);
+      if (coverImageInput.current) coverImageInput.current.value = "";
+      await onCreated();
+    } catch (error) {
+      toast.error(
+        `Could not add publication: ${error instanceof Error ? error.message : "Unexpected error"}`,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && !saving && onClose()}>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
+          <DialogTitle className="font-display text-xl">Add Knowledge Hub publication</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Add publication details and provide its downloadable link.
+          </p>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-title">Title</Label>
+              <Input
+                id="publication-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+                maxLength={250}
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <RichTextEditor
+                id="publication-description"
+                label="Abstract / description"
+                value={description}
+                onChange={setDescription}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-type">Publication type</Label>
+              <select
+                id="publication-type"
+                value={resourceType}
+                onChange={(event) => setResourceType(event.target.value as ResourceType)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="report">Report</option>
+                <option value="case_study">Case study</option>
+                <option value="policy_brief">Policy brief</option>
+                <option value="dataset">Dataset</option>
+                <option value="presentation">Presentation</option>
+                <option value="toolkit">Toolkit</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-community">Community of practice</Label>
+              <select
+                id="publication-community"
+                value={community}
+                onChange={(event) => setCommunity(event.target.value as CommunityOfPractice)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="general">General</option>
+                {COPS.map((cop) => (
+                  <option key={cop.key} value={cop.key}>
+                    {cop.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-tier">Membership tier</Label>
+              <select
+                id="publication-tier"
+                value={minTier}
+                onChange={(event) => setMinTier(event.target.value as MembershipTier)}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                {Object.entries(TIER_LABELS).map(([tier, label]) => (
+                  <option key={tier} value={tier}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Members at this tier or above can access the publication.
+              </p>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-pdf">Publication PDF (optional, max 50 MB)</Label>
+              <Input
+                ref={publicationPdfInput}
+                id="publication-pdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0] ?? null;
+                  setPublicationPdf(file);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {publicationPdf && (
+                <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-muted-foreground">{publicationPdf.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPublicationPdf(null)}
+                    className="shrink-0 text-muted-foreground underline hover:text-foreground"
+                  >
+                    Remove PDF
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-file">Or publication URL</Label>
+              <Input
+                id="publication-file"
+                type="url"
+                value={fileUrl}
+                onChange={(event) => setFileUrl(event.target.value)}
+                placeholder="https://…"
+              />
+              <p className="text-xs text-muted-foreground">Provide either a PDF upload or a URL.</p>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-summary">Executive summary URL (optional)</Label>
+              <Input
+                id="publication-summary"
+                type="url"
+                value={summaryUrl}
+                onChange={(event) => setSummaryUrl(event.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="publication-cover">Cover image (optional, max 5 MB)</Label>
+              <Input
+                ref={coverImageInput}
+                id="publication-cover"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(event) => {
+                  selectCoverImage(event.currentTarget.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {coverImagePreview && (
+                <div className="space-y-2">
+                  <img
+                    src={coverImagePreview}
+                    alt="Publication cover preview"
+                    className="mt-2 max-h-48 w-full rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage(null)}
+                    className="text-sm text-muted-foreground underline hover:text-foreground"
+                  >
+                    Remove image
+                  </button>
+                  <p className="text-xs text-muted-foreground">{coverImage?.name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => void save()} disabled={saving}>
+            {saving ? "Adding…" : "Add publication"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ---------- Reusable edit dialog ---------- */
 
 function EditDialog({
-  open, onClose, title, record, fields, onSave,
+  open,
+  onClose,
+  title,
+  record,
+  fields,
+  onSave,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   record: any;
-  fields: { name: string; label: string; multiline?: boolean }[];
+  fields: { name: string; label: string; multiline?: boolean; richText?: boolean }[];
   onSave: (vals: Record<string, any>) => Promise<void>;
 }) {
   const [vals, setVals] = useState<Record<string, any>>({});
@@ -1144,7 +1492,10 @@ function EditDialog({
   useEffect(() => {
     if (record) {
       const v: Record<string, any> = {};
-      fields.forEach((f) => { v[f.name] = record[f.name] ?? ""; });
+      fields.forEach((f) => {
+        const value = record[f.name] ?? "";
+        v[f.name] = f.richText ? sanitizeRichText(String(value)) : value;
+      });
       setVals(v);
     }
   }, [record]);
@@ -1152,28 +1503,129 @@ function EditDialog({
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
           {fields.map((f) => (
             <div key={f.name} className="space-y-1">
-              <Label>{f.label}</Label>
-              {f.multiline ? (
-                <Textarea rows={4} value={vals[f.name] ?? ""} onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })} />
+              {!f.richText && <Label>{f.label}</Label>}
+              {f.richText ? (
+                <RichTextEditor
+                  id={`edit-${f.name}`}
+                  label={f.label}
+                  value={vals[f.name] ?? ""}
+                  onChange={(value) => setVals({ ...vals, [f.name]: value })}
+                />
+              ) : f.multiline ? (
+                <Textarea
+                  rows={4}
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })}
+                />
               ) : (
-                <Input value={vals[f.name] ?? ""} onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })} />
+                <Input
+                  value={vals[f.name] ?? ""}
+                  onChange={(e) => setVals({ ...vals, [f.name]: e.target.value })}
+                />
               )}
             </div>
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={saving} onClick={async () => {
-            setSaving(true);
-            try { await onSave(vals); toast.success("Saved"); } catch (e: any) { toast.error(e.message ?? "Failed"); } finally { setSaving(false); }
-          }}>{saving ? "Saving…" : "Save"}</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true);
+              try {
+                await onSave(vals);
+                toast.success("Saved");
+              } catch (e: any) {
+                toast.error(e.message ?? "Failed");
+              } finally {
+                setSaving(false);
+              }
+            }}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function RichTextEditor({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const editor = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editor.current && editor.current.innerHTML !== value) {
+      editor.current.innerHTML = value;
+    }
+  }, [value]);
+
+  const updateValue = () => onChange(editor.current?.innerHTML ?? "");
+
+  return (
+    <>
+      <Label id={`${id}-label`}>{label}</Label>
+      <div className="overflow-hidden rounded-md border bg-background">
+        <div role="toolbar" aria-label="Description formatting" className="flex flex-wrap gap-1 border-b p-2">
+          {[
+            { command: "bold", label: "Bold", icon: Bold },
+            { command: "italic", label: "Italic", icon: Italic },
+            { command: "underline", label: "Underline", icon: Underline },
+            { command: "formatBlock", value: "h2", label: "Heading", icon: Heading2 },
+            { command: "insertUnorderedList", label: "Bulleted list", icon: List },
+            { command: "insertOrderedList", label: "Numbered list", icon: ListOrdered },
+          ].map(({ command, value: commandValue, label: buttonLabel, icon: Icon }) => (
+            <button
+              key={command}
+              type="button"
+              aria-label={buttonLabel}
+              title={buttonLabel}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                editor.current?.focus();
+                document.execCommand(command, false, commandValue);
+                updateValue();
+              }}
+              className="grid h-8 w-8 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+        <div
+          ref={editor}
+          id={id}
+          role="textbox"
+          aria-labelledby={`${id}-label`}
+          aria-multiline="true"
+          contentEditable
+          suppressContentEditableWarning
+          onInput={updateValue}
+          onPaste={(event) => {
+            event.preventDefault();
+            document.execCommand("insertText", false, event.clipboardData.getData("text/plain"));
+          }}
+          className="min-h-32 px-3 py-2 text-sm focus:outline-none [&_h2]:my-2 [&_h2]:text-lg [&_li]:ml-5 [&_ol]:list-decimal [&_p]:my-1 [&_ul]:list-disc"
+        />
+      </div>
+    </>
   );
 }
 
@@ -1182,7 +1634,7 @@ function ProgramCard({ icon: Icon, title, count, href, children }: { icon: any; 
     <section className="rounded-xl border bg-card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="font-display text-lg inline-flex items-center gap-2"><Icon className="h-4 w-4" /> {title} <span className="text-xs text-muted-foreground">({count})</span></h3>
-        <a href={href} className="text-xs text-primary hover:underline">Open →</a>
+        <a href={href} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a>
       </div>
       <ul className="text-sm">{children}</ul>
     </section>
@@ -1349,13 +1801,6 @@ function BroadcastButton({ recipientIds, label }: { recipientIds: string[]; labe
 type AppRow = any;
 type PayRow = any;
 
-const APP_STATUSES = [
-  { key: "submitted", label: "Submitted", color: "bg-blue-100 text-blue-800" },
-  { key: "reviewing", label: "In review", color: "bg-purple-100 text-purple-800" },
-  { key: "approved", label: "Approved", color: "bg-success/20 text-primary" },
-  { key: "rejected", label: "Rejected", color: "bg-destructive/15 text-destructive" },
-] as const;
-
 function money(kobo: number) {
   return "₦" + Math.round((kobo ?? 0) / 100).toLocaleString("en-NG");
 }
@@ -1364,7 +1809,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
   const [apps, setApps] = useState<AppRow[]>([]);
   const [pays, setPays] = useState<PayRow[]>([]);
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("all");
   const [open, setOpen] = useState<AppRow | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -1398,12 +1842,11 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return apps.filter((a) => {
-      if (status !== "all" && a.status !== status) return false;
       if (!needle) return true;
       return [a.full_name, a.email, a.organisation_name, a.tier_label]
         .some((v) => String(v ?? "").toLowerCase().includes(needle));
     });
-  }, [apps, q, status]);
+  }, [apps, q]);
 
   const totals = useMemo(() => {
     const paid = pays.filter((p) => p.status === "success");
@@ -1415,16 +1858,11 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
     };
   }, [apps, pays, payByEmail]);
 
-  const setAppStatus = async (id: string, next: string) => {
-    const { error } = await supabase.from("membership_applications").update({ status: next } as never).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Application updated");
-    setApps((prev) => prev.map((a) => (a.id === id ? { ...a, status: next } : a)));
-    setOpen((o: AppRow | null) => (o && o.id === id ? { ...o, status: next } : o));
-  };
-
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+      <p className="mb-4 rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+        Applications are retained for records. Membership activates automatically on submission, and paid tiers are granted after payment verification.
+      </p>
       <div className="mb-5 grid gap-3 sm:grid-cols-4">
         <Stat label="Applications" value={totals.apps} />
         <Stat label="Awaiting payment" value={totals.pendingPay} tone="bg-gold/25 text-gold-foreground" />
@@ -1438,11 +1876,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, organisation…"
             className="h-9 w-72 rounded-md border border-input bg-background pl-9 pr-3 text-sm outline-none focus:border-primary" />
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm">
-          <option value="all">All statuses</option>
-          {APP_STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">
@@ -1455,19 +1888,17 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
               <th className="px-4 py-3">Fee</th>
               <th className="px-4 py-3">Payment</th>
               <th className="px-4 py-3">Account tier</th>
-              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Submitted</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>}
+            {loading && <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No applications yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No applications yet.</td></tr>
             )}
             {rows.map((a) => {
               const pay = payByEmail.get(String(a.email).toLowerCase());
               const prof = profileByEmail.get(String(a.email).toLowerCase());
-              const st = APP_STATUSES.find((s) => s.key === a.status) ?? APP_STATUSES[0];
               return (
                 <tr key={a.id} onClick={() => setOpen(a)} className="cursor-pointer border-t hover:bg-muted/40">
                   <td className="px-4 py-3">
@@ -1492,9 +1923,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
                     )}
                   </td>
                   <td className="px-4 py-3">{prof ? <TierBadge tier={prof.membership_tier} /> : <span className="text-xs text-muted-foreground">No account</span>}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-md px-2 py-0.5 text-xs ${st.color}`}>{st.label}</span>
-                  </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {a.created_at ? format(new Date(a.created_at), "d MMM yyyy") : "—"}
                   </td>
@@ -1513,14 +1941,6 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
                 <DialogTitle>{open.organisation_name} — {open.tier_label || TIER_LABELS[open.requested_tier]}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 text-sm">
-                <div className="flex flex-wrap gap-2">
-                  {APP_STATUSES.map((s) => (
-                    <button key={s.key} onClick={() => setAppStatus(open.id, s.key)}
-                      className={`rounded-md px-3 py-1.5 text-xs ${open.status === s.key ? s.color : "border hover:bg-muted"}`}>
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
                 <Detail label="Contact" value={`${open.full_name} · ${open.role_title || "—"}`} />
                 <Detail label="Email" value={open.email} />
                 <Detail label="Phone" value={open.phone || "—"} />

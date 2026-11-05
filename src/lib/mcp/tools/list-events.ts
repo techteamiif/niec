@@ -17,7 +17,7 @@ export default defineTool({
     const now = new Date().toISOString();
     const q = supabase
       .from("events")
-      .select("id,title,description,event_type,start_date,end_date,location,is_virtual,min_tier_required,community_of_practice")
+      .select("id,title,description,event_type,start_date,end_date,location,is_virtual,is_paid,min_tier_required,community_of_practice")
       .order("start_date", { ascending: !past })
       .limit(limit ?? 20);
     const { data, error } = past ? await q.lt("start_date", now) : await q.gte("start_date", now);

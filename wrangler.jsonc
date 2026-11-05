@@ -3,6 +3,7 @@
   "name": "niec",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
+  "keep_vars": true,
   "main": "src/server.ts",
   "observability": {
     "enabled": true

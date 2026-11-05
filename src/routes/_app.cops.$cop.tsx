@@ -2,9 +2,11 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { COPS, COP_SLUG_REDIRECTS, initials, tierMeets } from "@/lib/niec";
+import { COPS, COP_SLUG_REDIRECTS, initials } from "@/lib/niec";
+import { requireEnterpriseForWrite } from "@/lib/member-write-access";
+import { formatEventSchedule } from "@/lib/event-schedule";
 import { toast } from "sonner";
-import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye } from "lucide-react";
+import { ArrowLeft, Crown, Pin, Plus, Trophy, Users, Vote, MessageSquare, Calendar, BookOpen, Layers, FileText, ThumbsUp, AlertTriangle, Eye, Heart, MessageCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +32,7 @@ function CopWorkspace() {
   const [members, setMembers] = useState<any[]>([]);
   const [chairs, setChairs] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
+  const [likedPostIds, setLikedPostIds] = useState<Set<string>>(new Set());
   const [events, setEvents] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
@@ -68,6 +71,17 @@ function CopWorkspace() {
     setMembers(mem.data ?? []);
     setChairs(role.data ?? []);
     setPosts(p.data ?? []);
+    if (user && p.data?.length) {
+      const { data: likes, error: likesError } = await supabase
+        .from("post_likes")
+        .select("post_id")
+        .eq("user_id", user.id)
+        .in("post_id", p.data.map((post) => post.id));
+      if (likesError) toast.error(`Could not load post reactions: ${likesError.message}`);
+      setLikedPostIds(new Set((likes ?? []).map((like) => like.post_id)));
+    } else {
+      setLikedPostIds(new Set());
+    }
     setEvents((e.data ?? []).filter((ev: any) => !ev.community_of_practice || ev.community_of_practice === cop));
     setResources(r.data ?? []);
     if (wg.error) {
@@ -144,7 +158,7 @@ function CopWorkspace() {
 
   const join = async () => {
     if (!user) return;
-    if (!tierMeets(profile?.membership_tier, "contributor")) return toast.error("Contributor tier required.");
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("cop_memberships").insert({ member_id: user.id, cop: cop as any });
     if (error) return toast.error(error.message);
     toast.success("Joined " + meta.name);
@@ -152,18 +166,57 @@ function CopWorkspace() {
   };
   const leave = async () => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     await supabase.from("cop_memberships").delete().eq("member_id", user.id).eq("cop", cop as any);
     toast.success("Left CoP"); load();
   };
 
   const togglePin = async (postId: string, current: boolean) => {
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("community_posts").update({ pinned_in_cop: !current }).eq("id", postId);
     if (error) return toast.error(error.message);
     load();
   };
 
+  const togglePostLike = async (postId: string) => {
+    if (!user || !requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (likedPostIds.has(postId)) {
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      if (error) return toast.error(`Could not remove reaction: ${error.message}`);
+      setLikedPostIds((current) => {
+        const next = new Set(current);
+        next.delete(postId);
+        return next;
+      });
+      setPosts((current) => current.map((post) =>
+        post.id === postId
+          ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
+          : post,
+      ));
+      return;
+    }
+
+    const { error } = await supabase
+      .from("post_likes")
+      .insert({ post_id: postId, user_id: user.id });
+    if (error) return toast.error(`Could not react to post: ${error.message}`);
+    setLikedPostIds((current) => new Set(current).add(postId));
+    setPosts((current) => current.map((post) =>
+      post.id === postId ? { ...post, likes_count: post.likes_count + 1 } : post,
+    ));
+  };
+
   const vote = async (pollId: string, idx: number, multi: boolean) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!joined) {
+      toast.info("Join this CoP to vote in its polls.");
+      return;
+    }
     const mine = myVotes[pollId] ?? new Set();
     if (mine.has(idx)) {
       await supabase.from("poll_votes").delete().eq("poll_id", pollId).eq("user_id", user.id).eq("option_index", idx);
@@ -179,6 +232,11 @@ function CopWorkspace() {
 
   const toggleGroupMembership = async (gid: string) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
+    if (!joined) {
+      toast.info("Join this CoP to join a working group.");
+      return;
+    }
     const in_ = (groupMembers[gid] ?? []).includes(user.id);
     if (in_) {
       await supabase.from("working_group_members").delete().eq("group_id", gid).eq("user_id", user.id);
@@ -191,6 +249,7 @@ function CopWorkspace() {
 
   const reactRfc = async (rfcId: string, reaction: "support" | "concern" | "watching") => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const mine = myRfcReactions[rfcId];
     if (mine === reaction) {
       await supabase.from("rfc_reactions").delete().eq("rfc_id", rfcId).eq("user_id", user.id);
@@ -205,6 +264,7 @@ function CopWorkspace() {
 
   const decideRfc = async (rfcId: string, status: "accepted" | "parked" | "rejected", note: string) => {
     if (!user) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("rfcs").update({ status, decided_by: user.id, decided_at: new Date().toISOString(), decision_note: note }).eq("id", rfcId);
     if (error) return toast.error(error.message);
     toast.success("Decision recorded");
@@ -281,7 +341,14 @@ function CopWorkspace() {
               <h2 className="mt-6 font-display text-lg">Pinned</h2>
               <div className="mt-3 space-y-3">
                 {posts.filter((p) => p.pinned_in_cop).slice(0, 3).map((p) => (
-                  <PostCard key={p.id} post={p} canManage={canManage} onPin={togglePin} />
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    canManage={canManage}
+                    liked={likedPostIds.has(p.id)}
+                    onLike={togglePostLike}
+                    onPin={togglePin}
+                  />
                 ))}
                 {posts.filter((p) => p.pinned_in_cop).length === 0 && (
                   <p className="text-sm text-muted-foreground">No pinned posts yet.</p>
@@ -322,7 +389,16 @@ function CopWorkspace() {
         {/* Feed */}
         <TabsContent value="feed" className="mt-6">
           <div className="space-y-3">
-            {posts.map((p) => <PostCard key={p.id} post={p} canManage={canManage} onPin={togglePin} />)}
+            {posts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                canManage={canManage}
+                liked={likedPostIds.has(p.id)}
+                onLike={togglePostLike}
+                onPin={togglePin}
+              />
+            ))}
             {posts.length === 0 && <p className="text-sm text-muted-foreground">No posts yet. Start the conversation from the <Link to="/community" className="text-primary underline">Community</Link> feed.</p>}
           </div>
         </TabsContent>
@@ -343,7 +419,7 @@ function CopWorkspace() {
                       <h3 className="font-display text-lg">{g.name}</h3>
                       <Badge variant={g.status === "active" ? "default" : "secondary"} className="mt-1">{g.status}</Badge>
                     </div>
-                    <Button size="sm" variant={inGroup ? "outline" : "default"} onClick={() => toggleGroupMembership(g.id)} disabled={!joined}>
+                    <Button size="sm" variant={inGroup ? "outline" : "default"} onClick={() => toggleGroupMembership(g.id)}>
                       {inGroup ? "Leave" : "Join"}
                     </Button>
                   </div>
@@ -383,7 +459,7 @@ function CopWorkspace() {
                       const pct = Math.round((c / total) * 100);
                       const mine = (myVotes[p.id] ?? new Set()).has(i);
                       return (
-                        <button key={i} onClick={() => !closed && vote(p.id, i, p.multi_select)} disabled={!!closed || !joined}
+                        <button key={i} onClick={() => !closed && vote(p.id, i, p.multi_select)} disabled={!!closed}
                           className={`relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition ${mine ? "border-primary bg-primary/5" : "hover:bg-muted"}`}>
                           <div className="absolute inset-y-0 left-0 bg-primary/10" style={{ width: `${pct}%` }} />
                           <div className="relative flex items-center justify-between">
@@ -457,7 +533,9 @@ function CopWorkspace() {
           <div className="space-y-3">
             {events.map((e) => (
               <Link key={e.id} to="/events" className="block rounded-xl border bg-card p-4 hover:shadow-md">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{new Date(e.start_date).toLocaleString()}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")}
+                </div>
                 <div className="mt-1 font-medium">{e.title}</div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>
               </Link>
@@ -470,7 +548,7 @@ function CopWorkspace() {
         <TabsContent value="resources" className="mt-6">
           <div className="grid gap-3 md:grid-cols-2">
             {resources.map((r) => (
-              <Link key={r.id} to="/knowledge" className="rounded-xl border bg-card p-4 hover:shadow-md">
+              <Link key={r.id} to="/knowledge/$resourceId" params={{ resourceId: r.id }} className="rounded-xl border bg-card p-4 hover:shadow-md">
                 <Badge variant="secondary" className="capitalize">{r.resource_type}</Badge>
                 <div className="mt-2 font-medium">{r.title}</div>
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{r.description}</p>
@@ -524,27 +602,84 @@ function CopWorkspace() {
   );
 }
 
-function PostCard({ post, canManage, onPin }: { post: any; canManage: boolean; onPin: (id: string, current: boolean) => void }) {
+function PostCard({
+  post,
+  canManage,
+  liked,
+  onLike,
+  onPin,
+}: {
+  post: any;
+  canManage: boolean;
+  liked: boolean;
+  onLike: (id: string) => void;
+  onPin: (id: string, current: boolean) => void;
+}) {
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="flex items-start gap-3">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={post.profiles?.avatar_url ?? undefined} />
-          <AvatarFallback>{initials(post.profiles?.full_name ?? "")}</AvatarFallback>
-        </Avatar>
+        <Link
+          to="/member/$memberId"
+          params={{ memberId: post.author_id }}
+          search={{ postId: post.id }}
+          aria-label={`View ${post.profiles?.full_name ?? "member"}'s profile`}
+          className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={post.profiles?.avatar_url ?? undefined} />
+            <AvatarFallback>{initials(post.profiles?.full_name ?? "")}</AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-sm font-medium">{post.profiles?.full_name}</div>
+            <Link
+              to="/member/$memberId"
+              params={{ memberId: post.author_id }}
+              search={{ postId: post.id }}
+              className="text-sm font-medium hover:text-primary"
+            >
+              {post.profiles?.full_name}
+            </Link>
             {canManage && (
               <Button size="sm" variant="ghost" onClick={() => onPin(post.id, post.pinned_in_cop)}>
                 <Pin className={`h-4 w-4 ${post.pinned_in_cop ? "fill-current text-gold" : ""}`} />
               </Button>
             )}
           </div>
-          <div className="mt-1 font-medium">{post.title}</div>
-          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
-          <div className="mt-2 text-xs text-muted-foreground">
-            {post.likes_count} likes · {post.comments_count} comments · {new Date(post.created_at).toLocaleDateString()}
+          <Link
+            to="/community/$postId"
+            params={{ postId: post.id }}
+            className="mt-1 block rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <div className="font-medium">{post.title}</div>
+            <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{post.content}</p>
+            {post.image_url && (
+              <img
+                src={post.image_url}
+                alt={post.title}
+                className="mt-3 max-h-[480px] w-full rounded-lg bg-muted object-contain"
+              />
+            )}
+          </Link>
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => onLike(post.id)}
+              aria-pressed={liked}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${liked ? "text-destructive" : "hover:bg-muted"}`}
+            >
+              <Heart className={`h-3.5 w-3.5 ${liked ? "fill-current" : ""}`} />
+              {post.likes_count}
+            </button>
+            <Link
+              to="/community/$postId"
+              params={{ postId: post.id }}
+              className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 hover:bg-muted"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {post.comments_count}
+            </Link>
+            <span className="ml-auto">{new Date(post.created_at).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
@@ -553,13 +688,14 @@ function PostCard({ post, canManage, onPin }: { post: any; canManage: boolean; o
 }
 
 function NewGroupDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [deliverable, setDeliverable] = useState("");
   const submit = async () => {
     if (!user || !name) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("working_groups").insert({
       cop: cop as any, name, description, deliverable, lead_id: user.id, created_by: user.id,
     });
@@ -585,13 +721,14 @@ function NewGroupDialog({ cop, onCreated }: { cop: string; onCreated: () => void
 }
 
 function NewPollDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [optionsText, setOptionsText] = useState("");
   const [multi, setMulti] = useState(false);
   const submit = async () => {
     if (!user || !question) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const options = optionsText.split("\n").map((s) => s.trim()).filter(Boolean);
     if (options.length < 2) return toast.error("Add at least 2 options");
     const { error } = await supabase.from("polls").insert({
@@ -629,12 +766,13 @@ function RfcStatusBadge({ s }: { s: string }) {
 }
 
 function NewRfcDialog({ cop, onCreated }: { cop: string; onCreated: () => void }) {
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const submit = async () => {
     if (!user || !title.trim()) return;
+    if (!requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
     const { error } = await supabase.from("rfcs").insert({ cop: cop as any, author_id: user.id, title, body });
     if (error) return toast.error(error.message);
     toast.success("Proposal submitted");
