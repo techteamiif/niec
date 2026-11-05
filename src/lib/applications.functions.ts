@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 export interface JoinApplicationInput {
   userId?: string;
+  memberType?: "individual" | "organisation";
   fullName: string;
   email: string;
   phone?: string;
@@ -25,6 +26,15 @@ export interface JoinApplicationInput {
   aumRange?: string;
   investmentStage?: string;
   statement?: string;
+  personalTitle?: string;
+  qualification?: string;
+  qualificationDepartment?: string;
+  qualificationPosition?: string;
+  qualificationInstitution?: string;
+  researchInterests?: string;
+  researchArea?: string;
+  bio?: string;
+  avatarUrl?: string;
 }
 
 const TIERS = ["observer", "contributor", "growth_partner", "anchor", "strategic_partner"];
@@ -80,6 +90,18 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
       aum_range: clean(data.aumRange, 80) || null,
       investment_stage: clean(data.investmentStage, 80) || null,
       statement: clean(data.statement, 4000) || null,
+      details: {
+        account_type: data.memberType === "individual" ? "individual" : "organisation",
+        personal_title: clean(data.personalTitle, 40) || null,
+        qualification: clean(data.qualification, 300) || null,
+        qualification_department: clean(data.qualificationDepartment, 160) || null,
+        qualification_position: clean(data.qualificationPosition, 160) || null,
+        qualification_institution: clean(data.qualificationInstitution, 300) || null,
+        research_interests: clean(data.researchInterests, 2000) || null,
+        research_area: clean(data.researchArea, 300) || null,
+        bio: clean(data.bio, 4000) || null,
+        avatar_url: clean(data.avatarUrl, 500) || null,
+      },
       status: "submitted",
     };
 
@@ -103,6 +125,7 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
         replyTo: row.email,
         templateData: {
           fullName: row.full_name,
+          memberType: data.memberType === "individual" ? "individual" : "organisation",
           email: row.email,
           phone: row.phone ?? "",
           organisationName: row.organisation_name,
@@ -125,6 +148,14 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
           aumRange: row.aum_range ?? "",
           investmentStage: row.investment_stage ?? "",
           statement: row.statement ?? "",
+          personalTitle: clean(data.personalTitle, 40),
+          qualification: clean(data.qualification, 300),
+          qualificationDepartment: clean(data.qualificationDepartment, 160),
+          qualificationPosition: clean(data.qualificationPosition, 160),
+          qualificationInstitution: clean(data.qualificationInstitution, 300),
+          researchInterests: clean(data.researchInterests, 2000),
+          researchArea: clean(data.researchArea, 300),
+          bio: clean(data.bio, 4000),
           submittedAt: new Date().toLocaleString("en-GB", { timeZone: "Africa/Lagos" }),
         },
       });

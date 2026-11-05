@@ -11,11 +11,12 @@ import { UserAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
+import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url"
+  "id" | "full_name" | "organisation_name" | "avatar_url" | "application_data"
 >;
 
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
@@ -51,7 +52,7 @@ function KnowledgeResourcePage() {
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
           .from("profiles")
-          .select("id, full_name, organisation_name, avatar_url")
+          .select("id, full_name, organisation_name, avatar_url, application_data")
           .eq("id", data.uploaded_by)
           .maybeSingle();
 
@@ -240,6 +241,7 @@ function KnowledgeResourcePage() {
             <p className="mt-5 text-lg font-medium">
               {author?.organisation_name || author?.full_name || "NIeC Knowledge Team"}
             </p>
+            {author && <AccountTypeBadge applicationData={author.application_data} />}
             {author?.organisation_name && author.full_name && (
               <p className="mt-1 text-sm text-muted-foreground">{author.full_name}</p>
             )}

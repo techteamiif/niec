@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { UserAvatar } from "@/components/Avatar";
+import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
 import { MapPin, Search, MessageCircle } from "lucide-react";
@@ -20,11 +21,19 @@ function MembersPage() {
   const [tier, setTier] = useState("all");
   const [org, setOrg] = useState("all");
 
-  useEffect(() => { if (initialQ !== undefined) setSearch(initialQ); }, [initialQ]);
+  useEffect(() => {
+    if (initialQ !== undefined) setSearch(initialQ);
+  }, [initialQ]);
 
   useEffect(() => {
     (async () => {
-      let q = supabase.from("profiles").select("id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at").eq("membership_status", "active").neq("membership_tier", "observer");
+      let q = supabase
+        .from("profiles")
+        .select(
+          "id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at, application_data",
+        )
+        .eq("membership_status", "active")
+        .neq("membership_tier", "observer");
       if (tier !== "all") q = q.eq("membership_tier", tier as any);
       if (org !== "all") q = q.eq("organisation_type", org as any);
       const { data } = await q.limit(200);
@@ -53,19 +62,35 @@ function MembersPage() {
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, organisation, sector…"
-            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, organisation, sector…"
+            className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
+          />
         </div>
-        <select value={tier} onChange={(e) => setTier(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
+        <select
+          value={tier}
+          onChange={(e) => setTier(e.target.value)}
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+        >
           <option value="all">All tiers</option>
           <option value="contributor">Enterprise</option>
           <option value="growth_partner">Growth Partner</option>
           <option value="anchor">Anchor</option>
           <option value="strategic_partner">Strategic Partner</option>
         </select>
-        <select value={org} onChange={(e) => setOrg(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
+        <select
+          value={org}
+          onChange={(e) => setOrg(e.target.value)}
+          className="h-9 rounded-md border bg-background px-2 text-sm"
+        >
           <option value="all">All organisations</option>
-          {Object.entries(ORG_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {Object.entries(ORG_TYPE_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -79,7 +104,10 @@ function MembersPage() {
             >
               <UserAvatar name={m.full_name} src={m.avatar_url} size={72} />
               <div className="mt-3 font-medium">{m.full_name || "—"}</div>
-              {m.role_title && <div className="mt-1 text-sm text-muted-foreground">{m.role_title}</div>}
+              <AccountTypeBadge applicationData={m.application_data} />
+              {m.role_title && (
+                <div className="mt-1 text-sm text-muted-foreground">{m.role_title}</div>
+              )}
               {m.location && (
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5 shrink-0" /> {m.location}
@@ -87,15 +115,20 @@ function MembersPage() {
               )}
             </Link>
             {user && m.id !== user.id && (
-              <Link to="/messages" search={{ to: m.id }}
-                className="mx-auto mt-4 flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted">
+              <Link
+                to="/messages"
+                search={{ to: m.id }}
+                className="mx-auto mt-4 flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+              >
                 <MessageCircle className="h-3 w-3" /> Message
               </Link>
             )}
           </div>
         ))}
         {filtered.length === 0 && (
-          <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">No members match.</div>
+          <div className="col-span-full rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+            No members match.
+          </div>
         )}
       </div>
     </div>

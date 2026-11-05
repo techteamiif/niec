@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, MapPin, Video } from "lucide-react";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EventImage } from "@/components/EventImage";
+import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -35,7 +36,11 @@ type AttendanceResponse = "yes" | "no" | null;
 type EventAttendee = {
   member_id: string;
   registered_at: string;
-  profiles: { full_name: string | null; avatar_url: string | null } | null;
+  profiles: {
+    full_name: string | null;
+    avatar_url: string | null;
+    application_data: Database["public"]["Tables"]["profiles"]["Row"]["application_data"];
+  } | null;
 };
 
 export const Route = createFileRoute("/_app/event/$eventId")({
@@ -87,8 +92,10 @@ function EventDetailPage() {
       supabase.rpc("get_event_virtual_link", { _event_id: eventId }),
       supabase.rpc("get_event_registration_link", { _event_id: eventId }),
     ]);
-    if (virtualLinkError) toast.error(`Could not load online event link: ${virtualLinkError.message}`);
-    if (registrationLinkError) toast.error(`Could not load registration link: ${registrationLinkError.message}`);
+    if (virtualLinkError)
+      toast.error(`Could not load online event link: ${virtualLinkError.message}`);
+    if (registrationLinkError)
+      toast.error(`Could not load registration link: ${registrationLinkError.message}`);
     setEvent({
       ...data,
       virtual_link: virtualLink ?? null,
@@ -106,7 +113,9 @@ function EventDetailPage() {
     if (isStaff || data.created_by === user?.id) {
       const { data: attendeeRows, error: attendeeError } = await supabase
         .from("event_attendees")
-        .select("member_id, registered_at, profiles:member_id(full_name, avatar_url)")
+        .select(
+          "member_id, registered_at, profiles:member_id(full_name, avatar_url, application_data)",
+        )
         .eq("event_id", eventId)
         .eq("attending", true)
         .order("registered_at");
@@ -172,12 +181,16 @@ function EventDetailPage() {
           ? [
               ...current.filter((attendee) => attendee.member_id !== user.id),
               previousAttendee ?? {
-                  member_id: user.id,
-                  registered_at: new Date().toISOString(),
-                  profiles: profile
-                    ? { full_name: profile.full_name, avatar_url: profile.avatar_url }
-                    : null,
-                },
+                member_id: user.id,
+                registered_at: new Date().toISOString(),
+                profiles: profile
+                  ? {
+                      full_name: profile.full_name,
+                      avatar_url: profile.avatar_url,
+                      application_data: profile.application_data,
+                    }
+                  : null,
+              },
             ]
           : current.filter((attendee) => attendee.member_id !== user.id),
       );
@@ -290,40 +303,40 @@ function EventDetailPage() {
                   <p className="mr-1 text-sm text-foreground">Will you be attending?</p>
                   {!ended && (
                     <>
-                    <button
-                      onClick={() => setAttendance("yes")}
-                      disabled={updatingAttendance}
-                      aria-pressed={isAttending}
-                      title={
-                        allowed
-                          ? ""
-                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                      }
-                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
-                        isAttending
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/90"
-                      }`}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      onClick={() => setAttendance("no")}
-                      disabled={updatingAttendance}
-                      aria-pressed={attendanceResponse === "no"}
-                      title={
-                        allowed
-                          ? ""
-                          : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                      }
-                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
-                        attendanceResponse === "no"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted hover:bg-muted/90"
-                      }`}
-                    >
-                      No
-                    </button>
+                      <button
+                        onClick={() => setAttendance("yes")}
+                        disabled={updatingAttendance}
+                        aria-pressed={isAttending}
+                        title={
+                          allowed
+                            ? ""
+                            : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                        }
+                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                          isAttending
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/90"
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={() => setAttendance("no")}
+                        disabled={updatingAttendance}
+                        aria-pressed={attendanceResponse === "no"}
+                        title={
+                          allowed
+                            ? ""
+                            : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                        }
+                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                          attendanceResponse === "no"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted hover:bg-muted/90"
+                        }`}
+                      >
+                        No
+                      </button>
                     </>
                   )}
                 </div>
@@ -484,6 +497,7 @@ function EventDetailPage() {
                         <p className="truncate text-sm font-medium">
                           {attendee.profiles?.full_name ?? "Member"}
                         </p>
+                        <AccountTypeBadge applicationData={attendee.profiles?.application_data} />
                         <p className="text-xs text-muted-foreground">
                           Attending {format(new Date(attendee.registered_at), "PPP")}
                         </p>

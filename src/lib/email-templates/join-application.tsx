@@ -6,6 +6,7 @@ import type { TemplateEntry } from './registry'
 
 export interface JoinApplicationProps {
   fullName?: string
+  memberType?: 'individual' | 'organisation'
   email?: string
   phone?: string
   organisationName?: string
@@ -28,6 +29,14 @@ export interface JoinApplicationProps {
   aumRange?: string
   investmentStage?: string
   statement?: string
+  personalTitle?: string
+  qualification?: string
+  qualificationDepartment?: string
+  qualificationPosition?: string
+  qualificationInstitution?: string
+  researchInterests?: string
+  researchArea?: string
+  bio?: string
   submittedAt?: string
 }
 
@@ -61,7 +70,9 @@ const JoinApplicationEmail = (p: JoinApplicationProps) => (
         </Section>
 
         <Heading as="h2" style={h2}>Primary contact</Heading>
+        <Row label="Applicant type" value={p.memberType === 'individual' ? 'Individual' : 'Organisation'} />
         <Row label="Name" value={val(p.fullName)} />
+        {p.memberType === 'individual' && <Row label="Title" value={val(p.personalTitle)} />}
         <Row label="Role" value={val(p.roleTitle)} />
         <Row label="Email" value={val(p.email)} />
         <Row label="Phone" value={val(p.phone)} />
@@ -69,12 +80,27 @@ const JoinApplicationEmail = (p: JoinApplicationProps) => (
         <Row label="Preferred channel" value={val(p.commPreference)} />
 
         <Hr style={hr} />
-        <Heading as="h2" style={h2}>Organisation</Heading>
-        <Row label="Type" value={val(p.organisationType)} />
-        <Row label="Location" value={val(p.location)} />
-        <Row label="Website" value={val(p.website)} />
-        <Row label="AUM / annual budget" value={val(p.aumRange)} />
-        <Row label="Investment stage focus" value={val(p.investmentStage)} />
+        {p.memberType === 'individual' ? (
+          <>
+            <Heading as="h2" style={h2}>Individual profile</Heading>
+            <Row label="Department" value={val(p.qualificationDepartment)} />
+            <Row label="Position" value={val(p.qualificationPosition)} />
+            <Row label="Institution or organisation" value={val(p.qualificationInstitution)} />
+            <Row label="Research interests" value={val(p.researchInterests)} />
+            <Row label="Research area" value={val(p.researchArea)} />
+            <Row label="State" value={val(p.location)} />
+            <Row label="Bio / description" value={val(p.bio)} />
+          </>
+        ) : (
+          <>
+            <Heading as="h2" style={h2}>Organisation</Heading>
+            <Row label="Type" value={val(p.organisationType)} />
+            <Row label="Location" value={val(p.location)} />
+            <Row label="Website" value={val(p.website)} />
+            <Row label="AUM / annual budget" value={val(p.aumRange)} />
+            <Row label="Investment stage focus" value={val(p.investmentStage)} />
+          </>
+        )}
 
         <Hr style={hr} />
         <Heading as="h2" style={h2}>Focus & engagement</Heading>
@@ -107,6 +133,7 @@ export const template = {
   to: 'sefosaaustin@impactinvestorsfoundation.org',
   previewData: {
     fullName: 'Amina Bello',
+    memberType: 'organisation',
     email: 'amina@example.org',
     organisationName: 'Sahel Impact Capital',
     organisationType: 'Impact investor / fund manager',

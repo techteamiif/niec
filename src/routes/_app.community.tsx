@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
+import { AccountTypeBadge } from "@/components/AccountTypeBadge";
 import { CommentsThread } from "@/components/CommentsThread";
 import { COPS, POST_TYPE_COLOR, POST_TYPE_LABELS } from "@/lib/niec";
 import { can } from "@/lib/entitlements";
@@ -48,7 +49,7 @@ function CommunityPage() {
   const load = async () => {
     let q = supabase
       .from("community_posts")
-      .select("*, profiles:author_id(full_name, organisation_name, avatar_url)")
+      .select("*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)")
       .order("created_at", { ascending: false });
     if (typeFilter !== "all") q = q.eq("post_type", typeFilter as any);
     if (copFilter !== "all") q = q.eq("community_of_practice", copFilter as any);
@@ -61,9 +62,10 @@ function CommunityPage() {
       }
 
       for (const option of sortPriority) {
-        const difference = option === "latest"
-          ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          : b.likes_count - a.likes_count;
+        const difference =
+          option === "latest"
+            ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            : b.likes_count - a.likes_count;
         if (difference !== 0) return difference;
       }
 
@@ -145,11 +147,7 @@ function CommunityPage() {
           onClick={openPostComposer}
           className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold ${canCreatePost ? "bg-primary text-primary-foreground hover:bg-primary/90" : "border text-muted-foreground hover:bg-muted"}`}
         >
-          {canCreatePost ? (
-            <Plus className="h-4 w-4" />
-          ) : (
-            <Lock className="h-4 w-4" />
-          )}
+          {canCreatePost ? <Plus className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
           Create post
         </button>
       </div>
@@ -200,6 +198,7 @@ function CommunityPage() {
                     >
                       {p.profiles?.full_name}
                     </Link>
+                    <AccountTypeBadge applicationData={p.profiles?.application_data} />
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP p")}
@@ -226,7 +225,9 @@ function CommunityPage() {
                 className="mt-3 block rounded-sm hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 <h3 className="font-display text-lg">{p.title}</h3>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{p.content}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {p.content}
+                </p>
                 {p.image_url && (
                   <img
                     src={p.image_url}
