@@ -17,6 +17,7 @@ type PostDetail = PostRow & {
     full_name: string | null;
     organisation_name: string | null;
     avatar_url: string | null;
+    application_data: Database["public"]["Tables"]["profiles"]["Row"]["application_data"];
   } | null;
 };
 
@@ -34,7 +35,7 @@ function CommunityPostPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("community_posts")
-      .select("*, profiles:author_id(full_name, organisation_name, avatar_url)")
+      .select("*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)")
       .eq("id", postId)
       .maybeSingle();
 
@@ -77,10 +78,13 @@ function CommunityPostPage() {
         .eq("user_id", user.id);
       if (error) return toast.error(`Could not remove like: ${error.message}`);
       setLiked(false);
-      setPost((current) => current && {
-        ...current,
-        likes_count: Math.max(0, current.likes_count - 1),
-      });
+      setPost(
+        (current) =>
+          current && {
+            ...current,
+            likes_count: Math.max(0, current.likes_count - 1),
+          },
+      );
       return;
     }
 
@@ -114,7 +118,9 @@ function CommunityPostPage() {
         </div>
       ) : (
         <div className="mx-auto grid max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
-          <article className={`min-w-0 rounded-xl border bg-card p-6 md:p-8 ${post.is_pinned ? "border-primary/50 ring-1 ring-primary/20" : ""}`}>
+          <article
+            className={`min-w-0 rounded-xl border bg-card p-6 md:p-8 ${post.is_pinned ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
+          >
             {post.is_pinned && (
               <div className="mb-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
                 <Pin className="h-3 w-3" /> Pinned
@@ -148,15 +154,14 @@ function CommunityPostPage() {
                     {post.profiles?.organisation_name || "—"} ·{" "}
                     {COPS.find((cop) => cop.key === post.community_of_practice)?.name ?? "General"}
                   </div>
-                  <time
-                    dateTime={post.created_at}
-                    className="block whitespace-nowrap"
-                  >
+                  <time dateTime={post.created_at} className="block whitespace-nowrap">
                     {format(new Date(post.created_at), "PP p")}
                   </time>
                 </div>
               </div>
-              <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${POST_TYPE_COLOR[post.post_type]}`}>
+              <span
+                className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${POST_TYPE_COLOR[post.post_type]}`}
+              >
                 {POST_TYPE_LABELS[post.post_type]}
               </span>
             </div>
@@ -175,7 +180,10 @@ function CommunityPostPage() {
             {post.tags && post.tags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1">
                 {post.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                  <span
+                    key={tag}
+                    className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+                  >
                     #{tag}
                   </span>
                 ))}
@@ -203,10 +211,13 @@ function CommunityPostPage() {
               postId={post.id}
               panelLayout
               onCountChange={(delta) =>
-                setPost((current) => current && {
-                  ...current,
-                  comments_count: Math.max(0, current.comments_count + delta),
-                })
+                setPost(
+                  (current) =>
+                    current && {
+                      ...current,
+                      comments_count: Math.max(0, current.comments_count + delta),
+                    },
+                )
               }
             />
           </section>

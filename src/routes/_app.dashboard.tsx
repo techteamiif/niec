@@ -49,20 +49,35 @@ function Dashboard() {
   const [posts, setPosts] = useState<any[]>([]);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [events, setEvents] = useState<any[]>([]);
-  const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(null);
+  const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     (async () => {
       const [m, d, e, p, ev] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }).eq("membership_status", "active"),
-        supabase.from("deal_opportunities").select("id", { count: "exact", head: true }).eq("status", "open"),
-        supabase.from("events").select("id", { count: "exact", head: true }).gte("start_date", new Date().toISOString()),
-        supabase.from("community_posts")
-          .select("*, profiles:author_id(full_name, organisation_name, avatar_url)")
+        supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("membership_status", "active"),
+        supabase
+          .from("deal_opportunities")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "open"),
+        supabase
+          .from("events")
+          .select("id", { count: "exact", head: true })
+          .gte("start_date", new Date().toISOString()),
+        supabase
+          .from("community_posts")
+          .select(
+            "*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)",
+          )
           .order("is_pinned", { ascending: false })
           .order("created_at", { ascending: false })
           .limit(10),
-        supabase.from("events")
+        supabase
+          .from("events")
           .select("id, title, start_date, end_date, schedule, location, is_virtual, event_type")
           .gte("start_date", new Date().toISOString())
           .order("start_date")
@@ -76,7 +91,10 @@ function Dashboard() {
           .from("post_likes")
           .select("post_id")
           .eq("user_id", user.id)
-          .in("post_id", p.data.map((post) => post.id));
+          .in(
+            "post_id",
+            p.data.map((post) => post.id),
+          );
         if (error) toast.error(`Could not load post reactions: ${error.message}`);
         setLikedPosts(new Set((likes ?? []).map((like) => like.post_id)));
       } else {
@@ -106,18 +124,24 @@ function Dashboard() {
         next.delete(postId);
         return next;
       });
-      setPosts((current) => current.map((post) => post.id === postId
-        ? { ...post, likes_count: Math.max(0, post.likes_count - 1) }
-        : post));
+      setPosts((current) =>
+        current.map((post) =>
+          post.id === postId ? { ...post, likes_count: Math.max(0, post.likes_count - 1) } : post,
+        ),
+      );
       return;
     }
 
-    const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+    const { error } = await supabase
+      .from("post_likes")
+      .insert({ post_id: postId, user_id: user.id });
     if (error) return toast.error(`Could not react to post: ${error.message}`);
     setLikedPosts((current) => new Set(current).add(postId));
-    setPosts((current) => current.map((post) => post.id === postId
-      ? { ...post, likes_count: post.likes_count + 1 }
-      : post));
+    setPosts((current) =>
+      current.map((post) =>
+        post.id === postId ? { ...post, likes_count: post.likes_count + 1 } : post,
+      ),
+    );
   };
 
   const tier = profile?.membership_tier ?? "observer";
@@ -129,7 +153,10 @@ function Dashboard() {
     <div className="p-6 lg:p-10">
       {/* Welcome banner */}
       <div className="relative flex min-h-[164px] flex-col justify-center gap-5 overflow-hidden rounded-[28px] border border-black/[0.04] bg-white px-6 py-7 text-black shadow-[0_3px_8px_rgba(0,0,0,0.08)] sm:flex-row sm:items-center sm:justify-between sm:px-14 sm:py-8">
-        <div aria-hidden="true" className="absolute left-0 top-0 h-full aspect-square rounded-r-full bg-[#f4f4f4]" />
+        <div
+          aria-hidden="true"
+          className="absolute left-0 top-0 h-full aspect-square rounded-r-full bg-[#f4f4f4]"
+        />
         <div className="relative z-10">
           <div className="text-[13px] font-semibold text-black">Welcome Back,</div>
           <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -168,7 +195,9 @@ function Dashboard() {
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-display text-xl">Latest from the community</h2>
-            <Link to="/community" className="text-sm text-primary hover:underline">View all</Link>
+            <Link to="/community" className="text-sm text-primary hover:underline">
+              View all
+            </Link>
           </div>
           <div className="space-y-3">
             {posts.length === 0 && (
@@ -189,7 +218,11 @@ function Dashboard() {
                     aria-label={`View ${p.profiles?.full_name ?? "member"}'s profile`}
                     className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
-                    <UserAvatar name={p.profiles?.full_name ?? "?"} src={p.profiles?.avatar_url} size={32} />
+                    <UserAvatar
+                      name={p.profiles?.full_name ?? "?"}
+                      src={p.profiles?.avatar_url}
+                      size={32}
+                    />
                   </Link>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-sm">
@@ -202,9 +235,15 @@ function Dashboard() {
                         {p.profiles?.full_name}
                       </Link>
                     </div>
-                    <div className="text-xs text-muted-foreground">{p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP")}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {p.profiles?.organisation_name} · {format(new Date(p.created_at), "PP")}
+                    </div>
                   </div>
-                  <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${POST_TYPE_COLOR[p.post_type]}`}>{POST_TYPE_LABELS[p.post_type]}</span>
+                  <span
+                    className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${POST_TYPE_COLOR[p.post_type]}`}
+                  >
+                    {POST_TYPE_LABELS[p.post_type]}
+                  </span>
                 </div>
                 <Link
                   to="/community/$postId"
@@ -228,7 +267,10 @@ function Dashboard() {
                     aria-pressed={likedPosts.has(p.id)}
                     className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 ${likedPosts.has(p.id) ? "text-destructive" : "hover:bg-muted"}`}
                   >
-                    <Heart aria-hidden="true" className={`h-3.5 w-3.5 ${likedPosts.has(p.id) ? "fill-current" : ""}`} />
+                    <Heart
+                      aria-hidden="true"
+                      className={`h-3.5 w-3.5 ${likedPosts.has(p.id) ? "fill-current" : ""}`}
+                    />
                     {p.likes_count}
                   </button>
                   <Link
@@ -248,11 +290,19 @@ function Dashboard() {
         <aside className="space-y-4">
           <OnboardingChecklist />
           <div className="rounded-xl border bg-card p-5">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Upcoming events</div>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Upcoming events
+            </div>
             <div className="space-y-3">
-              {events.length === 0 && <div className="text-sm text-muted-foreground">None scheduled.</div>}
+              {events.length === 0 && (
+                <div className="text-sm text-muted-foreground">None scheduled.</div>
+              )}
               {events.map((e) => (
-                <Link key={e.id} to="/events" className="block rounded-md border border-border/60 p-3 transition hover:border-primary">
+                <Link
+                  key={e.id}
+                  to="/events"
+                  className="block rounded-md border border-border/60 p-3 transition hover:border-primary"
+                >
                   <div className="text-xs text-primary">
                     {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")}
                   </div>
@@ -262,9 +312,9 @@ function Dashboard() {
                       ? `Hybrid${e.location ? ` · ${e.location}` : ""}`
                       : e.event_type === "onsite"
                         ? e.location || "Location to be announced"
-                      : e.is_virtual
-                        ? "Online"
-                        : e.location}
+                        : e.is_virtual
+                          ? "Online"
+                          : e.location}
                   </div>
                 </Link>
               ))}
@@ -272,17 +322,15 @@ function Dashboard() {
           </div>
           <div className="rounded-xl border bg-card p-5">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Your plan</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Your plan
+              </div>
               <TierBadge tier={tier} />
             </div>
             <div className="mt-3 font-display text-lg">{TIER_LABELS[tier]}</div>
             {usage && (
               <div className="mt-3 space-y-2 text-xs">
-                <UsageRow
-                  label="Communities of Practice"
-                  used={usage.cop_count}
-                  cap={copCap}
-                />
+                <UsageRow label="Communities of Practice" used={usage.cop_count} cap={copCap} />
                 <UsageRow
                   label="Mentorship this month"
                   used={usage.mentorship_this_month}
@@ -315,7 +363,8 @@ function UsageRow({ label, used, cap }: { label: string; used: number; cap: numb
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground">{label}</span>
         <span className="font-medium">
-          {used}{unlimited ? " · unlimited" : ` / ${cap}`}
+          {used}
+          {unlimited ? " · unlimited" : ` / ${cap}`}
         </span>
       </div>
       {!unlimited && (

@@ -20,8 +20,9 @@ import {
   SECTOR_OPTIONS as SECTORS,
 } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronDown, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { Check, ChevronRight, ChevronDown, ShieldCheck, Eye, EyeOff, Search, X, UserRound } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
+import type { Database, Json } from "@/integrations/supabase/types";
 
 
 
@@ -55,8 +56,61 @@ const PAYABLE: Record<string, number> = {
   anchor: 1_500_000,
 };
 
+const PERSONAL_TITLES = ["Mr", "Mrs", "Ms", "Miss", "Dr", "Prof", "Engr", "Rev", "Other"];
+const QUALIFICATION_DEPARTMENTS = [
+  "Agriculture & Food Systems",
+  "Business & Management",
+  "Economics & Finance",
+  "Education",
+  "Engineering & Technology",
+  "Environmental & Climate Studies",
+  "Health Sciences",
+  "Law",
+  "Public Policy & Administration",
+  "Social Sciences",
+  "Other",
+];
+const QUALIFICATION_POSITIONS = [
+  "Undergraduate Student",
+  "Graduate Student",
+  "Researcher",
+  "Postdoctoral Researcher",
+  "Lecturer",
+  "Senior Lecturer",
+  "Professor",
+  "Professional",
+  "Other",
+];
+const RESEARCH_INTEREST_OPTIONS = [
+  "Climate Change",
+  "Renewable Energy",
+  "Sustainable Development",
+  "Environmental Science",
+  "Clean Technology",
+  "Green Technology",
+  "Carbon Reduction",
+  "Energy Efficiency",
+  "Agriculture & Food Systems",
+  "Impact Investing",
+  "Social Entrepreneurship",
+  "Financial Inclusion",
+  "Gender Equality",
+  "Public Health",
+  "Education",
+  "Economic Development",
+  "Public Policy",
+  "Sustainable Finance",
+  "Circular Economy",
+  "Biodiversity Conservation",
+];
+
 const CONSENTS = [
   "I confirm that the information provided is accurate and I am authorised to represent my organisation.",
+  "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
+  "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
+];
+const INDIVIDUAL_CONSENTS = [
+  "I confirm that the information provided is accurate and belongs to me.",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
@@ -67,8 +121,9 @@ function toggle<T>(arr: T[], v: T) {
 
 function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const navigate = useNavigate();
-  const { user, profile, loading, refresh } = useAuth();
+  const { user, profile, loading, refresh, signOut } = useAuth();
   const [tier, setTier] = useState<typeof TIERS[number]["key"] | "">("");
+  const [accountType, setAccountType] = useState<"organisation" | "individual">("organisation");
   const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("");
   const [orgTypeOpen, setOrgTypeOpen] = useState(false);
@@ -80,6 +135,16 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [personalTitle, setPersonalTitle] = useState("");
+  const [individualRole, setIndividualRole] = useState("");
+  const [qualificationDepartment, setQualificationDepartment] = useState("");
+  const [qualificationPosition, setQualificationPosition] = useState("");
+  const [qualificationInstitution, setQualificationInstitution] = useState("");
+  const [researchInterests, setResearchInterests] = useState("");
+  const [researchInterestOpen, setResearchInterestOpen] = useState(false);
+  const [researchArea, setResearchArea] = useState("");
+  const [individualBio, setIndividualBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedin, setLinkedin] = useState("");
@@ -101,6 +166,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [done, setDone] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
+  const isIndividual = mode === "onboarding" && accountType === "individual";
+
+  useEffect(() => {
+    if (!user) return;
+    setAccountType(user.user_metadata.account_type === "individual" ? "individual" : "organisation");
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -111,11 +182,23 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     setLastName(typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" "));
     const savedJobTitle = typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "";
     setJobTitle(JOB_TITLES.includes(savedJobTitle) ? savedJobTitle : "");
+    setPersonalTitle(typeof metadata.personal_title === "string" ? metadata.personal_title : "");
+    setIndividualRole(typeof metadata.professional_role === "string" ? metadata.professional_role : savedJobTitle);
+    setQualificationDepartment(typeof metadata.qualification_department === "string" ? metadata.qualification_department : "");
+    setQualificationPosition(typeof metadata.qualification_position === "string" ? metadata.qualification_position : "");
+    setQualificationInstitution(typeof metadata.qualification_institution === "string" ? metadata.qualification_institution : "");
+    setResearchInterests(typeof metadata.research_interests === "string" ? metadata.research_interests : "");
+    setResearchArea(typeof metadata.research_area === "string" ? metadata.research_area : "");
+    setIndividualBio(typeof metadata.bio === "string" ? metadata.bio : "");
     setEmail(user.email ?? profile?.email ?? "");
     setPhone(typeof metadata.phone === "string" ? metadata.phone : "");
     setLinkedin(typeof metadata.linkedin_url === "string" ? metadata.linkedin_url : "");
+    setAvatarUrl(profile?.avatar_url ?? "");
     const savedLocation = profile?.location?.split(",").map((part) => part.trim()) ?? [];
-    const savedState = savedLocation.length > 1 ? savedLocation[savedLocation.length - 1] : savedLocation[0];
+    const metadataState = typeof metadata.state === "string" ? metadata.state : "";
+    const savedState = savedLocation.length > 1
+      ? savedLocation[savedLocation.length - 1]
+      : savedLocation[0] || metadataState;
     if (savedState && NIGERIAN_STATES.includes(savedState as NigerianState)) {
       setState(savedState as NigerianState);
       const savedLga = savedLocation.length > 1 ? savedLocation.slice(0, -1).join(", ") : "";
@@ -229,12 +312,21 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
   const nextStep = () => {
     if (step === 2) {
-      const missingDetails = [
-        !orgName && "organisation name",
-        !orgType && "organisation type",
-        !state && "state",
-        !lga && "local government area",
-      ].filter(Boolean);
+      const missingDetails = isIndividual
+        ? [
+            !personalTitle && "title",
+            !qualificationDepartment && "qualification department",
+            !qualificationPosition && "qualification position",
+            !qualificationInstitution && "institution or organisation",
+            !researchInterests && "research interests",
+            !state && "state",
+          ].filter(Boolean)
+        : [
+            !orgName && "organisation name",
+            !orgType && "organisation type",
+            !state && "state",
+            !lga && "local government area",
+          ].filter(Boolean);
       if (missingDetails.length > 0) {
         toast.error(`Please provide your ${missingDetails.join(", ")}.`);
         return;
@@ -269,7 +361,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       navigate({ to: "/login", search: { next: "/onboarding" } });
       return;
     }
-    if (!tier || !orgName || !orgType || !state || !lga || !firstName || !lastName || !jobTitle || !email) {
+    if (!tier || (!isIndividual && (!orgName || !orgType || !lga)) || !state || (isIndividual && !lga) || !firstName || !lastName ||
+      (!isIndividual && !jobTitle) || (isIndividual && (!personalTitle || !qualificationDepartment || !qualificationPosition || !qualificationInstitution || !researchInterests)) || !email) {
       toast.error("Please complete all required fields and pick a tier.");
       return;
     }
@@ -280,7 +373,21 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     try {
       const full_name = `${firstName} ${lastName}`.trim();
       const userId = user.id;
+      const applicationOrganisation = isIndividual ? "Individual member" : orgName;
+      const applicationOrgType: Database["public"]["Enums"]["org_type"] = isIndividual
+        ? "other"
+        : orgType as Database["public"]["Enums"]["org_type"];
+      const applicationLocation = location;
+      const qualificationSummary = [qualificationPosition, qualificationDepartment, qualificationInstitution].filter(Boolean).join(" — ");
       const application_data = {
+        account_type: isIndividual ? "individual" : "organisation",
+        personal_title: isIndividual ? personalTitle : "",
+        qualification: isIndividual ? qualificationSummary : "",
+        qualification_department: isIndividual ? qualificationDepartment : "",
+        qualification_position: isIndividual ? qualificationPosition : "",
+        qualification_institution: isIndividual ? qualificationInstitution : "",
+        research_interests: isIndividual ? researchInterests : "",
+        research_area: isIndividual ? researchArea : "",
         requested_tier: tier,
         aum_range: aum,
         investment_stage: stage,
@@ -296,17 +403,17 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       const { error: rpcErr } = await supabase.rpc("submit_application", {
         _user_id: userId,
         _full_name: full_name,
-        _organisation_name: orgName,
-        _organisation_type: orgType as any,
-        _role_title: jobTitle,
-        _location: location,
+        _organisation_name: applicationOrganisation,
+        _organisation_type: applicationOrgType,
+        _role_title: isIndividual ? (individualRole || personalTitle) : jobTitle,
+        _location: applicationLocation,
         _website_url: website || "",
         _linkedin_url: linkedin || "",
         _phone: phoneNumber,
         _sdg_focus: sdgs,
         _sectors: sectors,
-        _bio: statement || "",
-        _application_data: application_data as any,
+        _bio: isIndividual ? individualBio : statement || "",
+        _application_data: application_data as Json,
       });
       if (rpcErr) throw rpcErr;
       await refresh();
@@ -319,12 +426,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             fullName: full_name,
             email,
             phone: phoneNumber,
-            organisationName: orgName,
-            organisationType: ORG_TYPES.find((o) => o.key === orgType)?.label ?? orgType,
-            roleTitle: jobTitle,
-            location,
+            memberType: isIndividual ? "individual" : "organisation",
+            organisationName: applicationOrganisation,
+            organisationType: isIndividual ? "Individual" : ORG_TYPES.find((o) => o.key === orgType)?.label ?? orgType,
+            roleTitle: isIndividual ? (individualRole || personalTitle) : jobTitle,
+            location: applicationLocation,
             website,
             linkedin,
+            personalTitle: isIndividual ? personalTitle : "",
+            qualification: isIndividual ? qualificationSummary : "",
+            qualificationDepartment: isIndividual ? qualificationDepartment : "",
+            qualificationPosition: isIndividual ? qualificationPosition : "",
+            qualificationInstitution: isIndividual ? qualificationInstitution : "",
+            researchInterests: isIndividual ? researchInterests : "",
+            researchArea: isIndividual ? researchArea : "",
+            bio: isIndividual ? individualBio : "",
+            avatarUrl,
             tier,
             tierLabel: TIERS.find((t) => t.key === tier)?.label ?? tier,
             amountNaira: PAYABLE[tier] ?? 0,
@@ -374,8 +491,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
       setDone(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (err: any) {
-      const msg = String(err?.message ?? "");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
       if (/fetch|network|Failed to fetch|timeout/i.test(msg)) {
         toast.error("We couldn't reach the NIEC servers", {
           description: "Your application wasn't saved. Please try again in a few minutes.",
@@ -408,7 +525,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             {awaitingVerification ? (
               <>Please check your inbox and click the confirmation link to complete your account setup.</>
             ) : (
-              <>Thank you, {firstName}. Your application for <strong>{orgName}</strong> has been received. Your account is ready to use — continue to your dashboard to get started.</>
+              <>Thank you, {firstName}. Your {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>} has been received. Your account is ready to use — continue to your dashboard to get started.</>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -486,6 +603,127 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 2 && (
           <>
+        {mode === "onboarding" && (
+          <Section title="Choose your account type" desc="Select whether you're applying as an organisation or as an individual.">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {([
+                { key: "organisation", label: "Organisation", description: "Apply on behalf of an organisation." },
+                { key: "individual", label: "Individual", description: "Apply as an individual member." },
+              ] as const).map((type) => (
+                <button
+                  key={type.key}
+                  type="button"
+                  aria-pressed={accountType === type.key}
+                  onClick={() => setAccountType(type.key)}
+                  className={`rounded-xl border p-4 text-left transition ${accountType === type.key ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:border-primary/40"}`}
+                >
+                  <span className="block font-medium">{type.label}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{type.description}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+        {isIndividual ? (
+          <>
+            <Section title="Individual profile" desc="Complete your personal and professional profile.">
+              <Field label="Select title *">
+                <Select
+                  value={personalTitle}
+                  onChange={setPersonalTitle}
+                  options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
+                />
+              </Field>
+              <Row>
+                <Field label="Select state *">
+                  <LocationDropdown
+                    value={state}
+                    options={NIGERIAN_STATES}
+                    placeholder="Select state"
+                    onChange={(value) => {
+                      setState(value as NigerianState);
+                      setLga("");
+                    }}
+                  />
+                </Field>
+                <Field label="Local Government Area *">
+                  <LocationDropdown
+                    value={lga}
+                    options={state ? NIGERIA_LOCATIONS[state] : []}
+                    placeholder={state ? "Select LGA" : "Select a state first"}
+                    disabled={!state}
+                    onChange={setLga}
+                  />
+                </Field>
+              </Row>
+              <Field label="Bio / description">
+                <textarea value={individualBio} onChange={(event) => setIndividualBio(event.target.value)} rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+              </Field>
+              <Row>
+                <Field label="Department *">
+                  <Select
+                    value={qualificationDepartment}
+                    onChange={setQualificationDepartment}
+                    options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
+                  />
+                </Field>
+                <Field label="Position *">
+                  <Select
+                    value={qualificationPosition}
+                    onChange={setQualificationPosition}
+                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                  />
+                </Field>
+              </Row>
+              <Field label="Institution or organisation *">
+                <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
+              </Field>
+              <Field label="Current research area (optional)">
+                <textarea
+                  value={researchArea}
+                  onChange={(event) => setResearchArea(event.target.value)}
+                  rows={3}
+                  placeholder="Description of research area"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </Field>
+              <Row>
+                <Field label="Research interests *">
+                  <SearchableOptionsField
+                    value={researchInterests}
+                    onChange={setResearchInterests}
+                    options={RESEARCH_INTEREST_OPTIONS}
+                    placeholder="Search for research interests"
+                    label="research interest"
+                  />
+                </Field>
+                <Field label="Professional role">
+                  <SearchableOptionsField
+                    value={individualRole}
+                    onChange={setIndividualRole}
+                    options={JOB_TITLES}
+                    placeholder="Search for professional roles"
+                    label="professional role"
+                    icon="user"
+                  />
+                </Field>
+              </Row>
+            </Section>
+            <Section title="Membership tier" desc="Select the tier that best reflects your capacity and engagement level.">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {TIERS.map((t) => (
+                  <button key={t.key} type="button" onClick={() => setTier(t.key)}
+                    className={`rounded-xl border p-4 text-left transition ${tier === t.key ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:border-primary/40"}`}>
+                    <div className="font-display text-lg">{t.label}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{t.fee}</div>
+                  </button>
+                ))}
+              </div>
+            </Section>
+          </>
+        ) : (
+          <>
         <Section title="Organisation details">
           <Row>
             <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
@@ -559,7 +797,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </Field>
           </Row>
           <Row>
-            <Field label="Website"><Input value={website} onChange={setWebsite} placeholder="https://" /></Field>
+            <div className="md:col-span-2">
+              <Field label="Website"><Input value={website} onChange={setWebsite} placeholder="https://" /></Field>
+            </div>
             {/* <Field label="Preferred communication channel">
               <LocationDropdown
                 value={commPref}
@@ -581,26 +821,170 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             ))}
           </div>
         </Section>
+          </>
+        )}
         </>
         )}
 
         {step === 1 && (
           <>
-        <Section title="Create an account" desc="Provide your personal and professional details to create a secure account for your organisation.">
+        <Section title="Create an account" desc="Provide your personal and professional details to create a secure account.">
           <Row>
             <Field label="First name *"><Input value={firstName} placeholder="John" onChange={setFirstName} /></Field>
             <Field label="Last name *"><Input value={lastName} placeholder="Doe" onChange={setLastName} /></Field>
           </Row>
+          {isIndividual ? (
+            <>
+              <Row>
+                <Field label="Email address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
+                <Field label="Select title *">
+                  <Select
+                    value={personalTitle}
+                    onChange={setPersonalTitle}
+                    options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
+                  />
+                </Field>
+              </Row>
+              <Field label="Bio / description">
+                <textarea value={individualBio} onChange={(event) => setIndividualBio(event.target.value)} rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+              </Field>
+              <Row>
+                <Field label="Department *">
+                  <Select
+                    value={qualificationDepartment}
+                    onChange={setQualificationDepartment}
+                    options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
+                  />
+                </Field>
+                <Field label="Position *">
+                  <Select
+                    value={qualificationPosition}
+                    onChange={setQualificationPosition}
+                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                  />
+                </Field>
+              </Row>
+              <Field label="Institution or organisation *">
+                <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
+              </Field>
+              <Field label="Current research area (optional)">
+                <textarea
+                  value={researchArea}
+                  onChange={(event) => setResearchArea(event.target.value)}
+                  rows={3}
+                  placeholder="Description of research area"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </Field>
+              <Field label="Research interests *">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={researchInterestOpen}
+                    aria-controls="research-interest-options"
+                    value={researchInterests}
+                    onFocus={() => setResearchInterestOpen(true)}
+                    onBlur={() => setResearchInterestOpen(false)}
+                    onChange={(event) => {
+                      setResearchInterests(event.target.value);
+                      setResearchInterestOpen(true);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setResearchInterestOpen(false);
+                      if (event.key === "Enter" && researchInterestOpen) {
+                        const firstMatch = RESEARCH_INTEREST_OPTIONS.find((interest) =>
+                          interest.toLowerCase().includes(researchInterests.trim().toLowerCase()),
+                        );
+                        if (firstMatch) {
+                          event.preventDefault();
+                          setResearchInterests(firstMatch);
+                          setResearchInterestOpen(false);
+                        }
+                      }
+                    }}
+                    placeholder="Search for research interests"
+                    className="h-10 w-full rounded-md border border-input bg-background py-2 pl-9 pr-10 text-sm outline-none focus:border-primary"
+                  />
+                  {researchInterests && (
+                    <button
+                      type="button"
+                      aria-label="Clear research interest"
+                      onClick={() => {
+                        setResearchInterests("");
+                        setResearchInterestOpen(true);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  {researchInterestOpen && (
+                    <div
+                      id="research-interest-options"
+                      role="listbox"
+                      className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white p-1 shadow-lg"
+                    >
+                      {RESEARCH_INTEREST_OPTIONS
+                        .filter((interest) => interest.toLowerCase().includes(researchInterests.trim().toLowerCase()))
+                        .map((interest) => (
+                          <button
+                            key={interest}
+                            type="button"
+                            role="option"
+                            aria-selected={researchInterests === interest}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              setResearchInterests(interest);
+                              setResearchInterestOpen(false);
+                            }}
+                            className="block w-full rounded px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                          >
+                            {interest}
+                          </button>
+                        ))}
+                      {RESEARCH_INTEREST_OPTIONS.every(
+                        (interest) => !interest.toLowerCase().includes(researchInterests.trim().toLowerCase()),
+                      ) && (
+                        <p className="px-3 py-2.5 text-sm text-muted-foreground">No matching interests. You can enter a custom interest.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </Field>
+              <Field label="State *">
+                <LocationDropdown
+                  value={state}
+                  options={NIGERIAN_STATES}
+                  placeholder="Select state"
+                  onChange={(value) => setState(value as NigerianState)}
+                />
+              </Field>
+              <Row>
+                <Field label="Phone">
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
+                    <Input value={phone} onChange={handlePhoneChange} type="tel" placeholder="800 000 0000" className="pl-14" />
+                  </div>
+                </Field>
+                <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
+              </Row>
+            </>
+          ) : (
+          <>
           <Row>
-            <Field label="Job title *">
+            <Field label="Professional role *">
               <LocationDropdown
                 value={jobTitle}
                 options={JOB_TITLES}
-                placeholder="Select job title"
+                placeholder="Select professional role"
                 onChange={setJobTitle}
               />
             </Field>
-            <Field label="Work email *"><Input value={email} onChange={setEmail} type="email" placeholder="name@organisation.org" /></Field>
+            <Field label="Email address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
           </Row>
           <Row>
             <Field label="Phone">
@@ -611,6 +995,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </Field>
             <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
           </Row>
+          </>
+          )}
           <Field label="Set a password * (min 8 characters)">
             <div className="relative">
               <Input
@@ -663,7 +1049,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 3 && (
           <>
-        <Section title="SDG focus areas" desc="Select all Sustainable Development Goals your organisation actively works on.">
+        <Section title="SDG focus areas" desc={`Select all Sustainable Development Goals ${isIndividual ? "you" : "your organisation"} actively work on.`}>
           <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
           <Divider>Investment sectors</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
@@ -672,12 +1058,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         <Section title="Ecosystem engagement">
           <Divider noTop>What do you hope to gain from NIEC?</Divider>
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
-          <Divider>What can your organisation contribute?</Divider>
+          <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
           <Divider>How did you hear about NIEC?</Divider>
           <PillRow options={HEARD} value={heard} onChange={setHeard} />
           <Field label="Statement of intent">
-            <p className="mb-2 text-xs text-muted-foreground">In 2–3 sentences, describe why your organisation wants to join NIEC and what impact you aim to make.</p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
+            </p>
             <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
           </Field>
@@ -685,7 +1073,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
               <p className="mb-3 text-xs text-gold-foreground/80">By submitting this application you confirm the following — please tick each item:</p>
-              {CONSENTS.map((c, i) => (
+              {(isIndividual ? INDIVIDUAL_CONSENTS : CONSENTS).map((c, i) => (
                 <label key={i} className="flex cursor-pointer items-start gap-3 py-2 text-sm">
                   <input type="checkbox" checked={consents[i]} onChange={() => {
                     const next = [...consents]; next[i] = !next[i]; setConsents(next);
@@ -724,7 +1112,17 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </button>
           )}
 
-          <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
+          {user ? (
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
+          )}
         </div>
         {/* <div className="flex justify-center pt-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -741,6 +1139,102 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 }
 
 /* ─── building blocks ────────────────────────────────────────────────── */
+
+function SearchableOptionsField({
+  value,
+  onChange,
+  options,
+  placeholder,
+  label,
+  icon = "search",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly string[];
+  placeholder: string;
+  label: string;
+  icon?: "search" | "user";
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = `searchable-${label.replace(/\s+/g, "-")}-options`;
+  const matchingOptions = options.filter((option) =>
+    option.toLowerCase().includes(value.trim().toLowerCase()),
+  );
+
+  return (
+    <div className="relative">
+      {icon === "user" ? (
+        <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      ) : (
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      )}
+      <input
+        type="text"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls={listId}
+        value={value}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onChange={(event) => {
+          onChange(event.target.value);
+          setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setOpen(false);
+          if (event.key === "Enter" && open && matchingOptions[0]) {
+            event.preventDefault();
+            onChange(matchingOptions[0]);
+            setOpen(false);
+          }
+        }}
+        placeholder="Search for research interests"
+        className="h-10 w-full rounded-md border border-input bg-background py-2 pl-9 pr-10 text-sm outline-none focus:border-primary"
+      />
+      {value && (
+        <button
+          type="button"
+          aria-label={`Clear ${label}`}
+          onClick={() => {
+            onChange("");
+            setOpen(true);
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+      {open && (
+        <div
+          id={listId}
+          role="listbox"
+          className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white p-1 shadow-lg"
+        >
+          {matchingOptions.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(option);
+                setOpen(false);
+              }}
+              className="block w-full rounded px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+            >
+              {option}
+            </button>
+          ))}
+          {matchingOptions.length === 0 && (
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No matching {label}s. You can enter a custom value.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (

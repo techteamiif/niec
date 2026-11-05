@@ -5,7 +5,7 @@ import { MemberBadges } from "@/components/MemberBadges";
 import { TierBadge } from "@/components/TierBadge";
 import { useAuth } from "@/lib/auth";
 import { ORG_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
-import { readOnboardingData } from "@/lib/profile-onboarding";
+import { getAccountType, readOnboardingData } from "@/lib/profile-onboarding";
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -20,7 +20,10 @@ function SelectedValues({ values }: { values: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {values.map((value) => (
-        <span key={value} className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground">
+        <span
+          key={value}
+          className="rounded-full bg-accent px-3 py-1 text-xs text-accent-foreground"
+        >
           {value}
         </span>
       ))}
@@ -56,13 +59,22 @@ function ProfilePage() {
   const websiteUrl = safeExternalUrl(profile.website_url);
   const organisationType = ORG_TYPE_LABELS[profile.organisation_type];
   const onboarding = readOnboardingData(profile.application_data);
+  const isOrganisation = getAccountType(profile.application_data) === "organisation";
   const statementOfIntent = profile.bio || onboarding.statement_of_intent;
   const details = [
     ["Email", user.email],
     ["Phone", profile.phone],
     ["Current membership", TIER_LABELS[profile.membership_tier] ?? profile.membership_tier],
-    ["Membership status", `${profile.membership_status.charAt(0).toUpperCase()}${profile.membership_status.slice(1)}`],
-    ["Tier selected during onboarding", onboarding.requested_tier ? TIER_LABELS[onboarding.requested_tier] ?? onboarding.requested_tier : null],
+    [
+      "Membership status",
+      `${profile.membership_status.charAt(0).toUpperCase()}${profile.membership_status.slice(1)}`,
+    ],
+    [
+      "Tier selected during onboarding",
+      onboarding.requested_tier
+        ? (TIER_LABELS[onboarding.requested_tier] ?? onboarding.requested_tier)
+        : null,
+    ],
   ].filter(([, value]) => Boolean(value)) as [string, string][];
 
   return (
@@ -92,18 +104,23 @@ function ProfilePage() {
           </div>
 
           <div className="mt-4">
-            <h1 className="font-display text-3xl">{profile.full_name || "Member"}</h1>
-            {profile.role_title && (
-              <p className="mt-1 text-muted-foreground">{profile.role_title}</p>
-            )}
-            {profile.organisation_name && (
-              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span>{profile.organisation_name}</span>
+            {isOrganisation ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Building2 className="h-5 w-5 text-muted-foreground" />
+                <h1 className="font-display text-3xl">
+                  {profile.organisation_name || "Organisation"}
+                </h1>
                 {organisationType && (
                   <span className="text-muted-foreground">· {organisationType}</span>
                 )}
               </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-3xl">{profile.full_name || "Member"}</h1>
+              </div>
+            )}
+            {!isOrganisation && profile.role_title && (
+              <p className="mt-1 text-muted-foreground">{profile.role_title}</p>
             )}
             {profile.location && (
               <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -119,7 +136,11 @@ function ProfilePage() {
                 <div key={label}>
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="mt-1 flex flex-wrap items-center gap-2 font-medium">
-                    {label === "Current membership" ? <TierBadge tier={profile.membership_tier} /> : value}
+                    {label === "Current membership" ? (
+                      <TierBadge tier={profile.membership_tier} />
+                    ) : (
+                      value
+                    )}
                   </dd>
                 </div>
               ))}
@@ -150,10 +171,16 @@ function ProfilePage() {
             <DetailSection title="Investment focus">
               <dl className="grid gap-4 text-sm sm:grid-cols-2">
                 {onboarding.investment_stage && (
-                  <div><dt className="text-xs text-muted-foreground">Investment stage</dt><dd className="mt-1">{onboarding.investment_stage}</dd></div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Investment stage</dt>
+                    <dd className="mt-1">{onboarding.investment_stage}</dd>
+                  </div>
                 )}
                 {onboarding.aum_range && (
-                  <div><dt className="text-xs text-muted-foreground">AUM / annual budget</dt><dd className="mt-1">{onboarding.aum_range}</dd></div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">AUM / annual budget</dt>
+                    <dd className="mt-1">{onboarding.aum_range}</dd>
+                  </div>
                 )}
               </dl>
             </DetailSection>
@@ -171,15 +198,36 @@ function ProfilePage() {
             </DetailSection>
           ) : null}
 
-          {(onboarding.events_interested?.length || onboarding.event_role || onboarding.heard_from || onboarding.comm_preference) && (
+          {(onboarding.events_interested?.length ||
+            onboarding.event_role ||
+            onboarding.heard_from ||
+            onboarding.comm_preference) && (
             <DetailSection title="Ecosystem engagement">
               <div className="space-y-4 text-sm">
                 {!!onboarding.events_interested?.length && (
-                  <div><h3 className="mb-2 text-xs text-muted-foreground">Events of interest</h3><SelectedValues values={onboarding.events_interested} /></div>
+                  <div>
+                    <h3 className="mb-2 text-xs text-muted-foreground">Events of interest</h3>
+                    <SelectedValues values={onboarding.events_interested} />
+                  </div>
                 )}
-                {onboarding.event_role && <p><span className="text-muted-foreground">Preferred event role: </span>{onboarding.event_role}</p>}
-                {onboarding.heard_from && <p><span className="text-muted-foreground">How I heard about NIEC: </span>{onboarding.heard_from}</p>}
-                {onboarding.comm_preference && <p><span className="text-muted-foreground">Preferred communication: </span>{onboarding.comm_preference}</p>}
+                {onboarding.event_role && (
+                  <p>
+                    <span className="text-muted-foreground">Preferred event role: </span>
+                    {onboarding.event_role}
+                  </p>
+                )}
+                {onboarding.heard_from && (
+                  <p>
+                    <span className="text-muted-foreground">How I heard about NIEC: </span>
+                    {onboarding.heard_from}
+                  </p>
+                )}
+                {onboarding.comm_preference && (
+                  <p>
+                    <span className="text-muted-foreground">Preferred communication: </span>
+                    {onboarding.comm_preference}
+                  </p>
+                )}
               </div>
             </DetailSection>
           )}

@@ -1,6 +1,7 @@
 import type { Json } from "@/integrations/supabase/types";
 
 export interface OnboardingData {
+  account_type?: "individual" | "organisation";
   requested_tier?: string;
   aum_range?: string;
   investment_stage?: string;
@@ -22,10 +23,18 @@ export function readOnboardingData(value: Json): OnboardingData {
   };
   const stringArray = (key: string) => {
     const item = data[key];
-    return Array.isArray(item) ? item.filter((entry): entry is string => typeof entry === "string") : undefined;
+    return Array.isArray(item)
+      ? item.filter((entry): entry is string => typeof entry === "string")
+      : undefined;
   };
 
   return {
+    account_type:
+      stringValue("account_type") === "individual"
+        ? "individual"
+        : stringValue("account_type") === "organisation"
+          ? "organisation"
+          : undefined,
     requested_tier: stringValue("requested_tier"),
     aum_range: stringValue("aum_range"),
     investment_stage: stringValue("investment_stage"),
@@ -37,4 +46,11 @@ export function readOnboardingData(value: Json): OnboardingData {
     comm_preference: stringValue("comm_preference"),
     statement_of_intent: stringValue("statement_of_intent"),
   };
+}
+
+export function getAccountType(value: Json | null | undefined): "individual" | "organisation" {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "organisation";
+  return (value as Record<string, Json | undefined>).account_type === "individual"
+    ? "individual"
+    : "organisation";
 }

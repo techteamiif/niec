@@ -15,7 +15,10 @@ export default defineConfig({
   },
   vite: {
     plugins: [mcpPlugin()],
+    build: {
+      rollupOptions: {
+        maxParallelFileOps: 20,
+      },
+    },
   },
-  
 });
-

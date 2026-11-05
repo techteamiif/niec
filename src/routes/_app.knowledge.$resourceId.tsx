@@ -15,7 +15,7 @@ import { TierAccessDialog } from "@/components/TierAccessDialog";
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url"
+  "id" | "full_name" | "organisation_name" | "avatar_url" | "application_data"
 >;
 
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
@@ -51,7 +51,7 @@ function KnowledgeResourcePage() {
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
           .from("profiles")
-          .select("id, full_name, organisation_name, avatar_url")
+          .select("id, full_name, organisation_name, avatar_url, application_data")
           .eq("id", data.uploaded_by)
           .maybeSingle();
 
