@@ -55,6 +55,7 @@ const NAV: NavItem[] = [
   { to: "/mentorship", label: "Mentorship", icon: GraduationCap, comingSoon: true },
   { to: "/profile", label: "My Profile", icon: User },
   { to: "/upgrade", label: "Membership", icon: CreditCard },
+  { to: "/payments", label: "Payment History", icon: CreditCard },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
 ] as const;
 

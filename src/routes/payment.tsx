@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { initMembershipPayment, verifyMembershipPayment } from "@/lib/payments.functions";
 import { PublicHeader } from "@/components/PublicHeader";
 import { useAuth } from "@/lib/auth";
+import { formatMembershipExpiryDate } from "@/lib/membership";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -43,7 +44,10 @@ function PaymentPage() {
   const verify = useServerFn(verifyMembershipPayment);
 
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ status: string } | null>(null);
+  const [result, setResult] = useState<{
+    status: string;
+    membershipExpiresAt?: string | null;
+  } | null>(null);
   const [mail, setMail] = useState(email);
   const plan = PAYABLE_TIERS[tier];
   const [amount, setAmount] = useState(plan?.minNaira ?? 0);
@@ -59,7 +63,10 @@ function PaymentPage() {
     verify({ data: { reference } })
       .then(async (r) => {
         if (r.ok && r.status === "success") await refresh();
-        setResult({ status: r.ok ? r.status : "failed" });
+        setResult({
+          status: r.ok ? r.status : "failed",
+          membershipExpiresAt: r.ok && r.status === "success" ? r.membershipExpiresAt : null,
+        });
       })
       .catch(() => setResult({ status: "failed" }))
       .finally(() => setBusy(false));
@@ -108,8 +115,16 @@ function PaymentPage() {
               <h1 className="mt-5 font-display text-2xl text-primary">Payment confirmed</h1>
               <p className="mt-3 text-sm text-muted-foreground">
                 Thank you. Your NIEC membership payment has been received and your tier has been updated.
+                {result.membershipExpiresAt &&
+                  ` Your membership is valid through ${formatMembershipExpiryDate(result.membershipExpiresAt)}.`}
               </p>
-              <div className="mt-7 flex justify-center gap-3">
+              <p className="mt-3 text-xs text-muted-foreground">
+                Your payment receipt will be sent to the email address used for this payment.
+              </p>
+              <div className="mt-7 flex flex-wrap justify-center gap-3">
+                <Link to="/payments" className="rounded-md border px-5 py-2.5 text-sm font-medium hover:bg-muted">
+                  Payment history
+                </Link>
                 <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Continue to Home</Link>
               </div>
             </>

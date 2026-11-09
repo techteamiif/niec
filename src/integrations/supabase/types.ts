@@ -1011,6 +1011,7 @@ export type Database = {
           last_active_at: string
           linkedin_url: string | null
           location: string | null
+          membership_expires_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1038,6 +1039,7 @@ export type Database = {
           last_active_at?: string
           linkedin_url?: string | null
           location?: string | null
+          membership_expires_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1065,6 +1067,7 @@ export type Database = {
           last_active_at?: string
           linkedin_url?: string | null
           location?: string | null
+          membership_expires_at?: string | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1315,6 +1318,7 @@ export type Database = {
           last_active_at: string
           linkedin_url: string | null
           location: string | null
+          membership_expires_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1351,6 +1355,7 @@ export type Database = {
           last_active_at: string
           linkedin_url: string | null
           location: string | null
+          membership_expires_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1406,6 +1411,7 @@ export type Database = {
           last_active_at: string
           linkedin_url: string | null
           location: string | null
+          membership_expires_at: string | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1536,6 +1542,7 @@ export type Database = {
         | "deal_match"
         | "admin_message"
         | "tier_upgrade"
+        | "membership_expiry"
       org_type:
         | "investor"
         | "dfi"

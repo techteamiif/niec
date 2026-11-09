@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildMembershipPaymentReceipt, getMembershipExpiryDate } from "@/lib/membership";
 
 export type PaidTier = "contributor" | "growth_partner" | "anchor";
 
@@ -133,7 +134,7 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
 
     const { data: row } = await supabaseAdmin
       .from("membership_payments")
-      .select("id, user_id, tier, amount_kobo")
+      .select("id, user_id, tier, amount_kobo, status, paid_at")
       .eq("reference", data.reference)
       .maybeSingle();
 
@@ -146,34 +147,56 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       return { ok: false as const, status: "unknown", error: "Payment amount could not be verified." };
     }
 
-    const { error: paymentUpdateError } = await supabaseAdmin
+    const paidAt = row.paid_at ?? json.data.paid_at ?? new Date().toISOString();
+    const membershipExpiresAt = paid ? getMembershipExpiryDate(paidAt) : null;
+    let updatedPayment: { id: string } | null = null;
+    const paymentUpdate = await supabaseAdmin
       .from("membership_payments")
       .update({
         status: paid ? "success" : (json.data.status ?? "failed"),
-        paid_at: paid ? (json.data.paid_at ?? new Date().toISOString()) : null,
+        paid_at: paid ? paidAt : null,
         metadata: { paystack: json.data.metadata ?? {}, amount: json.data.amount, currency: json.data.currency },
       } as never)
-      .eq("reference", data.reference);
+      .eq("reference", data.reference)
+      .neq("status", "success")
+      .select("id")
+      .maybeSingle();
+    updatedPayment = paymentUpdate.data;
+    const paymentUpdateError = paymentUpdate.error;
     if (paymentUpdateError) throw new Error(`Could not update membership payment: ${paymentUpdateError.message}`);
 
     if (paid && row.user_id) {
       const { data: updatedProfile, error: profileUpdateError } = await supabaseAdmin
         .from("profiles")
-        .update({ membership_tier: row.tier } as never)
+        .update({
+          membership_tier: row.tier,
+          membership_status: "active",
+          membership_expires_at: membershipExpiresAt,
+        } as never)
         .eq("id", row.user_id)
         .select("id")
         .maybeSingle();
       if (profileUpdateError) throw new Error(`Could not update membership tier: ${profileUpdateError.message}`);
       if (!updatedProfile) throw new Error("The payment is confirmed, but the member profile could not be found.");
 
-      const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
-        recipient_id: row.user_id,
-        type: "tier_upgrade" as never,
-        title: "Membership payment received",
-        message: "Thank you — your NIEC membership payment was confirmed and your membership tier has been updated.",
-        link: "/dashboard",
-      } as never);
-      if (notificationError) console.error("[paystack:verify] notification insert failed", notificationError.message);
+      if (updatedPayment && membershipExpiresAt) {
+        const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
+          recipient_id: row.user_id,
+          type: "tier_upgrade" as never,
+          title: "NIEC membership payment receipt",
+          message: buildMembershipPaymentReceipt({
+            tier: row.tier,
+            amountKobo: row.amount_kobo,
+            reference: data.reference,
+            paidAt,
+            expiresAt: membershipExpiresAt,
+          }),
+          link: `/payments?reference=${encodeURIComponent(data.reference)}`,
+        } as never);
+        if (notificationError) {
+          console.error("[paystack:verify] receipt notification insert failed", notificationError.message);
+        }
+      }
     }
 
     return {
@@ -181,5 +204,6 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       status: paid ? "success" : (json.data.status ?? "failed"),
       amountKobo: json.data.amount ?? row.amount_kobo,
       tier: row.tier,
+      membershipExpiresAt,
     };
   });

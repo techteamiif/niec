@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { buildMembershipPaymentReceipt, getMembershipExpiryDate } from "@/lib/membership";
 
 function verifySignature(rawBody: string, signature: string | null) {
   const secret = process.env["PAYSTACK_SECRET_KEY"];
@@ -47,7 +48,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
 
         const { data: row } = await supabaseAdmin
           .from("membership_payments")
-          .select("id, user_id, tier, amount_kobo, status")
+          .select("id, user_id, tier, amount_kobo, status, paid_at")
           .eq("reference", reference)
           .maybeSingle();
 
@@ -65,12 +66,15 @@ export const Route = createFileRoute("/api/paystack-webhook")({
             return new Response("ok", { status: 200 });
           }
 
+          const paidAt = row.paid_at ?? evt.data.paid_at ?? new Date().toISOString();
+          const membershipExpiresAt = getMembershipExpiryDate(paidAt);
+
           // Conditional update makes this idempotent under concurrent deliveries
           const { data: updated, error: paymentUpdateError } = await supabaseAdmin
             .from("membership_payments")
             .update({
               status: "success",
-              paid_at: evt.data.paid_at ?? new Date().toISOString(),
+              paid_at: paidAt,
               metadata: { paystack: evt.data.metadata ?? {}, amount: evt.data.amount, currency: evt.data.currency },
             } as never)
             .eq("reference", reference)
@@ -85,7 +89,11 @@ export const Route = createFileRoute("/api/paystack-webhook")({
           if (row.user_id) {
             const { data: updatedProfile, error: profileUpdateError } = await supabaseAdmin
               .from("profiles")
-              .update({ membership_tier: row.tier } as never)
+              .update({
+                membership_tier: row.tier,
+                membership_status: "active",
+                membership_expires_at: membershipExpiresAt,
+              } as never)
               .eq("id", row.user_id)
               .select("id")
               .maybeSingle();
@@ -97,9 +105,15 @@ export const Route = createFileRoute("/api/paystack-webhook")({
               const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
                 recipient_id: row.user_id,
                 type: "tier_upgrade" as never,
-                title: "Membership payment received",
-                message: "Thank you, your NIEC membership payment was confirmed and your membership tier has been updated.",
-                link: "/dashboard",
+                title: "NIEC membership payment receipt",
+                message: buildMembershipPaymentReceipt({
+                  tier: row.tier,
+                  amountKobo: row.amount_kobo,
+                  reference,
+                  paidAt,
+                  expiresAt: membershipExpiresAt,
+                }),
+                link: `/payments?reference=${encodeURIComponent(reference)}`,
               } as never);
               if (notificationError) {
                 console.error("[paystack:webhook] notification insert failed", notificationError.message);

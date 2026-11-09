@@ -36,7 +36,7 @@ function UpgradePage() {
           to="/payments"
           className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm hover:bg-muted"
         >
-          Invoice history
+          Payment history
         </Link>
       </div>
 

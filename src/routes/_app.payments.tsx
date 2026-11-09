@@ -22,12 +22,14 @@ function PaymentHistoryPage() {
   const { user } = useAuth();
   const [payments, setPayments] = useState<MembershipPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
     let active = true;
     setLoading(true);
+    setLoadError(null);
 
     const load = async () => {
       const { data, error } = await supabase
@@ -39,7 +41,7 @@ function PaymentHistoryPage() {
       if (!active) return;
       if (error) {
         console.error("Unable to load payment history", error);
-        setPayments([]);
+        setLoadError(error.message);
       } else {
         setPayments(data ?? []);
       }
@@ -66,7 +68,7 @@ function PaymentHistoryPage() {
           >
             <ArrowLeft className="h-4 w-4" /> Membership
           </Link>
-          <h1 className="font-display text-3xl">Invoice history</h1>
+          <h1 className="font-display text-3xl">Payment history</h1>
         </div>
         <Link
           to="/upgrade"
@@ -84,11 +86,15 @@ function PaymentHistoryPage() {
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="border-b bg-muted/40 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Recent payments
+          Payment history
         </div>
 
         {loading ? (
           <div className="p-8 text-sm text-muted-foreground">Loading payment history…</div>
+        ) : loadError ? (
+          <div role="alert" className="p-8 text-sm text-destructive">
+            Unable to load payment history: {loadError}
+          </div>
         ) : payments.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">
             You have not made any membership payments yet.
@@ -109,7 +115,7 @@ function PaymentHistoryPage() {
                 {payments.map((payment) => (
                   <tr key={payment.id} className="border-b last:border-0">
                     <td className="px-5 py-4 whitespace-nowrap text-muted-foreground">
-                      {format(new Date(payment.created_at), "dd MMM yyyy")}
+                      {format(new Date(payment.paid_at ?? payment.created_at), "dd MMM yyyy")}
                     </td>
                     <td className="px-5 py-4 font-medium">
                       {TIER_LABELS[payment.tier] ?? payment.tier}

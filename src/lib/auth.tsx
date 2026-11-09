@@ -14,7 +14,9 @@ export interface Profile {
   organisation_type: string;
   role_title: string;
   membership_tier: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
+  paid_membership_tier?: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
   membership_status: "pending" | "active" | "lapsed" | "suspended";
+  membership_expires_at: string | null;
   application_data: Json;
   avatar_url: string | null;
   cover_image_url: string | null;
@@ -54,7 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.rpc("get_my_profile").maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
-    setProfile((p as Profile) ?? null);
+    const profile = (p as Omit<Profile, "paid_membership_tier"> | null) ?? null;
+    if (profile) {
+      const expiryReached =
+        profile.membership_expires_at !== null &&
+        profile.membership_expires_at < new Date().toISOString().slice(0, 10);
+      const isLapsed = profile.membership_status === "lapsed" || expiryReached;
+      setProfile({
+        ...profile,
+        paid_membership_tier: profile.membership_tier,
+        membership_tier: isLapsed ? "observer" : profile.membership_tier,
+        membership_status: expiryReached ? "lapsed" : profile.membership_status,
+      });
+    } else {
+      setProfile(null);
+    }
     setRoles(((r ?? []) as { role: AppRole }[]).map((x) => x.role));
   }, []);
 
