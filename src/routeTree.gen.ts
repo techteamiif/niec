@@ -22,6 +22,7 @@ import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-we
 import { Route as ApiNotificationEmailWebhookRouteImport } from './routes/api/notification-email-webhook'
 import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
+import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/_app.mentorship'
@@ -110,6 +111,11 @@ const AppUpgradeRoute = AppUpgradeRouteImport.update({
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/payments': typeof AppPaymentsRoute
   '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -297,6 +304,7 @@ export interface FileRoutesByTo {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/payments': typeof AppPaymentsRoute
   '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -337,6 +345,7 @@ export interface FileRoutesById {
   '/_app/mentorship': typeof AppMentorshipRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/payments': typeof AppPaymentsRoute
   '/_app/profile': typeof AppProfileRouteWithChildren
   '/_app/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/mentorship'
     | '/messages'
     | '/notifications'
+    | '/payments'
     | '/profile'
     | '/upgrade'
     | '/api/notification-email-webhook'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/mentorship'
     | '/messages'
     | '/notifications'
+    | '/payments'
     | '/profile'
     | '/upgrade'
     | '/api/notification-email-webhook'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/_app/mentorship'
     | '/_app/messages'
     | '/_app/notifications'
+    | '/_app/payments'
     | '/_app/profile'
     | '/_app/upgrade'
     | '/api/notification-email-webhook'
@@ -583,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payments': {
+      id: '/_app/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notifications': {
@@ -815,6 +834,7 @@ interface AppRouteChildren {
   AppMentorshipRoute: typeof AppMentorshipRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
   AppProfileRoute: typeof AppProfileRouteWithChildren
   AppUpgradeRoute: typeof AppUpgradeRoute
   AppEventEventIdRoute: typeof AppEventEventIdRoute
@@ -833,6 +853,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMentorshipRoute: AppMentorshipRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
   AppProfileRoute: AppProfileRouteWithChildren,
   AppUpgradeRoute: AppUpgradeRoute,
   AppEventEventIdRoute: AppEventEventIdRoute,

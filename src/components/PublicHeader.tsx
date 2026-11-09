@@ -19,7 +19,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
           <a href="/#cops" className="transition hover:text-foreground">Communities</a>
           <a href="/#impact" className="transition hover:text-foreground">Impact</a>
           {user ? (
-            <Link to="/dashboard" className="transition hover:text-foreground">Dashboard</Link>
+            <Link to="/dashboard" className="transition hover:text-foreground">Home</Link>
           ) : (
             <Link to="/login" className="transition hover:text-foreground">Sign in</Link>
           )}
@@ -36,7 +36,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
             to={user ? "/dashboard" : "/apply"}
             className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
           >
-            {user ? "Dashboard" : "Join NIEC"}
+            {user ? "Home" : "Join NIEC"}
           </Link>
         </div>
       </div>
@@ -57,7 +57,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
             <a href="/#cops" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Communities</a>
             <a href="/#impact" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Impact</a>
             {user ? (
-              <Link to="/dashboard" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Dashboard</Link>
+              <Link to="/dashboard" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Home</Link>
             ) : (
               <Link to="/login" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Sign in</Link>
             )}
@@ -66,7 +66,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
               onClick={() => setMobileNav(false)}
               className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
             >
-              {user ? "Dashboard" : "Join NIEC"}
+              {user ? "Home" : "Join NIEC"}
             </Link>
           </nav>
         </div>

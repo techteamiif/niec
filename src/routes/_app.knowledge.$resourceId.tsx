@@ -6,7 +6,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
-import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { tierMeets, TIER_LABELS, getKnowledgeResourceAccessLabel } from "@/lib/niec";
 import { UserAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -155,6 +155,9 @@ function KnowledgeResourcePage() {
               </time>
               <span className="ml-1 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium capitalize text-sky-800">
                 {resource.resource_type.replace(/_/g, " ")}
+              </span>
+              <span className="rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground/80">
+                {getKnowledgeResourceAccessLabel(resource.min_tier_required)}
               </span>
             </div>
 

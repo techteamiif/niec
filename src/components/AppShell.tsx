@@ -44,8 +44,8 @@ type NavItem = {
   comingSoon?: boolean;
 };
 const NAV: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/community", label: "Community", icon: MessageSquare },
+  { to: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { to: "/community", label: "Feeds", icon: MessageSquare },
   { to: "/members", label: "Members", icon: Users },
   { to: "/messages", label: "Messages", icon: Mail, comingSoon: true },
   { to: "/events", label: "Events", icon: Calendar },
@@ -132,8 +132,8 @@ export function AppShell() {
               <Icon className="h-4 w-4" />
               <span className="flex-1">{label}</span>
               {comingSoon && (
-                <span className="rounded-full bg-sidebar-accent/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sidebar-accent">
-                  Coming soon
+                <span className="rounded-full bg-sidebar-accent/20 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-sidebar-accent">
+                  Coming Soon
                 </span>
               )}
               {badge && unread > 0 && (

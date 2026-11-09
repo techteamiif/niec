@@ -6,7 +6,7 @@ import { tierMeets, TIER_LABELS, TIER_RANK } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-import { Calendar, MapPin, Video, ArrowRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Video, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { EventImage } from "@/components/EventImage";
 import {
@@ -295,7 +295,7 @@ function EventsPage() {
                   </div>
                 </div>
                 <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{ev.description}</p>
+                <p className="mt-1 truncate text-sm text-muted-foreground">{ev.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   {ev.event_type === "onsite" ||
                   ev.event_type === "hybrid" ||
@@ -346,17 +346,17 @@ function EventsPage() {
                     <Link
                       to="/event/$eventId"
                       params={{ eventId: ev.id }}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                      className="rounded-full bg-[#f0ede5] px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-[#e8e4da]"
                     >
-                      See details <ArrowRight className="h-3.5 w-3.5" />
+                      See details
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setLockedEventTier(ev.min_tier_required)}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                      className="rounded-full bg-[#f0ede5] px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-[#e8e4da]"
                     >
-                      See details <ArrowRight className="h-3.5 w-3.5" />
+                      See details
                     </button>
                   )}
                 </div>
