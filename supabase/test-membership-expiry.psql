@@ -1,0 +1,168 @@
+-- Run with psql connected to the DEVELOPMENT database, not the SQL Editor.
+-- psql autocommit and \sleep allow each webhook to commit before the next stage.
+-- This targets one test profile, sends real emails, and leaves it lapsed.
+-- The deployed notification-email function must support membership_expiry first.
+\set ON_ERROR_STOP on
+\set target_user_id '748a7143-c513-4f73-b3a2-61687c075475'
+
+SELECT id AS test_user_id
+FROM public.profiles
+WHERE id = :'target_user_id'::uuid
+  AND membership_tier <> 'observer'
+\gset
+
+\if :{?test_user_id}
+  \echo 'Starting isolated membership expiry email test.'
+\else
+  \echo 'Test profile not found or does not have a paid tier; stopping.'
+  \quit
+\endif
+
+\echo 'Simulating the 60-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date + 60
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires in 60 days',
+  format('Test reminder. Simulated expiry date: %s.', current_date + 60),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating the 30-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date + 30
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires in 30 days',
+  format('Test reminder. Simulated expiry date: %s.', current_date + 30),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating the 14-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date + 14
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires in 14 days',
+  format('Test reminder. Simulated expiry date: %s.', current_date + 14),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating the 7-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date + 7
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires in 7 days',
+  format('Test reminder. Simulated expiry date: %s.', current_date + 7),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating the 3-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date + 3
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires in 3 days',
+  format('Test reminder. Simulated expiry date: %s.', current_date + 3),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating the expiry-day reminder.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date
+WHERE id = :'target_user_id'::uuid;
+SELECT COALESCE(max(id), 0) AS response_before FROM net._http_response \gset
+INSERT INTO public.notifications (recipient_id, type, title, message, link)
+VALUES (
+  :'target_user_id'::uuid,
+  'membership_expiry',
+  'TEST: Membership expires today',
+  format('Test reminder. Simulated expiry date: %s.', current_date),
+  '/upgrade'
+)
+RETURNING id AS test_notification_id \gset
+\sleep 5
+SELECT status_code, content, error_msg
+FROM net._http_response
+WHERE id > :response_before
+ORDER BY id DESC
+LIMIT 1;
+DELETE FROM public.notifications WHERE id = :'test_notification_id'::uuid;
+
+\echo 'Simulating expiry and checking downgraded access.'
+UPDATE public.profiles
+SET membership_status = 'active', membership_expires_at = current_date - 1
+WHERE id = :'target_user_id'::uuid;
+UPDATE public.profiles
+SET membership_status = 'lapsed'
+WHERE id = :'target_user_id'::uuid
+  AND membership_status = 'active'
+  AND membership_tier <> 'observer'
+  AND membership_expires_at < current_date;
+
+SELECT id, membership_status, membership_expires_at,
+       public.current_tier(id) AS effective_tier,
+       public.is_active_member(id) AS has_active_access
+FROM public.profiles
+WHERE id = :'target_user_id'::uuid;

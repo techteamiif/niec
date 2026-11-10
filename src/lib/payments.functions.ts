@@ -6,10 +6,10 @@ import { buildMembershipPaymentReceipt, getMembershipExpiryDate } from "@/lib/me
 export type PaidTier = "contributor" | "growth_partner" | "anchor";
 
 /** Server-side source of truth for membership pricing (in kobo). */
-const TIER_PRICES: Record<string, { minKobo: number; maxKobo: number; label: string }> = {
-  contributor: { minKobo: 100_000_00, maxKobo: 250_000_00, label: "Enterprise" },
-  growth_partner: { minKobo: 500_000_00, maxKobo: 500_000_00, label: "Growth Partner" },
-  anchor: { minKobo: 1_500_000_00, maxKobo: 1_500_000_00, label: "Anchor Partner" },
+const TIER_PRICES: Record<string, { amountKobo: number; label: string }> = {
+  contributor: { amountKobo: 100_000_00, label: "Enterprise" },
+  growth_partner: { amountKobo: 500_000_00, label: "Growth Partner" },
+  anchor: { amountKobo: 1_500_000_00, label: "Anchor Partner" },
 };
 
 function secretKey() {
@@ -45,7 +45,7 @@ async function getAuthenticatedUserId() {
 }
 
 export const initMembershipPayment = createServerFn({ method: "POST" })
-  .inputValidator((input: { email: string; tier: string; amountKobo?: number; fullName?: string; callbackUrl: string }) => {
+  .inputValidator((input: { email: string; tier: string; fullName?: string; callbackUrl: string }) => {
     if (!input?.email || !/^\S+@\S+\.\S+$/.test(input.email)) throw new Error("A valid email is required.");
     if (!TIER_PRICES[input.tier]) throw new Error("This tier is not payable online.");
     if (!/^https?:\/\//.test(input.callbackUrl)) throw new Error("Invalid callback URL.");
@@ -55,8 +55,7 @@ export const initMembershipPayment = createServerFn({ method: "POST" })
     const userId = await getAuthenticatedUserId();
     if (!userId) throw new Error("Sign in to your NIEC account before making a membership payment.");
     const price = TIER_PRICES[data.tier]!;
-    const requested = Math.round(data.amountKobo ?? price.minKobo);
-    const amountKobo = Math.min(Math.max(requested, price.minKobo), price.maxKobo);
+    const amountKobo = price.amountKobo;
     const reference = `niec_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
     const res = await fetch("https://api.paystack.co/transaction/initialize", {

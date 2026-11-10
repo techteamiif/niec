@@ -44,7 +44,7 @@ export function ApplyOnboardingPage() {
 
 const TIERS = [
   { key: "observer", label: "Observer", fee: "Free" },
-  { key: "contributor", label: "Enterprise", fee: "₦100k – ₦250k / yr" },
+  { key: "contributor", label: "Enterprise", fee: "₦100,000 / yr" },
   { key: "growth_partner", label: "Growth Partner", fee: "₦500k / yr" },
   { key: "anchor", label: "Anchor Partner", fee: "₦1.5M / yr" },
   { key: "strategic_partner", label: "Strategic Partner", fee: "Negotiated" },
@@ -471,7 +471,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             data: {
               email,
               tier,
-              amountKobo: PAYABLE[tier]! * 100,
               fullName: full_name,
               callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(full_name)}`,
             },
