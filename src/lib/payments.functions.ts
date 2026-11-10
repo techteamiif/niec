@@ -114,6 +114,82 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error: paymentLookupError } = await supabaseAdmin
+      .from("membership_payments")
+      .select("id, user_id, tier, amount_kobo, status, paid_at")
+      .eq("reference", data.reference)
+      .maybeSingle();
+
+    if (paymentLookupError) throw new Error(`Could not load membership payment: ${paymentLookupError.message}`);
+    if (!row) {
+      return { ok: false as const, status: "unknown", error: "Payment reference was not found." };
+    }
+
+    const ensureReceiptNotification = async (paidAt: string, membershipExpiresAt: string) => {
+      if (!row.user_id) return;
+
+      const link = `/payments?reference=${encodeURIComponent(data.reference)}`;
+      const { data: existingNotification, error: lookupError } = await supabaseAdmin
+        .from("notifications")
+        .select("id")
+        .eq("recipient_id", row.user_id)
+        .eq("title", "NIEC membership payment receipt")
+        .eq("link", link)
+        .limit(1)
+        .maybeSingle();
+      if (lookupError) {
+        console.error("[paystack:verify] receipt notification lookup failed", lookupError.message);
+        return;
+      }
+      if (existingNotification) return;
+
+      const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
+        recipient_id: row.user_id,
+        type: "tier_upgrade" as never,
+        title: "NIEC membership payment receipt",
+        message: buildMembershipPaymentReceipt({
+          tier: row.tier,
+          amountKobo: row.amount_kobo,
+          reference: data.reference,
+          paidAt,
+          expiresAt: membershipExpiresAt,
+        }),
+        link,
+      } as never);
+      if (notificationError) {
+        console.error("[paystack:verify] receipt notification insert failed", notificationError.message);
+      }
+    };
+
+    if (row.status === "success") {
+      const paidAt = row.paid_at ?? new Date().toISOString();
+      const membershipExpiresAt = getMembershipExpiryDate(paidAt);
+      if (row.user_id) {
+        const { data: updatedProfile, error: profileUpdateError } = await supabaseAdmin
+          .from("profiles")
+          .update({
+            membership_tier: row.tier,
+            membership_status: "active",
+            membership_expires_at: membershipExpiresAt,
+          } as never)
+          .eq("id", row.user_id)
+          .select("id")
+          .maybeSingle();
+        if (profileUpdateError) throw new Error(`Could not update membership tier: ${profileUpdateError.message}`);
+        if (!updatedProfile) throw new Error("The payment is confirmed, but the member profile could not be found.");
+      }
+      await ensureReceiptNotification(paidAt, membershipExpiresAt);
+
+      return {
+        ok: true as const,
+        status: "success",
+        amountKobo: row.amount_kobo,
+        tier: row.tier,
+        membershipExpiresAt,
+      };
+    }
+
     const res = await fetch(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`,
       { headers: { Authorization: `Bearer ${secretKey()}` } },
@@ -130,17 +206,6 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
     }
 
     const paid = json.data.status === "success";
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const { data: row } = await supabaseAdmin
-      .from("membership_payments")
-      .select("id, user_id, tier, amount_kobo, status, paid_at")
-      .eq("reference", data.reference)
-      .maybeSingle();
-
-    if (!row) {
-      return { ok: false as const, status: "unknown", error: "Payment reference was not found." };
-    }
 
     if (paid && (json.data.amount !== row.amount_kobo || json.data.currency !== "NGN")) {
       console.error("[paystack:verify] amount mismatch", data.reference, json.data.amount, row.amount_kobo);
@@ -149,7 +214,6 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
 
     const paidAt = row.paid_at ?? json.data.paid_at ?? new Date().toISOString();
     const membershipExpiresAt = paid ? getMembershipExpiryDate(paidAt) : null;
-    let updatedPayment: { id: string } | null = null;
     const paymentUpdate = await supabaseAdmin
       .from("membership_payments")
       .update({
@@ -161,7 +225,6 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       .neq("status", "success")
       .select("id")
       .maybeSingle();
-    updatedPayment = paymentUpdate.data;
     const paymentUpdateError = paymentUpdate.error;
     if (paymentUpdateError) throw new Error(`Could not update membership payment: ${paymentUpdateError.message}`);
 
@@ -178,24 +241,8 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
         .maybeSingle();
       if (profileUpdateError) throw new Error(`Could not update membership tier: ${profileUpdateError.message}`);
       if (!updatedProfile) throw new Error("The payment is confirmed, but the member profile could not be found.");
-
-      if (updatedPayment && membershipExpiresAt) {
-        const { error: notificationError } = await supabaseAdmin.from("notifications").insert({
-          recipient_id: row.user_id,
-          type: "tier_upgrade" as never,
-          title: "NIEC membership payment receipt",
-          message: buildMembershipPaymentReceipt({
-            tier: row.tier,
-            amountKobo: row.amount_kobo,
-            reference: data.reference,
-            paidAt,
-            expiresAt: membershipExpiresAt,
-          }),
-          link: `/payments?reference=${encodeURIComponent(data.reference)}`,
-        } as never);
-        if (notificationError) {
-          console.error("[paystack:verify] receipt notification insert failed", notificationError.message);
-        }
+      if (membershipExpiresAt && paymentUpdate.data) {
+        await ensureReceiptNotification(paidAt, membershipExpiresAt);
       }
     }
 
