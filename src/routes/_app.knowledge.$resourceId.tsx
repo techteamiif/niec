@@ -240,11 +240,9 @@ function KnowledgeResourcePage() {
               )}
               <div className="flex flex-wrap gap-3">
                 {!unlocked && resource.access_price_kobo != null && (
-                  <Button type="button" disabled={purchasing} onClick={() => void buyAccess()}>
+                  <Button type="button" onClick={() => setTierDialogOpen(true)}>
                     <CreditCard aria-hidden="true" />
-                    {purchasing
-                      ? "Opening checkout…"
-                      : `Buy access for ₦${(resource.access_price_kobo / 100).toLocaleString("en-NG")}`}
+                    View access options
                   </Button>
                 )}
                 <Button
@@ -319,6 +317,9 @@ function KnowledgeResourcePage() {
         itemType="resource"
         requiredTier={resource?.min_tier_required ?? "observer"}
         currentTier={profile?.membership_tier}
+        accessPriceKobo={resource?.access_price_kobo}
+        onPayOnce={() => void buyAccess()}
+        purchasing={purchasing}
       />
     </div>
   );

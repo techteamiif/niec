@@ -1443,6 +1443,14 @@ export type Database = {
       }
       get_event_virtual_link: { Args: { _event_id: string }; Returns: string }
       get_event_registration_link: { Args: { _event_id: string }; Returns: string | null }
+      get_event_details: {
+        Args: { _event_id: string }
+        Returns: Database["public"]["Tables"]["events"]["Row"][]
+      }
+      get_staff_events: {
+        Args: Record<PropertyKey, never>
+        Returns: Database["public"]["Tables"]["events"]["Row"][]
+      }
       get_deal_room_items: {
         Args: never
         Returns: {

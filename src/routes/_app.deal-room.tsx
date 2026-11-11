@@ -7,6 +7,7 @@ import { tierMeets, TIER_LABELS, EOI_URL } from "@/lib/niec";
 import { toast } from "sonner";
 import { ArrowRight, Briefcase, CreditCard, Lock } from "lucide-react";
 import { initResourcePayment } from "@/lib/payments.functions";
+import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 export const Route = createFileRoute("/_app/deal-room")({
   component: DealRoom,
@@ -27,6 +28,7 @@ function DealRoom() {
   const [showCreate, setShowCreate] = useState(false);
   const [category, setCategory] = useState<string>("all");
   const [purchasingDealId, setPurchasingDealId] = useState<string | null>(null);
+  const [gatedDeal, setGatedDeal] = useState<any | null>(null);
   const startPurchase = useServerFn(initResourcePayment);
 
   const fullAccess = isStaff || tierMeets(profile?.membership_tier, "growth_partner");
@@ -133,19 +135,16 @@ function DealRoom() {
                 </button>
               ) : d.access_price_kobo != null ? (
                 <button
-                  onClick={() => void buyDeal(d.id)}
-                  disabled={purchasingDealId !== null}
+                  onClick={() => setGatedDeal(d)}
                   className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                 >
                   <CreditCard className="mr-1 inline h-3 w-3" />
-                  {purchasingDealId === d.id
-                    ? "Opening checkout…"
-                    : `Buy access ₦${(d.access_price_kobo / 100).toLocaleString("en-NG")}`}
+                  View access options
                 </button>
               ) : (
-                <Link to="/upgrade" className="rounded-md border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
+                <button onClick={() => setGatedDeal(d)} className="rounded-md border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
                   <Lock className="mr-1 inline h-3 w-3" /> Upgrade to engage
-                </Link>
+                </button>
               )}
             </div>
           </div>
@@ -158,6 +157,16 @@ function DealRoom() {
 
 
       {showCreate && isStaff && user && <CreateDeal userId={user.id} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />}
+      <TierAccessDialog
+        open={!!gatedDeal}
+        onOpenChange={(open) => { if (!open) setGatedDeal(null); }}
+        itemType="resource"
+        requiredTier={gatedDeal?.min_tier_required ?? "growth_partner"}
+        currentTier={profile?.membership_tier}
+        accessPriceKobo={gatedDeal?.access_price_kobo}
+        onPayOnce={() => { if (gatedDeal) void buyDeal(gatedDeal.id); }}
+        purchasing={purchasingDealId === gatedDeal?.id}
+      />
     </div>
   );
 }

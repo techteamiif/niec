@@ -914,7 +914,7 @@ function ProgramsTab() {
 
   const load = async () => {
     const [{ data: e }, { data: b }, resourceResult, { data: d }] = await Promise.all([
-      supabase.from("events").select("*").order("start_date", { ascending: false }).limit(30),
+      supabase.rpc("get_staff_events").limit(30),
       supabase.from("mentorship_bookings").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("knowledge_resources").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("deal_opportunities").select("*").order("created_at", { ascending: false }).limit(30),

@@ -58,7 +58,7 @@ function EventsPage() {
     const { data, error } = await supabase
       .from("events")
       .select(
-        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, is_paid, access_price_kobo, image_url, created_by",
+        "id, title, event_type, start_date, end_date, min_tier_required, is_paid, access_price_kobo, image_url, created_by",
       )
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
@@ -93,17 +93,21 @@ function EventsPage() {
   useEffect(() => { load(); }, [user]);
 
   const openEditEvent = async (event: EventEditData) => {
-    const [{ data: virtualLink, error: virtualError }, { data: registrationLink, error: registrationError }] =
-      await Promise.all([
+    const [
+      { data: eventDetails, error: detailsError },
+      { data: virtualLink, error: virtualError },
+      { data: registrationLink, error: registrationError },
+    ] = await Promise.all([
+      supabase.rpc("get_event_details", { _event_id: event.id }),
         supabase.rpc("get_event_virtual_link", { _event_id: event.id }),
         supabase.rpc("get_event_registration_link", { _event_id: event.id }),
       ]);
-    if (virtualError || registrationError) {
+    if (detailsError || !eventDetails?.[0] || virtualError || registrationError) {
       toast.error("Could not load protected event links for editing.");
       return;
     }
     setEventToEdit({
-      ...event,
+      ...eventDetails[0],
       virtual_link: virtualLink ?? "",
       registration_link: registrationLink ?? "",
     });
@@ -122,11 +126,7 @@ function EventsPage() {
       if (tierFilter !== "all" && ev.min_tier_required !== tierFilter) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      return (
-        (ev.title ?? "").toLowerCase().includes(q) ||
-        (ev.description ?? "").toLowerCase().includes(q) ||
-        (ev.location ?? "").toLowerCase().includes(q)
-      );
+      return (ev.title ?? "").toLowerCase().includes(q);
     });
   }, [events, tab, regs, now, search, eventTypeFilter, priceFilter, tierFilter]);
 
@@ -303,27 +303,13 @@ function EventsPage() {
                 <div className="flex items-start gap-2 text-xs text-primary">
                   <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <div className="space-y-1">
-                    {formatEventSchedule(ev.schedule, ev.start_date, ev.end_date).map((line, index) => (
+                    {formatEventSchedule(null, ev.start_date, ev.end_date).map((line, index) => (
                       <div key={`${line}-${index}`}>{line}</div>
                     ))}
                   </div>
                 </div>
                 <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
-                <p className="mt-1 truncate text-sm text-muted-foreground">{ev.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {ev.event_type === "onsite" ||
-                  ev.event_type === "hybrid" ||
-                  (!ev.is_virtual && ev.event_type !== "online") ? (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />{" "}
-                      {ev.location || "Location to be announced"}
-                    </span>
-                  ) : null}
-                  {ev.event_type === "online" || ev.event_type === "hybrid" || ev.is_virtual ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Video className="h-3.5 w-3.5" /> Online
-                    </span>
-                  ) : null}
                   <span className="rounded bg-muted px-2 py-0.5">
                     {formatEventType(ev.event_type)}
                   </span>

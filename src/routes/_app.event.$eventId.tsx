@@ -14,26 +14,32 @@ import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
 
-type EventRecord = Pick<
-  Database["public"]["Tables"]["events"]["Row"],
+type EventRow = Database["public"]["Tables"]["events"]["Row"];
+type EventPreview = Pick<
+  EventRow,
   | "id"
   | "title"
-  | "description"
   | "event_type"
   | "start_date"
   | "end_date"
-  | "schedule"
-  | "location"
-  | "is_virtual"
-  | "max_attendees"
   | "min_tier_required"
   | "created_by"
   | "is_paid"
   | "access_price_kobo"
   | "image_url"
+>;
+type EventRecord = EventPreview & Pick<
+  EventRow,
+  | "id"
+  | "schedule"
+  | "description"
+  | "location"
+  | "is_virtual"
+  | "max_attendees"
   | "virtual_link"
   | "registration_link"
 >;
+type EventPageRecord = EventPreview & Partial<EventRecord>;
 type AttendanceResponse = "yes" | "no" | null;
 type EventAttendee = {
   member_id: string;
@@ -57,7 +63,7 @@ function formatEventType(eventType: string) {
 function EventDetailPage() {
   const { eventId } = Route.useParams();
   const { user, profile, isStaff } = useAuth();
-  const [event, setEvent] = useState<EventRecord | null>(null);
+  const [event, setEvent] = useState<EventPageRecord | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [attendeeCount, setAttendeeCount] = useState(0);
   const [attendanceResponse, setAttendanceResponse] = useState<AttendanceResponse>(null);
@@ -72,10 +78,12 @@ function EventDetailPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setEvent(null);
+    setHasAccess(false);
     const { data, error } = await supabase
       .from("events")
       .select(
-        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, max_attendees, min_tier_required, created_by, is_paid, access_price_kobo, image_url",
+        "id, title, event_type, start_date, end_date, min_tier_required, created_by, is_paid, access_price_kobo, image_url",
       )
       .eq("id", eventId)
       .maybeSingle();
@@ -90,25 +98,39 @@ function EventDetailPage() {
       setLoading(false);
       return;
     }
-    const [
-      { data: virtualLink, error: virtualLinkError },
-      { data: registrationLink, error: registrationLinkError },
-    ] = await Promise.all([
-      supabase.rpc("get_event_virtual_link", { _event_id: eventId }),
-      supabase.rpc("get_event_registration_link", { _event_id: eventId }),
-    ]);
     const { data: access, error: accessError } = await supabase.rpc("has_resource_access", {
       _resource_type: "event",
       _resource_id: eventId,
     });
+    if (accessError) toast.error(`Could not check event access: ${accessError.message}`);
+    setHasAccess(access ?? false);
+
+    const canViewDetails = !!access || isStaff || data.created_by === user?.id;
+    if (!canViewDetails) {
+      setEvent(data);
+      setTierDialogOpen(true);
+      setLoading(false);
+      return;
+    }
+
+    const [{ data: eventDetails, error: detailsError }, { data: virtualLink, error: virtualLinkError }, { data: registrationLink, error: registrationLinkError }] = await Promise.all([
+      supabase.rpc("get_event_details", { _event_id: eventId }),
+      supabase.rpc("get_event_virtual_link", { _event_id: eventId }),
+      supabase.rpc("get_event_registration_link", { _event_id: eventId }),
+    ]);
+    if (detailsError || !eventDetails?.[0]) {
+      toast.error(`Could not load event details: ${detailsError?.message ?? "Access was not granted."}`);
+      setEvent(data);
+      setLoading(false);
+      return;
+    }
     if (virtualLinkError)
       toast.error(`Could not load online event link: ${virtualLinkError.message}`);
     if (registrationLinkError)
       toast.error(`Could not load registration link: ${registrationLinkError.message}`);
-    if (accessError) toast.error(`Could not check event access: ${accessError.message}`);
-    setHasAccess(access ?? false);
+
     setEvent({
-      ...data,
+      ...eventDetails[0],
       virtual_link: virtualLink ?? null,
       registration_link: registrationLink ?? null,
     });
@@ -244,7 +266,7 @@ function EventDetailPage() {
   };
 
   const ended = event ? new Date(event.end_date ?? event.start_date).getTime() < Date.now() : false;
-  const allowed = hasAccess || isStaff;
+  const allowed = hasAccess || isStaff || event?.created_by === user?.id;
   const isAttending = attendanceResponse === "yes";
 
   return (
@@ -265,6 +287,20 @@ function EventDetailPage() {
           <h1 className="font-display text-2xl">Event not found</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             This event may have been removed or is unavailable.
+          </p>
+        </div>
+      ) : !allowed ? (
+        <div className="rounded-xl border bg-card p-8">
+          <h1 className="font-display text-2xl">Event access required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Choose an access option to view this event.
+          </p>
+        </div>
+      ) : event.description === undefined ? (
+        <div className="rounded-xl border bg-card p-8">
+          <h1 className="font-display text-2xl">Event details unavailable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            We could not load the details for this event.
           </p>
         </div>
       ) : (
@@ -397,14 +433,11 @@ function EventDetailPage() {
                 ) : (
                   event.access_price_kobo != null ? (
                     <button
-                      onClick={() => void buyAccess()}
-                      disabled={purchasing}
+                      onClick={() => setTierDialogOpen(true)}
                       className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
                     >
                       <CreditCard className="h-4 w-4" />
-                      {purchasing
-                        ? "Opening checkout…"
-                        : `Buy access for ₦${(event.access_price_kobo / 100).toLocaleString("en-NG")}`}
+                      View access options
                     </button>
                   ) : (
                     <button
@@ -569,6 +602,9 @@ function EventDetailPage() {
         itemType="event"
         requiredTier={event?.min_tier_required ?? "observer"}
         currentTier={profile?.membership_tier}
+        accessPriceKobo={event?.access_price_kobo}
+        onPayOnce={() => void buyAccess()}
+        purchasing={purchasing}
       />
     </div>
   );

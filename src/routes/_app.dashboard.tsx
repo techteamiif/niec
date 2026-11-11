@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_app/dashboard")({
 
 type UpcomingEvent = Pick<
   Database["public"]["Tables"]["events"]["Row"],
-  "id" | "title" | "start_date" | "end_date" | "schedule" | "location" | "is_virtual" | "event_type"
+  "id" | "title" | "start_date" | "end_date" | "event_type"
 >;
 type KnowledgeResource = Pick<
   Database["public"]["Tables"]["knowledge_resources"]["Row"],
@@ -44,7 +44,7 @@ function Dashboard() {
       const [eventsResult, resourcesResult] = await Promise.all([
         supabase
           .from("events")
-          .select("id, title, start_date, end_date, schedule, location, is_virtual, event_type")
+          .select("id, title, start_date, end_date, event_type")
           .gte("start_date", new Date().toISOString())
           .order("start_date")
           .limit(3),
@@ -145,19 +145,13 @@ function Dashboard() {
                   className="block rounded-md border border-border/60 p-3 transition hover:border-primary"
                 >
                   <div className="text-xs text-primary">
-                    {formatEventSchedule(event.schedule, event.start_date, event.end_date).join(
+                    {formatEventSchedule(null, event.start_date, event.end_date).join(
                       " · ",
                     )}
                   </div>
                   <div className="mt-1 text-sm font-medium">{event.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    {event.event_type === "hybrid"
-                      ? `Hybrid${event.location ? ` · ${event.location}` : ""}`
-                      : event.event_type === "onsite"
-                        ? event.location || "Location to be announced"
-                        : event.is_virtual
-                          ? "Online"
-                          : event.location}
+                    {event.event_type.replace(/_/g, " ")}
                   </div>
                 </Link>
               ))
