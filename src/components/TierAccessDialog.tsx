@@ -20,16 +20,22 @@ export function TierAccessDialog({
   itemType,
   requiredTier,
   currentTier,
+  accessPriceKobo,
+  onPayOnce,
+  purchasing = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemType: "event" | "resource" | "post";
   requiredTier: MembershipTier;
   currentTier: MembershipTier | null | undefined;
+  accessPriceKobo?: number | null;
+  onPayOnce?: () => void;
+  purchasing?: boolean;
 }) {
   const requiredLabel = TIER_LABELS[requiredTier] ?? requiredTier;
-  const currentLabel = TIER_LABELS[currentTier ?? "observer"] ?? "Observer";
   const isPost = itemType === "post";
+  const hasIndividualPrice = accessPriceKobo != null && accessPriceKobo > 0 && !!onPayOnce;
   const itemLabel = isPost
     ? "Creating community posts"
     : itemType === "event"
@@ -51,16 +57,39 @@ export function TierAccessDialog({
           <DialogDescription>
             {isPost
               ? `${itemLabel} is available to ${requiredLabel} members and above. Upgrade your membership to continue.`
-              : `${itemLabel} is available to ${requiredLabel} members. Upgrade your membership to continue.`}
+              : hasIndividualPrice
+                ? `${itemLabel} is available to ${requiredLabel} members. Upgrade your membership or purchase one-time access below.`
+                : `${itemLabel} is available to ${requiredLabel} members. Upgrade your membership to continue.`}
           </DialogDescription>
         </DialogHeader>
+        {hasIndividualPrice && (
+          <div className="-mt-2 mb-2">
+            <p className="text-xs font-medium text-muted-foreground">One-time access</p>
+            <p className="font-display text-3xl font-semibold text-foreground">
+              ₦{(accessPriceKobo / 100).toLocaleString("en-NG")}
+            </p>
+          </div>
+        )}
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Not now
-          </Button>
-          <Button asChild>
-            <Link to="/upgrade">Upgrade</Link>
-          </Button>
+          {hasIndividualPrice ? (
+            <>
+              <Button asChild variant="outline">
+                <Link to="/upgrade">Upgrade</Link>
+              </Button>
+              <Button type="button" disabled={purchasing} onClick={onPayOnce}>
+                {purchasing ? "Opening checkout…" : "Pay once"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Not now
+              </Button>
+              <Button asChild>
+                <Link to="/upgrade">Upgrade</Link>
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

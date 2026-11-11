@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import { EOI_URL } from "@/lib/niec";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 
@@ -150,20 +149,12 @@ function LoginPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-white p-6 shadow-sm">
-          <div className="font-display text-lg text-primary">New to NIEC?</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Apply for membership and complete your payment in the same flow.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link to="/apply" className="rounded-md bg-gold px-5 py-2.5 text-sm font-semibold text-gold-foreground hover:opacity-90">
-              Apply for membership
-            </Link>
-            <a href={EOI_URL} target="_blank" rel="noopener" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">
-              Submit an Expression of Interest
-            </a>
-          </div>
-        </section>
+        <p className="text-center text-sm text-muted-foreground">
+          New to NIEC?{" "}
+          <Link to="/apply" className="font-semibold text-primary hover:underline">
+            Sign up
+          </Link>
+        </p>
       </main>
 
       <footer className="mt-10 border-t py-8 text-center text-xs text-muted-foreground">

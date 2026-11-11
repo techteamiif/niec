@@ -138,7 +138,7 @@ function CommunityPage() {
     <div className="p-6 lg:p-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl">Community</h1>
+          <h1 className="font-display text-3xl">Feeds</h1>
           <p className="text-sm text-muted-foreground">The NIEC member feed.</p>
         </div>
         <button

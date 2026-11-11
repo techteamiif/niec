@@ -2,6 +2,7 @@ import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-route
 import { Building2, Globe, Linkedin, MapPin, Pencil } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { MemberBadges } from "@/components/MemberBadges";
+import { MembershipCard } from "@/components/MembershipCard";
 import { TierBadge } from "@/components/TierBadge";
 import { useAuth } from "@/lib/auth";
 import { ORG_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
@@ -58,13 +59,17 @@ function ProfilePage() {
   const linkedinUrl = safeExternalUrl(profile.linkedin_url);
   const websiteUrl = safeExternalUrl(profile.website_url);
   const organisationType = ORG_TYPE_LABELS[profile.organisation_type];
+  const memberTier = profile.paid_membership_tier ?? profile.membership_tier;
   const onboarding = readOnboardingData(profile.application_data);
   const isOrganisation = getAccountType(profile.application_data) === "organisation";
   const statementOfIntent = profile.bio || onboarding.statement_of_intent;
   const details = [
     ["Email", user.email],
     ["Phone", profile.phone],
-    ["Current membership", TIER_LABELS[profile.membership_tier] ?? profile.membership_tier],
+    [
+      "Current membership",
+      TIER_LABELS[memberTier] ?? memberTier,
+    ],
     [
       "Membership status",
       `${profile.membership_status.charAt(0).toUpperCase()}${profile.membership_status.slice(1)}`,
@@ -137,7 +142,7 @@ function ProfilePage() {
                   <dt className="text-xs text-muted-foreground">{label}</dt>
                   <dd className="mt-1 flex flex-wrap items-center gap-2 font-medium">
                     {label === "Current membership" ? (
-                      <TierBadge tier={profile.membership_tier} />
+                      <TierBadge tier={memberTier} />
                     ) : (
                       value
                     )}
@@ -146,6 +151,8 @@ function ProfilePage() {
               ))}
             </dl>
           </DetailSection>
+
+          <MembershipCard profile={profile} />
 
           {statementOfIntent && (
             <DetailSection title="Statement of intent">

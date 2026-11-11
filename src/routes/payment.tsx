@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { initMembershipPayment, verifyMembershipPayment } from "@/lib/payments.functions";
 import { PublicHeader } from "@/components/PublicHeader";
 import { useAuth } from "@/lib/auth";
+import { formatMembershipExpiryDate } from "@/lib/membership";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -27,10 +28,10 @@ export const Route = createFileRoute("/payment")({
   component: PaymentPage,
 });
 
-export const PAYABLE_TIERS: Record<string, { label: string; minNaira: number; maxNaira: number; note?: string }> = {
-  contributor: { label: "Enterprise", minNaira: 100_000, maxNaira: 250_000, note: "Annual contribution between ₦100,000 and ₦250,000." },
-  growth_partner: { label: "Growth Partner", minNaira: 500_000, maxNaira: 500_000 },
-  anchor: { label: "Anchor Partner", minNaira: 1_500_000, maxNaira: 1_500_000 },
+export const PAYABLE_TIERS: Record<string, { label: string; amountNaira: number }> = {
+  contributor: { label: "Enterprise", amountNaira: 100_000 },
+  growth_partner: { label: "Growth Partner", amountNaira: 500_000 },
+  anchor: { label: "Anchor Partner", amountNaira: 1_500_000 },
 };
 
 const naira = (n: number) => "₦" + n.toLocaleString("en-NG");
@@ -43,15 +44,13 @@ function PaymentPage() {
   const verify = useServerFn(verifyMembershipPayment);
 
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ status: string } | null>(null);
+  const [result, setResult] = useState<{
+    status: string;
+    membershipExpiresAt?: string | null;
+  } | null>(null);
   const [mail, setMail] = useState(email);
   const plan = PAYABLE_TIERS[tier];
-  const [amount, setAmount] = useState(plan?.minNaira ?? 0);
-
   useEffect(() => setMail(email), [email]);
-  useEffect(() => {
-    if (plan) setAmount(plan.minNaira);
-  }, [plan]);
 
   useEffect(() => {
     if (!reference) return;
@@ -59,7 +58,10 @@ function PaymentPage() {
     verify({ data: { reference } })
       .then(async (r) => {
         if (r.ok && r.status === "success") await refresh();
-        setResult({ status: r.ok ? r.status : "failed" });
+        setResult({
+          status: r.ok ? r.status : "failed",
+          membershipExpiresAt: r.ok && r.status === "success" ? r.membershipExpiresAt : null,
+        });
       })
       .catch(() => setResult({ status: "failed" }))
       .finally(() => setBusy(false));
@@ -68,16 +70,12 @@ function PaymentPage() {
   const pay = async () => {
     if (!plan) return toast.error("Select a payable membership tier first.");
     if (!mail) return toast.error("Enter the email for your receipt.");
-    if (amount < plan.minNaira || amount > plan.maxNaira) {
-      return toast.error(`Enter an amount between ${naira(plan.minNaira)} and ${naira(plan.maxNaira)}.`);
-    }
     setBusy(true);
     try {
       const res = await startPayment({
         data: {
           email: mail,
           tier,
-          amountKobo: amount * 100,
           fullName: name,
           callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(mail)}&name=${encodeURIComponent(name)}`,
         },
@@ -108,9 +106,17 @@ function PaymentPage() {
               <h1 className="mt-5 font-display text-2xl text-primary">Payment confirmed</h1>
               <p className="mt-3 text-sm text-muted-foreground">
                 Thank you. Your NIEC membership payment has been received and your tier has been updated.
+                {result.membershipExpiresAt &&
+                  ` Your membership is valid through ${formatMembershipExpiryDate(result.membershipExpiresAt)}.`}
               </p>
-              <div className="mt-7 flex justify-center gap-3">
-                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Continue to Dashboard</Link>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Your payment receipt will be sent to the email address used for this payment.
+              </p>
+              <div className="mt-7 flex flex-wrap justify-center gap-3">
+                <Link to="/payments" className="rounded-md border px-5 py-2.5 text-sm font-medium hover:bg-muted">
+                  Payment history
+                </Link>
+                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Continue to Home</Link>
               </div>
             </>
           ) : (
@@ -153,23 +159,8 @@ function PaymentPage() {
             <div className="text-xs uppercase tracking-wider text-muted-foreground">Selected tier</div>
             <div className="mt-1 font-display text-xl">{plan.label}</div>
             <div className="mt-2 font-display text-3xl text-primary">
-              {naira(amount)}<span className="ml-1 text-sm text-muted-foreground">/ year</span>
+              {naira(plan.amountNaira)}<span className="ml-1 text-sm text-muted-foreground">/ year</span>
             </div>
-            {plan.maxNaira > plan.minNaira && (
-              <label className="mt-4 block text-sm">
-                <span className="text-muted-foreground">Choose your annual contribution</span>
-                <input
-                  type="number"
-                  min={plan.minNaira}
-                  max={plan.maxNaira}
-                  step={5000}
-                  value={amount}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-                />
-              </label>
-            )}
-            {plan.note && <p className="mt-2 text-xs text-muted-foreground">{plan.note}</p>}
           </div>
         ) : (
           <div className="mt-6 space-y-2">
@@ -182,7 +173,7 @@ function PaymentPage() {
               >
                 <span className="font-medium">{t.label}</span>
                 <span className="text-sm text-primary">
-                  {t.minNaira === t.maxNaira ? naira(t.minNaira) : `${naira(t.minNaira)} – ${naira(t.maxNaira)}`}
+                  {naira(t.amountNaira)}
                 </span>
               </button>
             ))}
@@ -208,7 +199,7 @@ function PaymentPage() {
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-          {busy ? "Redirecting to Paystack…" : plan ? `Pay ${naira(amount)}` : "Select a tier"}
+          {busy ? "Redirecting to Paystack…" : plan ? `Pay ${naira(plan.amountNaira)}` : "Select a tier"}
         </button>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResourcePaymentRouteImport } from './routes/resource-payment'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -22,6 +23,7 @@ import { Route as ApiPaystackWebhookRouteImport } from './routes/api/paystack-we
 import { Route as ApiNotificationEmailWebhookRouteImport } from './routes/api/notification-email-webhook'
 import { Route as AppUpgradeRouteImport } from './routes/_app.upgrade'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
+import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/_app.mentorship'
@@ -47,6 +49,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const ResourcePaymentRoute = ResourcePaymentRouteImport.update({
+  id: '/resource-payment',
+  path: '/resource-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -110,6 +117,11 @@ const AppUpgradeRoute = AppUpgradeRouteImport.update({
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotificationsRoute = AppNotificationsRouteImport.update({
@@ -246,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -259,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/payments': typeof AppPaymentsRoute
   '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -284,6 +298,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -297,6 +312,7 @@ export interface FileRoutesByTo {
   '/mentorship': typeof AppMentorshipRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/payments': typeof AppPaymentsRoute
   '/profile': typeof AppProfileRouteWithChildren
   '/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -324,6 +340,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/admin': typeof AppAdminRoute
@@ -337,6 +354,7 @@ export interface FileRoutesById {
   '/_app/mentorship': typeof AppMentorshipRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/payments': typeof AppPaymentsRoute
   '/_app/profile': typeof AppProfileRouteWithChildren
   '/_app/upgrade': typeof AppUpgradeRoute
   '/api/notification-email-webhook': typeof ApiNotificationEmailWebhookRoute
@@ -364,6 +382,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -377,6 +396,7 @@ export interface FileRouteTypes {
     | '/mentorship'
     | '/messages'
     | '/notifications'
+    | '/payments'
     | '/profile'
     | '/upgrade'
     | '/api/notification-email-webhook'
@@ -402,6 +422,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -415,6 +436,7 @@ export interface FileRouteTypes {
     | '/mentorship'
     | '/messages'
     | '/notifications'
+    | '/payments'
     | '/profile'
     | '/upgrade'
     | '/api/notification-email-webhook'
@@ -441,6 +463,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_app/admin'
@@ -454,6 +477,7 @@ export interface FileRouteTypes {
     | '/_app/mentorship'
     | '/_app/messages'
     | '/_app/notifications'
+    | '/_app/payments'
     | '/_app/profile'
     | '/_app/upgrade'
     | '/api/notification-email-webhook'
@@ -481,6 +505,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PaymentRoute: typeof PaymentRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ResourcePaymentRoute: typeof ResourcePaymentRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiNotificationEmailWebhookRoute: typeof ApiNotificationEmailWebhookRoute
@@ -494,6 +519,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resource-payment': {
+      id: '/resource-payment'
+      path: '/resource-payment'
+      fullPath: '/resource-payment'
+      preLoaderRoute: typeof ResourcePaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -583,6 +615,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payments': {
+      id: '/_app/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/notifications': {
@@ -815,6 +854,7 @@ interface AppRouteChildren {
   AppMentorshipRoute: typeof AppMentorshipRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
   AppProfileRoute: typeof AppProfileRouteWithChildren
   AppUpgradeRoute: typeof AppUpgradeRoute
   AppEventEventIdRoute: typeof AppEventEventIdRoute
@@ -833,6 +873,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMentorshipRoute: AppMentorshipRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
   AppProfileRoute: AppProfileRouteWithChildren,
   AppUpgradeRoute: AppUpgradeRoute,
   AppEventEventIdRoute: AppEventEventIdRoute,
@@ -851,6 +892,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PaymentRoute: PaymentRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ResourcePaymentRoute: ResourcePaymentRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

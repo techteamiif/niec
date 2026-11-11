@@ -914,7 +914,7 @@ function ProgramsTab() {
 
   const load = async () => {
     const [{ data: e }, { data: b }, resourceResult, { data: d }] = await Promise.all([
-      supabase.from("events").select("*").order("start_date", { ascending: false }).limit(30),
+      supabase.rpc("get_staff_events").limit(30),
       supabase.from("mentorship_bookings").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("knowledge_resources").select("*").order("created_at", { ascending: false }).limit(30),
       supabase.from("deal_opportunities").select("*").order("created_at", { ascending: false }).limit(30),
@@ -1109,6 +1109,7 @@ function CreatePublicationDialog({
   const [resourceType, setResourceType] = useState<ResourceType>("report");
   const [community, setCommunity] = useState<CommunityOfPractice>("general");
   const [minTier, setMinTier] = useState<MembershipTier>("observer");
+  const [accessPriceNaira, setAccessPriceNaira] = useState("");
   const [fileUrl, setFileUrl] = useState("");
   const [publicationPdf, setPublicationPdf] = useState<File | null>(null);
   const [summaryUrl, setSummaryUrl] = useState("");
@@ -1195,6 +1196,15 @@ function CreatePublicationDialog({
       toast.error("Enter a valid executive summary URL.");
       return;
     }
+    const parsedAccessPrice = accessPriceNaira.trim() ? Number(accessPriceNaira) : null;
+    if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
+      toast.error("Enter an individual access price as a positive whole number of naira.");
+      return;
+    }
+    if (parsedAccessPrice !== null && (!publicationPdf || normalizedSummaryUrl)) {
+      toast.error("Individually priced publications must use an uploaded PDF and cannot include a public summary URL.");
+      return;
+    }
     const imageExtensions: Record<string, string> = {
       "image/jpeg": "jpg",
       "image/png": "png",
@@ -1214,9 +1224,7 @@ function CreatePublicationDialog({
           toast.error(`Could not upload publication PDF: ${uploadError.message}`);
           return;
         }
-        publicationUrl = supabase.storage
-          .from("knowledge-resource-pdfs")
-          .getPublicUrl(uploadedPdfPath).data.publicUrl;
+        publicationUrl = uploadedPdfPath;
       }
 
       let coverImageUrl: string | null = null;
@@ -1249,6 +1257,7 @@ function CreatePublicationDialog({
         resource_type: resourceType,
         community_of_practice: community,
         min_tier_required: minTier,
+        access_price_kobo: parsedAccessPrice === null ? null : parsedAccessPrice * 100,
         file_url: publicationUrl,
         executive_summary_url: normalizedSummaryUrl || null,
         cover_image_url: coverImageUrl,
@@ -1283,6 +1292,7 @@ function CreatePublicationDialog({
       setResourceType("report");
       setCommunity("general");
       setMinTier("observer");
+      setAccessPriceNaira("");
       setFileUrl("");
       setPublicationPdf(null);
       if (publicationPdfInput.current) publicationPdfInput.current.value = "";
@@ -1376,6 +1386,21 @@ function CreatePublicationDialog({
               </select>
               <p className="text-xs text-muted-foreground">
                 Members at this tier or above can access the publication.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="publication-access-price">Individual access price (NGN, optional)</Label>
+              <Input
+                id="publication-access-price"
+                type="number"
+                min="1"
+                step="1"
+                value={accessPriceNaira}
+                onChange={(event) => setAccessPriceNaira(event.target.value)}
+                placeholder="Leave blank for tier-only access"
+              />
+              <p className="text-xs text-muted-foreground">
+                A one-time purchase can unlock this publication without a membership upgrade.
               </p>
             </div>
             <div className="space-y-1 sm:col-span-2">

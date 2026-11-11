@@ -29,7 +29,7 @@ function hasValidSecret(received: string | null, expected: string) {
 
 function isEmailWorthy(type: string, title: string) {
   if (type === "post_reply") return title !== "Someone liked your post";
-  return ["event_reminder", "admin_message", "tier_upgrade"].includes(type);
+  return ["event_reminder", "admin_message", "tier_upgrade", "membership_expiry"].includes(type);
 }
 
 function escapeHtml(value: string) {
@@ -114,6 +114,22 @@ Deno.serve(async (request) => {
     if (!recipient?.email) throw new Error("Notification recipient has no email address");
 
     const activityUrl = buildActivityUrl(notification.link, appUrl);
+    let recipientEmail = recipient.email;
+    if (notification.title === "NIEC membership payment receipt" && activityUrl) {
+      const reference = new URL(activityUrl).searchParams.get("reference");
+      if (!reference) throw new Error("Payment receipt notification has no payment reference");
+      const { data: payment, error: paymentError } = await supabase
+        .from("membership_payments")
+        .select("email")
+        .eq("reference", reference)
+        .eq("user_id", notification.recipient_id)
+        .eq("status", "success")
+        .maybeSingle();
+      if (paymentError) throw paymentError;
+      if (!payment?.email) throw new Error("Payment receipt has no recipient email address");
+      recipientEmail = payment.email;
+    }
+
     const title = escapeHtml(notification.title);
     const message = escapeHtml(notification.message ?? "");
     const html = [
@@ -146,7 +162,7 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify({
         from: fromEmail,
-        to: [recipient.email],
+        to: [recipientEmail],
         subject: notification.title,
         html,
         text,

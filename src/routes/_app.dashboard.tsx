@@ -1,153 +1,81 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
-import { UserAvatar } from "@/components/Avatar";
-import { TierBadge } from "@/components/TierBadge";
-import { POST_TYPE_COLOR, POST_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
-import { capFor, nextTier } from "@/lib/entitlements";
+import { COPS, TIER_LABELS } from "@/lib/niec";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import {
   Award,
   ArrowRight,
+  BookOpen,
   Building2,
   Calendar,
-  MessageSquare,
-  MessageCircle,
-  Heart,
-  Sparkles,
-  TrendingUp,
-  Users,
+  FileText,
+  Layers,
   UsersRound,
 } from "lucide-react";
-import { format } from "date-fns";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
-import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
 });
 
-function StatCard({ icon: Icon, label, value, accent }: any) {
-  return (
-    <div className="rounded-xl border bg-card p-5">
-      <div className="flex items-center justify-between">
-        <div className={`grid h-9 w-9 place-items-center rounded-md ${accent}`}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="mt-4 font-display text-3xl">{value}</div>
-      <div className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
-    </div>
-  );
-}
+type UpcomingEvent = Pick<
+  Database["public"]["Tables"]["events"]["Row"],
+  "id" | "title" | "start_date" | "end_date" | "event_type"
+>;
+type KnowledgeResource = Pick<
+  Database["public"]["Tables"]["knowledge_resources"]["Row"],
+  "id" | "title" | "resource_type"
+>;
 
 function Dashboard() {
-  const { profile, user, isStaff } = useAuth();
-  const [stats, setStats] = useState({ members: 0, deals: 0, events: 0 });
-  const [posts, setPosts] = useState<any[]>([]);
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
-  const [events, setEvents] = useState<any[]>([]);
-  const [usage, setUsage] = useState<{ cop_count: number; mentorship_this_month: number } | null>(
-    null,
-  );
+  const { profile } = useAuth();
+  const [events, setEvents] = useState<UpcomingEvent[]>([]);
+  const [resources, setResources] = useState<KnowledgeResource[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [resourcesError, setResourcesError] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const [m, d, e, p, ev] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("membership_status", "active"),
-        supabase
-          .from("deal_opportunities")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "open"),
+    const loadHomeContent = async () => {
+      const [eventsResult, resourcesResult] = await Promise.all([
         supabase
           .from("events")
-          .select("id", { count: "exact", head: true })
-          .gte("start_date", new Date().toISOString()),
-        supabase
-          .from("community_posts")
-          .select(
-            "*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)",
-          )
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(10),
-        supabase
-          .from("events")
-          .select("id, title, start_date, end_date, schedule, location, is_virtual, event_type")
+          .select("id, title, start_date, end_date, event_type")
           .gte("start_date", new Date().toISOString())
           .order("start_date")
           .limit(3),
+        supabase
+          .from("knowledge_resources")
+          .select("id, title, resource_type")
+          .order("created_at", { ascending: false })
+          .limit(3),
       ]);
-      setStats({ members: m.count ?? 0, deals: d.count ?? 0, events: e.count ?? 0 });
-      setPosts(p.data ?? []);
-      setEvents(ev.data ?? []);
-      if (user && p.data?.length) {
-        const { data: likes, error } = await supabase
-          .from("post_likes")
-          .select("post_id")
-          .eq("user_id", user.id)
-          .in(
-            "post_id",
-            p.data.map((post) => post.id),
-          );
-        if (error) toast.error(`Could not load post reactions: ${error.message}`);
-        setLikedPosts(new Set((likes ?? []).map((like) => like.post_id)));
+
+      if (eventsResult.error) {
+        setEventsError(eventsResult.error.message);
+        toast.error(`Unable to load upcoming events: ${eventsResult.error.message}`);
       } else {
-        setLikedPosts(new Set());
+        setEvents(eventsResult.data ?? []);
       }
-    })();
-    if (user) {
-      supabase.rpc("get_tier_usage", { _user_id: user.id }).then(({ data }) => {
-        const row = Array.isArray(data) ? data[0] : data;
-        if (row) setUsage(row as any);
-      });
-    }
-  }, [user]);
+      setEventsLoading(false);
 
-  const toggleLike = async (postId: string) => {
-    if (!user || !requireEnterpriseForWrite(profile?.membership_tier, isStaff)) return;
-    const isLiked = likedPosts.has(postId);
-    if (isLiked) {
-      const { error } = await supabase
-        .from("post_likes")
-        .delete()
-        .eq("post_id", postId)
-        .eq("user_id", user.id);
-      if (error) return toast.error(`Could not remove reaction: ${error.message}`);
-      setLikedPosts((current) => {
-        const next = new Set(current);
-        next.delete(postId);
-        return next;
-      });
-      setPosts((current) =>
-        current.map((post) =>
-          post.id === postId ? { ...post, likes_count: Math.max(0, post.likes_count - 1) } : post,
-        ),
-      );
-      return;
-    }
+      if (resourcesResult.error) {
+        setResourcesError(resourcesResult.error.message);
+        toast.error(`Unable to load Knowledge Hub resources: ${resourcesResult.error.message}`);
+      } else {
+        setResources(resourcesResult.data ?? []);
+      }
+      setResourcesLoading(false);
+    };
 
-    const { error } = await supabase
-      .from("post_likes")
-      .insert({ post_id: postId, user_id: user.id });
-    if (error) return toast.error(`Could not react to post: ${error.message}`);
-    setLikedPosts((current) => new Set(current).add(postId));
-    setPosts((current) =>
-      current.map((post) =>
-        post.id === postId ? { ...post, likes_count: post.likes_count + 1 } : post,
-      ),
-    );
-  };
+    void loadHomeContent();
+  }, []);
 
   const tier = profile?.membership_tier ?? "observer";
-  const copCap = capFor(tier, "cops.join") ?? 0;
-  const mentorCap = capFor(tier, "mentorship.book") ?? 0;
-  const upgradeTarget = nextTier(tier);
 
   return (
     <div className="p-6 lg:p-10">
@@ -179,7 +107,7 @@ function Dashboard() {
             className="inline-flex h-11 items-center justify-center gap-2 rounded-[11px] bg-[#003302] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-[#00682e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <UsersRound aria-hidden="true" className="h-[18px] w-[18px]" />
-            Open Community
+            Open Feeds
           </Link>
         </div>
       </div>
@@ -191,6 +119,111 @@ function Dashboard() {
         <StatCard icon={MessageSquare} label="Engagement"    value={profile?.engagement_score ?? 0} accent="bg-secondary/15 text-secondary" />
       </div> */}
 
+      <div className="mt-10 grid gap-6 xl:grid-cols-3">
+        <section className="min-w-0 rounded-xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-display text-xl">
+              <Calendar className="h-5 w-5 text-primary" />
+              Upcoming events
+            </h2>
+            <Link to="/events" className="shrink-0 text-sm text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {eventsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading events…</p>
+            ) : eventsError ? (
+              <p className="text-sm text-destructive">Unable to load upcoming events.</p>
+            ) : events.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No upcoming events scheduled.</p>
+            ) : (
+              events.map((event) => (
+                <Link
+                  key={event.id}
+                  to="/events"
+                  className="block rounded-md border border-border/60 p-3 transition hover:border-primary"
+                >
+                  <div className="text-xs text-primary">
+                    {formatEventSchedule(null, event.start_date, event.end_date).join(
+                      " · ",
+                    )}
+                  </div>
+                  <div className="mt-1 text-sm font-medium">{event.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {event.event_type.replace(/_/g, " ")}
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="min-w-0 rounded-xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-display text-xl">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Knowledge Hub
+            </h2>
+            <Link to="/knowledge" className="shrink-0 text-sm text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {resourcesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading resources…</p>
+            ) : resourcesError ? (
+              <p className="text-sm text-destructive">Unable to load Knowledge Hub resources.</p>
+            ) : resources.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No resources have been published yet.</p>
+            ) : (
+              resources.map((resource) => (
+                <Link
+                  key={resource.id}
+                  to="/knowledge/$resourceId"
+                  params={{ resourceId: resource.id }}
+                  className="flex items-start gap-3 rounded-md border border-border/60 p-3 transition hover:border-primary"
+                >
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0">
+                    <span className="block text-xs capitalize text-muted-foreground">
+                      {resource.resource_type.replace(/_/g, " ")}
+                    </span>
+                    <span className="block text-sm font-medium">{resource.title}</span>
+                  </span>
+                </Link>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="min-w-0 rounded-xl border bg-card p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-display text-xl">
+              <Layers className="h-5 w-5 text-primary" />
+              COPs
+            </h2>
+            <Link to="/cops" className="shrink-0 text-sm text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {COPS.map((cop) => (
+              <Link
+                key={cop.key}
+                to="/cops/$cop"
+                params={{ cop: cop.key }}
+                className="group flex items-center justify-between gap-3 rounded-md border border-border/60 p-3 transition hover:border-primary"
+              >
+                <span className="truncate text-sm font-medium">{cop.name}</span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      {/* Previous dashboard sections retained for reference.
       <div className="mt-10 grid gap-6 lg:grid-cols-[1fr_320px]">
         <section>
           <div className="mb-4 flex items-center justify-between">
@@ -351,27 +384,7 @@ function Dashboard() {
           </div>
         </aside>
       </div>
-    </div>
-  );
-}
-
-function UsageRow({ label, used, cap }: { label: string; used: number; cap: number }) {
-  const unlimited = cap >= 999;
-  const pct = unlimited ? 0 : Math.min(100, cap > 0 ? (used / cap) * 100 : 100);
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-medium">
-          {used}
-          {unlimited ? " · unlimited" : ` / ${cap}`}
-        </span>
-      </div>
-      {!unlimited && (
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      )}
+      */}
     </div>
   );
 }

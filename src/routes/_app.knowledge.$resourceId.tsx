@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { ArrowLeft, Download, FileText, Share2 } from "lucide-react";
+import { ArrowLeft, CreditCard, Download, FileText, Share2 } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
-import { tierMeets, TIER_LABELS } from "@/lib/niec";
+import { tierMeets, TIER_LABELS, getKnowledgeResourceAccessLabel } from "@/lib/niec";
 import { UserAvatar } from "@/components/Avatar";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
+import { initResourcePayment } from "@/lib/payments.functions";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
@@ -29,6 +31,9 @@ function KnowledgeResourcePage() {
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [purchasing, setPurchasing] = useState(false);
+  const startPurchase = useServerFn(initResourcePayment);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +52,12 @@ function KnowledgeResourcePage() {
       if (error) toast.error(`Could not load resource: ${error.message}`);
       setResource(data);
       setLoading(false);
+
+      const { data: access } = await supabase.rpc("has_resource_access", {
+        _resource_type: "knowledge",
+        _resource_id: resourceId,
+      });
+      if (active) setHasAccess(access ?? false);
 
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
@@ -68,7 +79,7 @@ function KnowledgeResourcePage() {
 
   const download = async (url: string | null) => {
     if (!resource) return;
-    if (!tierMeets(profile?.membership_tier, resource.min_tier_required) && !isStaff) {
+    if (!hasAccess && !isStaff) {
       setTierDialogOpen(true);
       return;
     }
@@ -77,16 +88,25 @@ function KnowledgeResourcePage() {
       return;
     }
 
-    let safeUrl: URL;
-    try {
-      safeUrl = new URL(url);
-    } catch {
-      toast.error("This download link is invalid.");
-      return;
-    }
-    if (safeUrl.protocol !== "https:" && safeUrl.protocol !== "http:") {
-      toast.error("This download link is invalid.");
-      return;
+    let downloadUrl = url;
+    if (!/^https?:\/\//i.test(url)) {
+      const { data, error: signedUrlError } = await supabase.storage
+        .from("knowledge-resource-pdfs")
+        .createSignedUrl(url, 60);
+      if (signedUrlError || !data?.signedUrl) {
+        toast.error(`Could not create a secure download link: ${signedUrlError?.message ?? "Unknown error"}`);
+        return;
+      }
+      downloadUrl = data.signedUrl;
+    } else {
+      try {
+        const safeUrl = new URL(url);
+        if (safeUrl.protocol !== "https:" && safeUrl.protocol !== "http:") throw new Error();
+        downloadUrl = safeUrl.toString();
+      } catch {
+        toast.error("This download link is invalid.");
+        return;
+      }
     }
 
     const { error } = await supabase.rpc("increment_resource_download", {
@@ -99,12 +119,25 @@ function KnowledgeResourcePage() {
     setResource((current) =>
       current ? { ...current, downloads_count: (current.downloads_count ?? 0) + 1 } : current,
     );
-    window.open(safeUrl.toString(), "_blank", "noopener,noreferrer");
+    window.open(downloadUrl, "_blank", "noopener,noreferrer");
   };
 
-  const unlocked = resource
-    ? tierMeets(profile?.membership_tier, resource.min_tier_required) || isStaff
-    : false;
+  const unlocked = hasAccess || isStaff;
+
+  const buyAccess = async () => {
+    if (!resource || purchasing) return;
+    setPurchasing(true);
+    try {
+      const result = await startPurchase({
+        data: { resourceType: "knowledge", resourceId: resource.id },
+      });
+      if (!result.ok) throw new Error(result.error);
+      window.location.href = result.authorizationUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start the purchase.");
+      setPurchasing(false);
+    }
+  };
 
   const share = async () => {
     if (!resource) return;
@@ -156,6 +189,14 @@ function KnowledgeResourcePage() {
               <span className="ml-1 rounded-full bg-sky-100 px-3 py-1 text-xs font-medium capitalize text-sky-800">
                 {resource.resource_type.replace(/_/g, " ")}
               </span>
+              <span className="rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground/80">
+                {getKnowledgeResourceAccessLabel(resource.min_tier_required)}
+              </span>
+              {resource.access_price_kobo != null && (
+                <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+                  Individual access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
+                </span>
+              )}
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-b pb-5">
@@ -193,10 +234,17 @@ function KnowledgeResourcePage() {
             <section className="mt-8 border-t pt-6">
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier.
+                  Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
+                  {resource.access_price_kobo != null ? " or individual purchase." : "."}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
+                {!unlocked && resource.access_price_kobo != null && (
+                  <Button type="button" onClick={() => setTierDialogOpen(true)}>
+                    <CreditCard aria-hidden="true" />
+                    View access options
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
@@ -269,6 +317,9 @@ function KnowledgeResourcePage() {
         itemType="resource"
         requiredTier={resource?.min_tier_required ?? "observer"}
         currentTier={profile?.membership_tier}
+        accessPriceKobo={resource?.access_price_kobo}
+        onPayOnce={() => void buyAccess()}
+        purchasing={purchasing}
       />
     </div>
   );

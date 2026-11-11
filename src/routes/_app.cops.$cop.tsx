@@ -106,7 +106,7 @@ function CopWorkspace() {
         .limit(50),
       supabase
         .from("events")
-        .select("*")
+        .select("id, title, event_type, start_date, end_date, min_tier_required, is_paid, access_price_kobo, image_url, created_by")
         .gte("start_date", new Date().toISOString())
         .order("start_date")
         .limit(20),
@@ -804,10 +804,10 @@ function CopWorkspace() {
                 className="block rounded-xl border bg-card p-4 hover:shadow-md"
               >
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {formatEventSchedule(e.schedule, e.start_date, e.end_date).join(" · ")}
+                  {formatEventSchedule(null, e.start_date, e.end_date).join(" · ")}
                 </div>
                 <div className="mt-1 font-medium">{e.title}</div>
-                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{e.description}</p>
+                <p className="mt-1 text-sm capitalize text-muted-foreground">{e.event_type.replace(/_/g, " ")}</p>
               </Link>
             ))}
             {events.length === 0 && (

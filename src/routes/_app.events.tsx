@@ -6,7 +6,7 @@ import { tierMeets, TIER_LABELS, TIER_RANK } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
-import { Calendar, MapPin, Video, ArrowRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Video, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { EventImage } from "@/components/EventImage";
 import {
@@ -25,7 +25,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 export const Route = createFileRoute("/_app/events")({
   component: EventsPage,
@@ -44,7 +43,6 @@ function EventsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [eventToEdit, setEventToEdit] = useState<EventEditData | null>(null);
   const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null);
-  const [lockedEventTier, setLockedEventTier] = useState<Database["public"]["Enums"]["membership_tier"] | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState<"upcoming" | "past" | "mine">("upcoming");
   const [search, setSearch] = useState("");
@@ -60,7 +58,7 @@ function EventsPage() {
     const { data, error } = await supabase
       .from("events")
       .select(
-        "id, title, description, event_type, start_date, end_date, schedule, location, is_virtual, virtual_link, registration_link, max_attendees, min_tier_required, is_paid, image_url, created_by",
+        "id, title, event_type, start_date, end_date, min_tier_required, is_paid, access_price_kobo, image_url, created_by",
       )
       .order("start_date");
     if (error) toast.error(`Could not load events: ${error.message}`);
@@ -94,6 +92,27 @@ function EventsPage() {
   };
   useEffect(() => { load(); }, [user]);
 
+  const openEditEvent = async (event: EventEditData) => {
+    const [
+      { data: eventDetails, error: detailsError },
+      { data: virtualLink, error: virtualError },
+      { data: registrationLink, error: registrationError },
+    ] = await Promise.all([
+      supabase.rpc("get_event_details", { _event_id: event.id }),
+        supabase.rpc("get_event_virtual_link", { _event_id: event.id }),
+        supabase.rpc("get_event_registration_link", { _event_id: event.id }),
+      ]);
+    if (detailsError || !eventDetails?.[0] || virtualError || registrationError) {
+      toast.error("Could not load protected event links for editing.");
+      return;
+    }
+    setEventToEdit({
+      ...eventDetails[0],
+      virtual_link: virtualLink ?? "",
+      registration_link: registrationLink ?? "",
+    });
+  };
+
   const now = Date.now();
   const filtered = useMemo(() => {
     return events.filter((ev) => {
@@ -107,11 +126,7 @@ function EventsPage() {
       if (tierFilter !== "all" && ev.min_tier_required !== tierFilter) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      return (
-        (ev.title ?? "").toLowerCase().includes(q) ||
-        (ev.description ?? "").toLowerCase().includes(q) ||
-        (ev.location ?? "").toLowerCase().includes(q)
-      );
+      return (ev.title ?? "").toLowerCase().includes(q);
     });
   }, [events, tab, regs, now, search, eventTypeFilter, priceFilter, tierFilter]);
 
@@ -251,7 +266,6 @@ function EventsPage() {
           </div>
         ) : filtered.map((ev) => {
           const canManageEvent = isStaff || (!!user && ev.created_by === user.id);
-          const canAccessEvent = isStaff || tierMeets(profile?.membership_tier, ev.min_tier_required);
           return (
             <div key={ev.id} className="overflow-hidden rounded-xl border bg-card">
               <div className="relative">
@@ -272,7 +286,7 @@ function EventsPage() {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-36">
-                      <DropdownMenuItem onSelect={() => setEventToEdit(ev)}>
+                      <DropdownMenuItem onSelect={() => void openEditEvent(ev)}>
                         <Pencil /> Edit event
                       </DropdownMenuItem>
                       <DropdownMenuItem
@@ -289,33 +303,24 @@ function EventsPage() {
                 <div className="flex items-start gap-2 text-xs text-primary">
                   <Calendar className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <div className="space-y-1">
-                    {formatEventSchedule(ev.schedule, ev.start_date, ev.end_date).map((line, index) => (
+                    {formatEventSchedule(null, ev.start_date, ev.end_date).map((line, index) => (
                       <div key={`${line}-${index}`}>{line}</div>
                     ))}
                   </div>
                 </div>
                 <h3 className="mt-2 font-display text-xl">{ev.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{ev.description}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {ev.event_type === "onsite" ||
-                  ev.event_type === "hybrid" ||
-                  (!ev.is_virtual && ev.event_type !== "online") ? (
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5" />{" "}
-                      {ev.location || "Location to be announced"}
-                    </span>
-                  ) : null}
-                  {ev.event_type === "online" || ev.event_type === "hybrid" || ev.is_virtual ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Video className="h-3.5 w-3.5" /> Online
-                    </span>
-                  ) : null}
                   <span className="rounded bg-muted px-2 py-0.5">
                     {formatEventType(ev.event_type)}
                   </span>
                   <span className="rounded bg-muted px-2 py-0.5">
                     {ev.is_paid ? "Paid" : "Free"}
                   </span>
+                  {ev.access_price_kobo != null && (
+                    <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">
+                      Individual access ₦{(ev.access_price_kobo / 100).toLocaleString("en-NG")}
+                    </span>
+                  )}
                   {ev.max_attendees && (
                     <span className="rounded bg-muted px-2 py-0.5">
                       {ev.max_attendees} Seats
@@ -342,23 +347,13 @@ function EventsPage() {
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     Min tier: {TIER_LABELS[ev.min_tier_required]}
                   </div>
-                  {canAccessEvent ? (
-                    <Link
-                      to="/event/$eventId"
-                      params={{ eventId: ev.id }}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                    >
-                      See details <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setLockedEventTier(ev.min_tier_required)}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                    >
-                      See details <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                  <Link
+                    to="/event/$eventId"
+                    params={{ eventId: ev.id }}
+                    className="rounded-full bg-[#f0ede5] px-4 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-[#e8e4da]"
+                  >
+                    See details
+                  </Link>
                 </div>
               </div>
             </div>
@@ -375,15 +370,6 @@ function EventsPage() {
           userId={user.id}
         />
       )}
-      <TierAccessDialog
-        open={lockedEventTier !== null}
-        onOpenChange={(open) => {
-          if (!open) setLockedEventTier(null);
-        }}
-        itemType="event"
-        requiredTier={lockedEventTier ?? "observer"}
-        currentTier={profile?.membership_tier}
-      />
       <AlertDialog open={!!eventToDelete} onOpenChange={(open) => { if (!open && !deleting) setEventToDelete(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -420,6 +406,7 @@ type EventFormState = {
   virtual_link: string;
   registration_link: string;
   is_paid: boolean;
+  access_price_naira: string;
   min_tier_required: Database["public"]["Enums"]["membership_tier"];
   max_attendees: string;
 };
@@ -440,6 +427,7 @@ type EventEditData = Pick<
   | "max_attendees"
   | "min_tier_required"
   | "is_paid"
+  | "access_price_kobo"
   | "image_url"
   | "created_by"
 >;
@@ -515,6 +503,7 @@ function eventFormDefaults(event: EventEditData | null): EventFormState {
     virtual_link: event?.virtual_link ?? "",
     registration_link: event?.registration_link ?? "",
     is_paid: event?.is_paid ?? false,
+    access_price_naira: event?.access_price_kobo ? String(event.access_price_kobo / 100) : "",
     min_tier_required: event?.min_tier_required ?? "observer",
     max_attendees: event?.max_attendees?.toString() ?? "",
   };
@@ -628,6 +617,11 @@ function CreateEvent({
       toast.error("Choose a valid event start and end date.");
       return;
     }
+    const parsedAccessPrice = form.access_price_naira.trim() ? Number(form.access_price_naira) : null;
+    if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
+      toast.error("Enter an individual access price as a positive whole number of naira.");
+      return;
+    }
 
     let schedule: EventSchedule;
     let startDateTime: string;
@@ -690,6 +684,7 @@ function CreateEvent({
       virtual_link: form.virtual_link || null,
       max_attendees: form.max_attendees ? Number(form.max_attendees) : null,
       min_tier_required: form.min_tier_required,
+      access_price_kobo: parsedAccessPrice === null ? null : parsedAccessPrice * 100,
       is_paid: form.is_paid,
       registration_link: registrationLink,
       image_url: imageUrl,
@@ -1019,7 +1014,7 @@ function CreateEvent({
             />
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="event-amount" className="block text-sm font-medium">Amount</label>
+            <label htmlFor="event-amount" className="block text-sm font-medium">External ticket fee</label>
             <select
               id="event-amount"
               value={form.is_paid ? "paid" : "free"}
@@ -1029,7 +1024,28 @@ function CreateEvent({
               <option value="free">Free</option>
               <option value="paid">Paid</option>
             </select>
+            <p className="text-xs text-muted-foreground">
+              Describes any fee collected by your external registration provider.
+            </p>
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="event-access-price" className="block text-sm font-medium">
+            NIEC individual access price (NGN, optional)
+          </label>
+          <input
+            id="event-access-price"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Leave blank for tier-only access"
+            value={form.access_price_naira}
+            onChange={(e) => set("access_price_naira", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            One-time payment unlocks the event and registers the buyer as attending.
+          </p>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="event-max-attendees" className="block text-sm font-medium">
