@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export const Route = createFileRoute("/_app/events")({
+export const Route = createFileRoute("/_app/member/events")({
   component: EventsPage,
 });
 

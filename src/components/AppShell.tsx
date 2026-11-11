@@ -48,7 +48,7 @@ const NAV: NavItem[] = [
   { to: "/community", label: "Feeds", icon: MessageSquare },
   { to: "/members", label: "Members", icon: Users },
   { to: "/messages", label: "Messages", icon: Mail, comingSoon: true },
-  { to: "/events", label: "Events", icon: Calendar },
+  { to: "/member/events", label: "Events", icon: Calendar },
   { to: "/deal-room", label: "Deal Room", icon: Briefcase, comingSoon: true },
   { to: "/knowledge", label: "Knowledge Hub", icon: BookOpen },
   { to: "/cops", label: "CoPs", icon: Layers },

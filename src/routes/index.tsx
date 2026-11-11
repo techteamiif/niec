@@ -1,8 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { COPS } from "@/lib/niec";
-import { ArrowRight, Globe, TrendingUp, Users, Calendar, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar, Globe, TrendingUp, Users } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
 import { PublicHeader } from "@/components/PublicHeader";
+import { PublicEventCard, PublicResourceCard } from "@/components/PublicCatalogCards";
+import {
+  getPublicEventPreviews,
+  getPublicResourcePreviews,
+  type PublicEventPreview,
+  type PublicResourcePreview,
+} from "@/lib/public-catalog";
+import { toast } from "sonner";
 // Import image files directly from src/assets/
 import iifLogo from "@/assets/iif-logo.png";
 import gsgLogo from "@/assets/gsg-logo.png";
@@ -31,6 +40,59 @@ function Stat({ label, value, suffix }: { label: string; value: string; suffix?:
 }
 
 function ImpactLanding() {
+  const [events, setEvents] = useState<PublicEventPreview[]>([]);
+  const [resources, setResources] = useState<PublicResourcePreview[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [resourcesLoading, setResourcesLoading] = useState(true);
+  const [eventsError, setEventsError] = useState(false);
+  const [resourcesError, setResourcesError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      try {
+        const { data, error } = await getPublicEventPreviews(3);
+        if (!active) return;
+        if (error) {
+          toast.error(`Could not load events: ${error.message}`);
+          setEventsError(true);
+        } else {
+          setEvents(data ?? []);
+        }
+      } catch (error) {
+        if (!active) return;
+        toast.error(`Could not load events: ${error instanceof Error ? error.message : "Unexpected error"}`);
+        setEventsError(true);
+      } finally {
+        if (active) setEventsLoading(false);
+      }
+    })();
+
+    void (async () => {
+      try {
+        const { data, error } = await getPublicResourcePreviews(3);
+        if (!active) return;
+        if (error) {
+          toast.error(`Could not load resources: ${error.message}`);
+          setResourcesError(true);
+        } else {
+          setResources(data ?? []);
+        }
+      } catch (error) {
+        if (!active) return;
+        toast.error(`Could not load resources: ${error instanceof Error ? error.message : "Unexpected error"}`);
+        setResourcesError(true);
+      } finally {
+        if (active) setResourcesLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <PublicHeader />
@@ -85,6 +147,62 @@ function ImpactLanding() {
             <Stat label="Deals facilitated" value="67" />
             <Stat label="Convenings hosted" value="35" />
           </div>
+        </div>
+      </section>
+
+      <section id="events" className="border-t border-border bg-background">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Coming together</div>
+              <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Upcoming events.</h2>
+            </div>
+            <Link to="/events" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              See all events <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          {eventsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading upcoming events…</p>
+          ) : eventsError ? (
+            <p role="alert" className="text-sm text-destructive">Events could not be loaded. Please try again later.</p>
+          ) : events.length ? (
+            <div className="grid gap-5 md:grid-cols-3">
+              {events.map((event) => <PublicEventCard key={event.id} event={event} />)}
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+              No upcoming events are scheduled right now. Please check back soon.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section id="resources" className="border-t border-border bg-cream/40">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-primary">
+                <BookOpen className="h-3.5 w-3.5" /> Knowledge Hub
+              </div>
+              <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Ideas for impact.</h2>
+            </div>
+            <Link to="/resources" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              See all resources <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          {resourcesLoading ? (
+            <p className="text-sm text-muted-foreground">Loading resources…</p>
+          ) : resourcesError ? (
+            <p role="alert" className="text-sm text-destructive">Resources could not be loaded. Please try again later.</p>
+          ) : resources.length ? (
+            <div className="grid gap-5 md:grid-cols-3">
+              {resources.map((resource) => <PublicResourceCard key={resource.id} resource={resource} />)}
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+              No resources have been published yet. Please check back soon.
+            </p>
+          )}
         </div>
       </section>
 

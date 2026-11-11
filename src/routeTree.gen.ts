@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResourcesRouteImport } from './routes/resources'
 import { Route as ResourcePaymentRouteImport } from './routes/resource-payment'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PaymentRouteImport } from './routes/payment'
@@ -16,6 +17,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as EventsRouteImport } from './routes/events'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,7 +31,6 @@ import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppMentorshipRouteImport } from './routes/_app.mentorship'
 import { Route as AppMembersRouteImport } from './routes/_app.members'
 import { Route as AppKnowledgeRouteImport } from './routes/_app.knowledge'
-import { Route as AppEventsRouteImport } from './routes/_app.events'
 import { Route as AppDealRoomRouteImport } from './routes/_app.deal-room'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppCopsRouteImport } from './routes/_app.cops'
@@ -38,6 +39,7 @@ import { Route as AppAdminRouteImport } from './routes/_app.admin'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AppProfileEditRouteImport } from './routes/_app.profile.edit'
+import { Route as AppMemberEventsRouteImport } from './routes/_app.member.events'
 import { Route as AppMemberMemberIdRouteImport } from './routes/_app.member.$memberId'
 import { Route as AppKnowledgeResourceIdRouteImport } from './routes/_app.knowledge.$resourceId'
 import { Route as AppEventEventIdRouteImport } from './routes/_app.event.$eventId'
@@ -49,6 +51,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResourcePaymentRoute = ResourcePaymentRouteImport.update({
   id: '/resource-payment',
   path: '/resource-payment',
@@ -82,6 +89,11 @@ const LoginRoute = LoginRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsRoute = EventsRouteImport.update({
+  id: '/events',
+  path: '/events',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyRoute = ApplyRouteImport.update({
@@ -149,11 +161,6 @@ const AppKnowledgeRoute = AppKnowledgeRouteImport.update({
   path: '/knowledge',
   getParentRoute: () => AppRoute,
 } as any)
-const AppEventsRoute = AppEventsRouteImport.update({
-  id: '/events',
-  path: '/events',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppDealRoomRoute = AppDealRoomRouteImport.update({
   id: '/deal-room',
   path: '/deal-room',
@@ -195,6 +202,11 @@ const AppProfileEditRoute = AppProfileEditRouteImport.update({
   id: '/edit',
   path: '/edit',
   getParentRoute: () => AppProfileRoute,
+} as any)
+const AppMemberEventsRoute = AppMemberEventsRouteImport.update({
+  id: '/member/events',
+  path: '/member/events',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppMemberMemberIdRoute = AppMemberMemberIdRouteImport.update({
   id: '/member/$memberId',
@@ -252,6 +264,7 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -259,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resource-payment': typeof ResourcePaymentRoute
+  '/resources': typeof ResourcesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -266,7 +280,6 @@ export interface FileRoutesByFullPath {
   '/cops': typeof AppCopsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
-  '/events': typeof AppEventsRoute
   '/knowledge': typeof AppKnowledgeRouteWithChildren
   '/members': typeof AppMembersRoute
   '/mentorship': typeof AppMentorshipRoute
@@ -284,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/event/$eventId': typeof AppEventEventIdRoute
   '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
+  '/member/events': typeof AppMemberEventsRoute
   '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -292,6 +306,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -299,6 +314,7 @@ export interface FileRoutesByTo {
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resource-payment': typeof ResourcePaymentRoute
+  '/resources': typeof ResourcesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -306,7 +322,6 @@ export interface FileRoutesByTo {
   '/cops': typeof AppCopsRouteWithChildren
   '/dashboard': typeof AppDashboardRoute
   '/deal-room': typeof AppDealRoomRoute
-  '/events': typeof AppEventsRoute
   '/knowledge': typeof AppKnowledgeRouteWithChildren
   '/members': typeof AppMembersRoute
   '/mentorship': typeof AppMentorshipRoute
@@ -324,6 +339,7 @@ export interface FileRoutesByTo {
   '/event/$eventId': typeof AppEventEventIdRoute
   '/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/member/$memberId': typeof AppMemberMemberIdRoute
+  '/member/events': typeof AppMemberEventsRoute
   '/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -334,6 +350,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/apply': typeof ApplyRoute
+  '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
@@ -341,6 +358,7 @@ export interface FileRoutesById {
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
   '/resource-payment': typeof ResourcePaymentRoute
+  '/resources': typeof ResourcesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/admin': typeof AppAdminRoute
@@ -348,7 +366,6 @@ export interface FileRoutesById {
   '/_app/cops': typeof AppCopsRouteWithChildren
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/deal-room': typeof AppDealRoomRoute
-  '/_app/events': typeof AppEventsRoute
   '/_app/knowledge': typeof AppKnowledgeRouteWithChildren
   '/_app/members': typeof AppMembersRoute
   '/_app/mentorship': typeof AppMentorshipRoute
@@ -366,6 +383,7 @@ export interface FileRoutesById {
   '/_app/event/$eventId': typeof AppEventEventIdRoute
   '/_app/knowledge/$resourceId': typeof AppKnowledgeResourceIdRoute
   '/_app/member/$memberId': typeof AppMemberMemberIdRoute
+  '/_app/member/events': typeof AppMemberEventsRoute
   '/_app/profile/edit': typeof AppProfileEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -376,6 +394,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/apply'
+    | '/events'
     | '/forgot-password'
     | '/login'
     | '/mcp'
@@ -383,6 +402,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/reset-password'
     | '/resource-payment'
+    | '/resources'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -390,7 +410,6 @@ export interface FileRouteTypes {
     | '/cops'
     | '/dashboard'
     | '/deal-room'
-    | '/events'
     | '/knowledge'
     | '/members'
     | '/mentorship'
@@ -408,6 +427,7 @@ export interface FileRouteTypes {
     | '/event/$eventId'
     | '/knowledge/$resourceId'
     | '/member/$memberId'
+    | '/member/events'
     | '/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -416,6 +436,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/apply'
+    | '/events'
     | '/forgot-password'
     | '/login'
     | '/mcp'
@@ -423,6 +444,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/reset-password'
     | '/resource-payment'
+    | '/resources'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -430,7 +452,6 @@ export interface FileRouteTypes {
     | '/cops'
     | '/dashboard'
     | '/deal-room'
-    | '/events'
     | '/knowledge'
     | '/members'
     | '/mentorship'
@@ -448,6 +469,7 @@ export interface FileRouteTypes {
     | '/event/$eventId'
     | '/knowledge/$resourceId'
     | '/member/$memberId'
+    | '/member/events'
     | '/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -457,6 +479,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/apply'
+    | '/events'
     | '/forgot-password'
     | '/login'
     | '/mcp'
@@ -464,6 +487,7 @@ export interface FileRouteTypes {
     | '/payment'
     | '/reset-password'
     | '/resource-payment'
+    | '/resources'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_app/admin'
@@ -471,7 +495,6 @@ export interface FileRouteTypes {
     | '/_app/cops'
     | '/_app/dashboard'
     | '/_app/deal-room'
-    | '/_app/events'
     | '/_app/knowledge'
     | '/_app/members'
     | '/_app/mentorship'
@@ -489,6 +512,7 @@ export interface FileRouteTypes {
     | '/_app/event/$eventId'
     | '/_app/knowledge/$resourceId'
     | '/_app/member/$memberId'
+    | '/_app/member/events'
     | '/_app/profile/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -499,6 +523,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ApplyRoute: typeof ApplyRoute
+  EventsRoute: typeof EventsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
@@ -506,6 +531,7 @@ export interface RootRouteChildren {
   PaymentRoute: typeof PaymentRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   ResourcePaymentRoute: typeof ResourcePaymentRoute
+  ResourcesRoute: typeof ResourcesRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiNotificationEmailWebhookRoute: typeof ApiNotificationEmailWebhookRoute
@@ -519,6 +545,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/resource-payment': {
       id: '/resource-payment'
       path: '/resource-payment'
@@ -566,6 +599,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events': {
+      id: '/events'
+      path: '/events'
+      fullPath: '/events'
+      preLoaderRoute: typeof EventsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply': {
@@ -659,13 +699,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKnowledgeRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/events': {
-      id: '/_app/events'
-      path: '/events'
-      fullPath: '/events'
-      preLoaderRoute: typeof AppEventsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/deal-room': {
       id: '/_app/deal-room'
       path: '/deal-room'
@@ -721,6 +754,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile/edit'
       preLoaderRoute: typeof AppProfileEditRouteImport
       parentRoute: typeof AppProfileRoute
+    }
+    '/_app/member/events': {
+      id: '/_app/member/events'
+      path: '/member/events'
+      fullPath: '/member/events'
+      preLoaderRoute: typeof AppMemberEventsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/member/$memberId': {
       id: '/_app/member/$memberId'
@@ -848,7 +888,6 @@ interface AppRouteChildren {
   AppCopsRoute: typeof AppCopsRouteWithChildren
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealRoomRoute: typeof AppDealRoomRoute
-  AppEventsRoute: typeof AppEventsRoute
   AppKnowledgeRoute: typeof AppKnowledgeRouteWithChildren
   AppMembersRoute: typeof AppMembersRoute
   AppMentorshipRoute: typeof AppMentorshipRoute
@@ -859,6 +898,7 @@ interface AppRouteChildren {
   AppUpgradeRoute: typeof AppUpgradeRoute
   AppEventEventIdRoute: typeof AppEventEventIdRoute
   AppMemberMemberIdRoute: typeof AppMemberMemberIdRoute
+  AppMemberEventsRoute: typeof AppMemberEventsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -867,7 +907,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppCopsRoute: AppCopsRouteWithChildren,
   AppDashboardRoute: AppDashboardRoute,
   AppDealRoomRoute: AppDealRoomRoute,
-  AppEventsRoute: AppEventsRoute,
   AppKnowledgeRoute: AppKnowledgeRouteWithChildren,
   AppMembersRoute: AppMembersRoute,
   AppMentorshipRoute: AppMentorshipRoute,
@@ -878,6 +917,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppUpgradeRoute: AppUpgradeRoute,
   AppEventEventIdRoute: AppEventEventIdRoute,
   AppMemberMemberIdRoute: AppMemberMemberIdRoute,
+  AppMemberEventsRoute: AppMemberEventsRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -886,6 +926,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ApplyRoute: ApplyRoute,
+  EventsRoute: EventsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
@@ -893,6 +934,7 @@ const rootRouteChildren: RootRouteChildren = {
   PaymentRoute: PaymentRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   ResourcePaymentRoute: ResourcePaymentRoute,
+  ResourcesRoute: ResourcesRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

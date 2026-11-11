@@ -272,7 +272,7 @@ function EventDetailPage() {
   return (
     <div className="p-6 lg:p-10">
       <Link
-        to="/events"
+        to="/member/events"
         className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Events
