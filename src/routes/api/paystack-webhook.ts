@@ -52,8 +52,59 @@ export const Route = createFileRoute("/api/paystack-webhook")({
           .eq("reference", reference)
           .maybeSingle();
 
-        // Unknown reference: acknowledge so Paystack stops retrying
-        if (!row) return new Response("ok", { status: 200 });
+        if (!row) {
+          const { data: purchase } = await supabaseAdmin
+            .from("resource_purchases")
+            .select("id, user_id, resource_type, resource_id, amount_kobo, status, paid_at")
+            .eq("reference", reference)
+            .maybeSingle();
+
+          if (!purchase) return new Response("ok", { status: 200 });
+
+          if (evt.event === "charge.success") {
+            if (evt.data.amount !== purchase.amount_kobo || evt.data.currency !== "NGN") {
+              console.error("[paystack:webhook] resource amount mismatch", reference, evt.data.amount, purchase.amount_kobo);
+              await supabaseAdmin
+                .from("resource_purchases")
+                .update({ status: "flagged" })
+                .eq("reference", reference)
+                .neq("status", "success");
+              return new Response("ok", { status: 200 });
+            }
+
+            const { error: purchaseUpdateError } = await supabaseAdmin
+              .from("resource_purchases")
+              .update({
+                status: "success",
+                paid_at: purchase.paid_at ?? evt.data.paid_at ?? new Date().toISOString(),
+                metadata: { paystack: evt.data.metadata ?? {}, amount: evt.data.amount, currency: evt.data.currency },
+              })
+              .eq("reference", reference)
+              .neq("status", "success");
+            if (purchaseUpdateError) {
+              console.error("[paystack:webhook] resource purchase update failed", reference, purchaseUpdateError.message);
+              return new Response("Could not update resource purchase", { status: 500 });
+            }
+
+            if (purchase.resource_type === "event") {
+              const { error: attendanceError } = await supabaseAdmin.from("event_attendees").upsert(
+                { event_id: purchase.resource_id, member_id: purchase.user_id, attending: true },
+                { onConflict: "event_id,member_id" },
+              );
+              if (attendanceError) {
+                console.error("[paystack:webhook] event attendance registration failed", reference, attendanceError.message);
+                return new Response("Could not register event attendance", { status: 500 });
+              }
+            }
+          } else if (evt.event === "charge.failed" && purchase.status === "pending") {
+            await supabaseAdmin
+              .from("resource_purchases")
+              .update({ status: "failed" })
+              .eq("reference", reference);
+          }
+
+          return new Response("ok", { status: 200 });
+        }
 
         if (evt.event === "charge.success") {
           // Never trust the event blindly: amount and currency must match what we initialised

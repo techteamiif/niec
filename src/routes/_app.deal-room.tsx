@@ -1,15 +1,14 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS, EOI_URL } from "@/lib/niec";
 import { toast } from "sonner";
-import { ArrowRight, Briefcase, Lock } from "lucide-react";
+import { ArrowRight, Briefcase, CreditCard, Lock } from "lucide-react";
+import { initResourcePayment } from "@/lib/payments.functions";
 
 export const Route = createFileRoute("/_app/deal-room")({
-  beforeLoad: () => {
-    throw redirect({ to: "/dashboard" });
-  },
   component: DealRoom,
 });
 
@@ -27,44 +26,37 @@ function DealRoom() {
   const [deals, setDeals] = useState<any[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [category, setCategory] = useState<string>("all");
+  const [purchasingDealId, setPurchasingDealId] = useState<string | null>(null);
+  const startPurchase = useServerFn(initResourcePayment);
 
   const fullAccess = isStaff || tierMeets(profile?.membership_tier, "growth_partner");
-  const teaserAccess = fullAccess || tierMeets(profile?.membership_tier, "contributor");
 
   const load = async () => {
-    if (!teaserAccess) return;
-    const cols = fullAccess
-      ? "*"
-      : "id, enterprise_name, sector, title, category, status, min_tier_required, created_at";
-    const { data } = await supabase.from("deal_opportunities").select(cols).order("created_at", { ascending: false });
+    const { data, error } = await supabase.rpc("get_deal_room_items");
+    if (error) toast.error(`Could not load deals: ${error.message}`);
     setDeals(data ?? []);
   };
-  useEffect(() => { load(); }, [teaserAccess, fullAccess]);
+  useEffect(() => { void load(); }, [user]);
 
-
-  if (!teaserAccess) {
-    return (
-      <div className="p-6 lg:p-10">
-        <div className="mx-auto max-w-xl rounded-2xl border bg-card p-10 text-center">
-          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20"><Lock className="h-5 w-5 text-gold-foreground" /></div>
-          <h1 className="font-display text-2xl">Deal Room is tier-locked</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Upgrade your NIEC membership to Enterprise to preview deals, or Growth Partner and above for the full pipeline.
-          </p>
-          <div className="mt-6 flex justify-center gap-2">
-            <Link to="/upgrade" className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Upgrade membership</Link>
-            <Link to="/dashboard" className="rounded-md border px-4 py-2 text-sm">Back to dashboard</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const express = async (id: string) => {
     if (!user) return;
     const note = prompt("Add a short note for the IIF team:") ?? "";
     const { error } = await supabase.from("deal_interests").insert({ deal_id: id, investor_id: user.id, interest_note: note });
     if (error) toast.error(error.message); else toast.success("Interest registered");
+  };
+
+  const buyDeal = async (id: string) => {
+    if (purchasingDealId) return;
+    setPurchasingDealId(id);
+    try {
+      const result = await startPurchase({ data: { resourceType: "deal", resourceId: id } });
+      if (!result.ok) throw new Error(result.error);
+      window.location.href = result.authorizationUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start the purchase.");
+      setPurchasingDealId(null);
+    }
   };
 
   const filtered = category === "all" ? deals : deals.filter((d) => (d.category ?? "general") === category);
@@ -91,13 +83,6 @@ function DealRoom() {
         })}
       </div>
 
-      {!fullAccess && (
-        <div className="mb-4 rounded-lg border border-dashed bg-muted/30 p-3 text-xs text-muted-foreground">
-          You're viewing <strong>teaser mode</strong>. Upgrade to <strong>Growth Partner</strong> to see ticket sizes, instruments, deal descriptions and to express interest.{" "}
-          <Link to="/upgrade" className="inline-flex items-center gap-1 text-primary hover:underline">Upgrade <ArrowRight className="h-3.5 w-3.5" /></Link>
-        </div>
-      )}
-
       <div className="grid gap-4 md:grid-cols-2">
         {filtered.map((d: any) => (
           <div key={d.id} className="rounded-xl border bg-card p-6">
@@ -105,11 +90,11 @@ function DealRoom() {
               <div>
                 <div className="text-xs uppercase tracking-wider text-primary">{d.sector || "Multi-sector"}</div>
                 <h3 className="mt-1 font-display text-xl">{d.enterprise_name}</h3>
-                {fullAccess && <div className="text-sm text-muted-foreground">{d.title}</div>}
+                <div className="text-sm text-muted-foreground">{d.title}</div>
               </div>
               <StatusPill status={d.status} />
             </div>
-            {fullAccess ? (
+            {d.can_access ? (
               <>
                 <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{d.description}</p>
                 <div className="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-muted/40 p-3 text-xs">
@@ -131,15 +116,31 @@ function DealRoom() {
             <div className="mt-4 flex items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span>Min tier: {TIER_LABELS[d.min_tier_required]}</span>
+                {d.access_price_kobo != null && (
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">
+                    Individual access ₦{(d.access_price_kobo / 100).toLocaleString("en-NG")}
+                  </span>
+                )}
                 {d.category && d.category !== "general" && (
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
                     {DEAL_CATEGORIES.find((c) => c.key === d.category)?.label ?? d.category}
                   </span>
                 )}
               </div>
-              {fullAccess ? (
+              {d.can_access ? (
                 <button onClick={() => express(d.id)} className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
                   <Briefcase className="mr-1 inline h-3 w-3" /> Express interest
+                </button>
+              ) : d.access_price_kobo != null ? (
+                <button
+                  onClick={() => void buyDeal(d.id)}
+                  disabled={purchasingDealId !== null}
+                  className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  <CreditCard className="mr-1 inline h-3 w-3" />
+                  {purchasingDealId === d.id
+                    ? "Opening checkout…"
+                    : `Buy access ₦${(d.access_price_kobo / 100).toLocaleString("en-NG")}`}
                 </button>
               ) : (
                 <Link to="/upgrade" className="rounded-md border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted">
@@ -176,12 +177,20 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
     title: "", enterprise_name: "", description: "", sector: "",
     ticket_size_min: "0", ticket_size_max: "0", currency: "NGN",
     instrument_type: "equity", min_tier_required: "growth_partner",
-    category: "general",
+    category: "general", access_price_naira: "",
   });
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const parsedAccessPrice = f.access_price_naira.trim() ? Number(f.access_price_naira) : null;
+    if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
+      toast.error("Enter an individual access price as a positive whole number of naira.");
+      return;
+    }
+    const { access_price_naira: _accessPrice, ...dealFields } = f;
     const { error } = await supabase.from("deal_opportunities").insert({
-      ...f, submitted_by: userId,
+      ...dealFields,
+      access_price_kobo: parsedAccessPrice === null ? null : parsedAccessPrice * 100,
+      submitted_by: userId,
       ticket_size_min: Number(f.ticket_size_min), ticket_size_max: Number(f.ticket_size_max),
       instrument_type: f.instrument_type as any, min_tier_required: f.min_tier_required as any,
     });
@@ -213,6 +222,21 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
           <select value={f.category} onChange={(e) => s("category", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm" title="Programme category">
             {DEAL_CATEGORIES.filter((c) => c.key !== "all").map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="deal-access-price" className="block text-sm font-medium">
+            Individual access price (NGN, optional)
+          </label>
+          <input
+            id="deal-access-price"
+            type="number"
+            min="1"
+            step="1"
+            placeholder="Leave blank for tier-only access"
+            value={f.access_price_naira}
+            onChange={(e) => s("access_price_naira", e.target.value)}
+            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+          />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

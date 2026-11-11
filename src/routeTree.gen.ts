@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResourcePaymentRouteImport } from './routes/resource-payment'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PaymentRouteImport } from './routes/payment'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -48,6 +49,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const ResourcePaymentRoute = ResourcePaymentRouteImport.update({
+  id: '/resource-payment',
+  path: '/resource-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -291,6 +298,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AppAdminRoute
@@ -332,6 +340,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/payment': typeof PaymentRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/resource-payment': typeof ResourcePaymentRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_app/admin': typeof AppAdminRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/payment'
     | '/reset-password'
+    | '/resource-payment'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_app/admin'
@@ -493,6 +505,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PaymentRoute: typeof PaymentRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ResourcePaymentRoute: typeof ResourcePaymentRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiNotificationEmailWebhookRoute: typeof ApiNotificationEmailWebhookRoute
@@ -506,6 +519,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/resource-payment': {
+      id: '/resource-payment'
+      path: '/resource-payment'
+      fullPath: '/resource-payment'
+      preLoaderRoute: typeof ResourcePaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -872,6 +892,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PaymentRoute: PaymentRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ResourcePaymentRoute: ResourcePaymentRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

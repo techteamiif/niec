@@ -15,7 +15,6 @@ import {
 import { richTextToPlainText } from "@/lib/rich-text";
 import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { TierAccessDialog } from "@/components/TierAccessDialog";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 
@@ -32,13 +31,13 @@ function KnowledgePage() {
 }
 
 function KnowledgeIndex() {
-  const { profile, isStaff } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const [items, setItems] = useState<KnowledgeResource[]>([]);
   const [type, setType] = useState("all");
   const [cop, setCop] = useState("all");
   const [access, setAccess] = useState("all");
   const [search, setSearch] = useState("");
-  const [lockedTier, setLockedTier] = useState<KnowledgeResource["min_tier_required"] | null>(null);
+  const [purchasedResourceIds, setPurchasedResourceIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -57,8 +56,20 @@ function KnowledgeIndex() {
         return;
       }
       setItems(data ?? []);
+      if (user) {
+        const { data: purchases, error: purchaseError } = await supabase
+          .from("resource_purchases")
+          .select("resource_id")
+          .eq("user_id", user.id)
+          .eq("resource_type", "knowledge")
+          .eq("status", "success");
+        if (purchaseError) toast.error(`Unable to load resource purchases: ${purchaseError.message}`);
+        setPurchasedResourceIds(new Set((purchases ?? []).map((purchase) => purchase.resource_id)));
+      } else {
+        setPurchasedResourceIds(new Set());
+      }
     })();
-  }, [type, cop]);
+  }, [type, cop, user]);
 
   const filtered = items.filter((r) => {
     if (access !== "all" && getKnowledgeResourceAccessCategory(r.min_tier_required) !== access) {
@@ -128,19 +139,16 @@ function KnowledgeIndex() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map((r) => {
-          const unlocked = tierMeets(profile?.membership_tier, r.min_tier_required) || isStaff;
+          const unlocked =
+            tierMeets(profile?.membership_tier, r.min_tier_required) ||
+            isStaff ||
+            purchasedResourceIds.has(r.id);
           const accessCategory = getKnowledgeResourceAccessCategory(r.min_tier_required);
           return (
             <Link
               key={r.id}
               to="/knowledge/$resourceId"
               params={{ resourceId: r.id }}
-              onClick={(event) => {
-                if (!unlocked) {
-                  event.preventDefault();
-                  setLockedTier(r.min_tier_required);
-                }
-              }}
               className="group flex items-stretch gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md"
             >
               <EventImage
@@ -157,6 +165,11 @@ function KnowledgeIndex() {
                     <span className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-foreground/80">
                       {getKnowledgeResourceAccessLabel(r.min_tier_required)}
                     </span>
+                    {r.access_price_kobo != null && (
+                      <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
+                        ₦{(r.access_price_kobo / 100).toLocaleString("en-NG")}
+                      </span>
+                    )}
                   </div>
                   <h3 className="font-display text-base leading-tight">{r.title}</h3>
                 </div>
@@ -166,8 +179,9 @@ function KnowledgeIndex() {
                 />
                 {!unlocked && (
                   <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                    Download access requires <strong>{TIER_LABELS[r.min_tier_required]}</strong>{" "}
-                    tier or above.
+                    {r.access_price_kobo != null
+                      ? `Buy for ₦${(r.access_price_kobo / 100).toLocaleString("en-NG")} or access with ${TIER_LABELS[r.min_tier_required]} tier.`
+                      : `Download access requires ${TIER_LABELS[r.min_tier_required]} tier or above.`}
                   </div>
                 )}
                 <div className="mt-auto flex items-center justify-between gap-2 pt-4">
@@ -189,15 +203,6 @@ function KnowledgeIndex() {
           </div>
         )}
       </div>
-      <TierAccessDialog
-        open={lockedTier !== null}
-        onOpenChange={(open) => {
-          if (!open) setLockedTier(null);
-        }}
-        itemType="resource"
-        requiredTier={lockedTier ?? "observer"}
-        currentTier={profile?.membership_tier}
-      />
     </div>
   );
 }

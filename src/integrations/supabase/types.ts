@@ -252,6 +252,7 @@ export type Database = {
       }
       deal_opportunities: {
         Row: {
+          access_price_kobo: number | null
           category: string
           created_at: string
           currency: string
@@ -269,6 +270,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          access_price_kobo?: number | null
           category?: string
           created_at?: string
           currency?: string
@@ -286,6 +288,7 @@ export type Database = {
           title: string
         }
         Update: {
+          access_price_kobo?: number | null
           category?: string
           created_at?: string
           currency?: string
@@ -439,6 +442,7 @@ export type Database = {
       }
       events: {
         Row: {
+          access_price_kobo: number | null
           community_of_practice: Database["public"]["Enums"]["cop_type"] | null
           created_at: string
           created_by: string | null
@@ -459,6 +463,7 @@ export type Database = {
           virtual_link: string | null
         }
         Insert: {
+          access_price_kobo?: number | null
           community_of_practice?: Database["public"]["Enums"]["cop_type"] | null
           created_at?: string
           created_by?: string | null
@@ -479,6 +484,7 @@ export type Database = {
           virtual_link?: string | null
         }
         Update: {
+          access_price_kobo?: number | null
           community_of_practice?: Database["public"]["Enums"]["cop_type"] | null
           created_at?: string
           created_by?: string | null
@@ -510,6 +516,7 @@ export type Database = {
       }
       knowledge_resources: {
         Row: {
+          access_price_kobo: number | null
           community_of_practice: Database["public"]["Enums"]["cop_type"]
           cover_image_url: string | null
           created_at: string
@@ -524,6 +531,7 @@ export type Database = {
           uploaded_by: string | null
         }
         Insert: {
+          access_price_kobo?: number | null
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
           cover_image_url?: string | null
           created_at?: string
@@ -538,6 +546,7 @@ export type Database = {
           uploaded_by?: string | null
         }
         Update: {
+          access_price_kobo?: number | null
           community_of_practice?: Database["public"]["Enums"]["cop_type"]
           cover_image_url?: string | null
           created_at?: string
@@ -777,6 +786,48 @@ export type Database = {
           status?: string
           tier?: Database["public"]["Enums"]["membership_tier"]
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      resource_purchases: {
+        Row: {
+          amount_kobo: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json
+          paid_at: string | null
+          reference: string
+          resource_id: string
+          resource_type: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_kobo: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          reference: string
+          resource_id: string
+          resource_type: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_kobo?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json
+          paid_at?: string | null
+          reference?: string
+          resource_id?: string
+          resource_type?: string
+          status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1392,6 +1443,30 @@ export type Database = {
       }
       get_event_virtual_link: { Args: { _event_id: string }; Returns: string }
       get_event_registration_link: { Args: { _event_id: string }; Returns: string | null }
+      get_deal_room_items: {
+        Args: never
+        Returns: {
+          access_price_kobo: number | null
+          can_access: boolean
+          category: string
+          created_at: string
+          currency: string | null
+          description: string | null
+          enterprise_name: string
+          id: string
+          instrument_type: Database["public"]["Enums"]["instrument_type"] | null
+          min_tier_required: Database["public"]["Enums"]["membership_tier"]
+          sector: string | null
+          status: Database["public"]["Enums"]["deal_status"]
+          ticket_size_max: number | null
+          ticket_size_min: number | null
+          title: string
+        }[]
+      }
+      has_resource_access: {
+        Args: { _resource_id: string; _resource_type: string }
+        Returns: boolean
+      }
       get_my_profile: {
         Args: never
         Returns: {

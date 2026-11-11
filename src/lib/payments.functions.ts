@@ -253,3 +253,238 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       membershipExpiresAt,
     };
   });
+
+export type PurchasableResourceType = "event" | "knowledge" | "deal";
+
+async function loadPurchasableResource(
+  resourceType: PurchasableResourceType,
+  resourceId: string,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  if (resourceType === "event") {
+    return await supabaseAdmin
+      .from("events")
+      .select("id, title, access_price_kobo, min_tier_required")
+      .eq("id", resourceId)
+      .maybeSingle();
+  }
+  if (resourceType === "knowledge") {
+    return await supabaseAdmin
+      .from("knowledge_resources")
+      .select("id, title, access_price_kobo, min_tier_required")
+      .eq("id", resourceId)
+      .maybeSingle();
+  }
+  return await supabaseAdmin
+    .from("deal_opportunities")
+    .select("id, title, access_price_kobo, min_tier_required, status")
+    .eq("id", resourceId)
+    .maybeSingle();
+}
+
+async function ensureResourceEntitlement(
+  resourceType: PurchasableResourceType,
+  resourceId: string,
+  userId: string,
+) {
+  if (resourceType !== "event") return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("event_attendees").upsert(
+    { event_id: resourceId, member_id: userId, attending: true },
+    { onConflict: "event_id,member_id" },
+  );
+  if (error) throw new Error(`Payment confirmed, but event attendance could not be registered: ${error.message}`);
+}
+
+export const initResourcePayment = createServerFn({ method: "POST" })
+  .inputValidator((input: { resourceType: PurchasableResourceType; resourceId: string }) => {
+    if (!input?.resourceId || !/^[0-9a-f-]{36}$/i.test(input.resourceId)) {
+      throw new Error("Invalid resource.");
+    }
+    if (!["event", "knowledge", "deal"].includes(input.resourceType)) {
+      throw new Error("This resource cannot be purchased.");
+    }
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error("Sign in before purchasing resource access.");
+
+    const resourceResult = await loadPurchasableResource(data.resourceType, data.resourceId);
+    if (resourceResult.error) throw new Error("Could not load this resource.");
+    const resource = resourceResult.data;
+    if (!resource) throw new Error("This resource is unavailable.");
+    if (!resource.access_price_kobo || resource.access_price_kobo <= 0) {
+      throw new Error("This resource is not available for individual purchase.");
+    }
+    if (data.resourceType === "deal" && resource.status !== "open") {
+      throw new Error("This deal is no longer available for purchase.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: profile }, { data: existingPurchase }] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("email, membership_tier, membership_status, membership_expires_at")
+        .eq("id", userId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("resource_purchases")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("resource_type", data.resourceType)
+        .eq("resource_id", data.resourceId)
+        .eq("status", "success")
+        .maybeSingle(),
+    ]);
+    if (!profile?.email) throw new Error("Your account needs a valid email address before purchasing.");
+    if (existingPurchase) throw new Error("You already have access to this resource.");
+
+    const rank = { observer: 0, contributor: 1, growth_partner: 2, anchor: 3, strategic_partner: 4 };
+    const membershipActive =
+      profile.membership_status === "active" &&
+      (!profile.membership_expires_at || profile.membership_expires_at >= new Date().toISOString().slice(0, 10));
+    if (
+      membershipActive &&
+      rank[profile.membership_tier] >= rank[resource.min_tier_required]
+    ) {
+      throw new Error("Your membership already includes access to this resource.");
+    }
+
+    const reference = `niec_resource_${Date.now()}_${globalThis.crypto.randomUUID()}`;
+    const origin = new URL(getRequest().url).origin;
+    const callbackUrl = new URL("/resource-payment", origin);
+    callbackUrl.searchParams.set("resourceType", data.resourceType);
+    callbackUrl.searchParams.set("resourceId", data.resourceId);
+
+    const { error: insertError } = await supabaseAdmin.from("resource_purchases").insert({
+      user_id: userId,
+      resource_type: data.resourceType,
+      resource_id: data.resourceId,
+      amount_kobo: resource.access_price_kobo,
+      reference,
+      status: "pending",
+      metadata: { title: resource.title },
+    });
+    if (insertError) throw new Error(`Could not create resource purchase: ${insertError.message}`);
+
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secretKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: profile.email,
+        amount: resource.access_price_kobo,
+        currency: "NGN",
+        reference,
+        callback_url: callbackUrl.toString(),
+        metadata: {
+          product: "NIEC resource access",
+          resource_type: data.resourceType,
+          resource_id: data.resourceId,
+          user_id: userId,
+        },
+      }),
+    });
+    const json = (await response.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: { authorization_url?: string };
+    };
+    if (!response.ok || !json.status || !json.data?.authorization_url) {
+      await supabaseAdmin
+        .from("resource_purchases")
+        .update({ status: "failed" })
+        .eq("reference", reference);
+      console.error("[paystack:resource:init]", response.status, json.message);
+      return { ok: false as const, error: json.message ?? "Could not start the payment." };
+    }
+
+    return { ok: true as const, authorizationUrl: json.data.authorization_url, reference };
+  });
+
+export const verifyResourcePayment = createServerFn({ method: "POST" })
+  .inputValidator((input: { reference: string }) => {
+    if (!input?.reference || input.reference.length > 120) throw new Error("Invalid reference.");
+    return input;
+  })
+  .handler(async ({ data }) => {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error("Sign in to verify this purchase.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: purchase, error: lookupError } = await supabaseAdmin
+      .from("resource_purchases")
+      .select("id, user_id, resource_type, resource_id, amount_kobo, status, paid_at")
+      .eq("reference", data.reference)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (lookupError) throw new Error(`Could not load resource purchase: ${lookupError.message}`);
+    if (!purchase) return { ok: false as const, status: "unknown" };
+
+    const complete = async () => {
+      await ensureResourceEntitlement(
+        purchase.resource_type as PurchasableResourceType,
+        purchase.resource_id,
+        userId,
+      );
+      return {
+        ok: true as const,
+        status: "success" as const,
+        resourceType: purchase.resource_type as PurchasableResourceType,
+        resourceId: purchase.resource_id,
+      };
+    };
+    if (purchase.status === "success") return complete();
+
+    const response = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(data.reference)}`,
+      { headers: { Authorization: `Bearer ${secretKey()}` } },
+    );
+    const json = (await response.json()) as {
+      status?: boolean;
+      message?: string;
+      data?: { reference?: string; status?: string; amount?: number; currency?: string; paid_at?: string };
+    };
+    if (!response.ok || !json.status || !json.data) {
+      return { ok: false as const, status: "unknown", error: json.message ?? "Could not verify the purchase." };
+    }
+
+    if (json.data.status !== "success") {
+      const allowedStatuses = ["failed", "abandoned"] as const;
+      const status = allowedStatuses.find((value) => value === json.data?.status) ?? "failed";
+      await supabaseAdmin
+        .from("resource_purchases")
+        .update({ status })
+        .eq("reference", data.reference)
+        .eq("user_id", userId)
+        .neq("status", "success");
+      return { ok: false as const, status };
+    }
+
+    if (
+      json.data.reference !== data.reference ||
+      json.data.amount !== purchase.amount_kobo ||
+      json.data.currency !== "NGN"
+    ) {
+      await supabaseAdmin
+        .from("resource_purchases")
+        .update({ status: "flagged" })
+        .eq("reference", data.reference)
+        .eq("user_id", userId)
+        .neq("status", "success");
+      return { ok: false as const, status: "unknown", error: "Purchase amount could not be verified." };
+    }
+
+    const paidAt = json.data.paid_at ?? new Date().toISOString();
+    const { error: updateError } = await supabaseAdmin
+      .from("resource_purchases")
+      .update({ status: "success", paid_at: paidAt })
+      .eq("reference", data.reference)
+      .eq("user_id", userId)
+      .neq("status", "success");
+    if (updateError) throw new Error(`Could not update resource purchase: ${updateError.message}`);
+    return complete();
+  });
