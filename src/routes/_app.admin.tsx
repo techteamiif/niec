@@ -1198,11 +1198,11 @@ function CreatePublicationDialog({
     }
     const parsedAccessPrice = accessPriceNaira.trim() ? Number(accessPriceNaira) : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
-      toast.error("Enter an individual access price as a positive whole number of naira.");
+      toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
     }
     if (parsedAccessPrice !== null && (!publicationPdf || normalizedSummaryUrl)) {
-      toast.error("Individually priced publications must use an uploaded PDF and cannot include a public summary URL.");
+      toast.error("Publications with one-time access pricing must use an uploaded PDF and cannot include a public summary URL.");
       return;
     }
     const imageExtensions: Record<string, string> = {
@@ -1389,7 +1389,7 @@ function CreatePublicationDialog({
               </p>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="publication-access-price">Individual access price (NGN, optional)</Label>
+              <Label htmlFor="publication-access-price">One-time access price (NGN, optional)</Label>
               <Input
                 id="publication-access-price"
                 type="number"

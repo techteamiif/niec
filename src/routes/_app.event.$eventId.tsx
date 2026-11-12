@@ -346,7 +346,7 @@ function EventDetailPage() {
                 </span>
                 {event.access_price_kobo != null && (
                   <span className="rounded bg-primary/10 px-2.5 py-1 text-xs text-primary">
-                    Individual access ₦{(event.access_price_kobo / 100).toLocaleString("en-NG")}
+                    One-Time Access ₦{(event.access_price_kobo / 100).toLocaleString("en-NG")}
                   </span>
                 )}
               </div>
@@ -504,7 +504,7 @@ function EventDetailPage() {
 
               <aside className="space-y-4">
                 <section className="rounded-xl border bg-card p-5">
-                  <h2 className="font-display text-lg">Other information</h2>
+                  <h2 className="font-display text-lg">Other Information</h2>
                   <dl className="mt-4 space-y-4 text-sm">
                     <div>
                       {/* <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -519,31 +519,33 @@ function EventDetailPage() {
                       )}
                     </div>
                     <div>
-                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Minimum membership tier
+                      <dt className="text-xs font-medium tracking-wide text-muted-foreground">
+                        Minimum Membership Tier
                       </dt>
                       <dd className="mt-1">{TIER_LABELS[event.min_tier_required]}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-xs font-medium tracking-wide text-muted-foreground">
                         Amount
                       </dt>
                       <dd className="mt-1">{event.is_paid ? "Paid" : "Free"}</dd>
                     </div>
                     {event.access_price_kobo != null && (
                       <div>
-                        <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Individual access
+                        <dt className="text-xs font-medium tracking-wide text-muted-foreground">
+                          One-Time Access
                         </dt>
-                        <dd className="mt-1">₦{(event.access_price_kobo / 100).toLocaleString("en-NG")}</dd>
+                        <dd className="mt-1">
+                          ₦{(event.access_price_kobo / 100).toLocaleString("en-NG")}
+                        </dd>
                       </div>
                     )}
                     {event.max_attendees && (
                       <div>
-                        <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-xs font-medium tracking-wide text-muted-foreground">
                           Capacity
                         </dt>
-                        <dd className="mt-1">{event.max_attendees} attendees</dd>
+                        <dd className="mt-1">{event.max_attendees} Attendees</dd>
                       </div>
                     )}
                   </dl>

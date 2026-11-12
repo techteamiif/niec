@@ -318,7 +318,7 @@ function EventsPage() {
                   </span>
                   {ev.access_price_kobo != null && (
                     <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">
-                      Individual access ₦{(ev.access_price_kobo / 100).toLocaleString("en-NG")}
+                      One-time access ₦{(ev.access_price_kobo / 100).toLocaleString("en-NG")}
                     </span>
                   )}
                   {ev.max_attendees && (
@@ -619,7 +619,7 @@ function CreateEvent({
     }
     const parsedAccessPrice = form.access_price_naira.trim() ? Number(form.access_price_naira) : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
-      toast.error("Enter an individual access price as a positive whole number of naira.");
+      toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
     }
 
@@ -1031,7 +1031,7 @@ function CreateEvent({
         </div>
         <div className="space-y-1.5">
           <label htmlFor="event-access-price" className="block text-sm font-medium">
-            NIEC individual access price (NGN, optional)
+            NIEC one-time access price (NGN, optional)
           </label>
           <input
             id="event-access-price"

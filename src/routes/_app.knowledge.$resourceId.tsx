@@ -194,7 +194,7 @@ function KnowledgeResourcePage() {
               </span>
               {resource.access_price_kobo != null && (
                 <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
-                  Individual access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
+                  One-time access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
                 </span>
               )}
             </div>
@@ -235,7 +235,7 @@ function KnowledgeResourcePage() {
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
                   Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
-                  {resource.access_price_kobo != null ? " or individual purchase." : "."}
+                  {resource.access_price_kobo != null ? " or one-time purchase." : "."}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
