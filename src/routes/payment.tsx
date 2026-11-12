@@ -12,9 +12,16 @@ export const Route = createFileRoute("/payment")({
   head: () => ({
     meta: [
       { title: "Complete your NIEC membership payment" },
-      { name: "description", content: "Pay your NIEC membership fee securely with Paystack and activate your Nigeria Impact Economy Community membership." },
+      {
+        name: "description",
+        content:
+          "Pay your NIEC membership fee securely with Paystack and activate your Nigeria Impact Economy Community membership.",
+      },
       { property: "og:title", content: "Complete your NIEC membership payment" },
-      { property: "og:description", content: "Secure Paystack checkout for NIEC membership tiers." },
+      {
+        property: "og:description",
+        content: "Secure Paystack checkout for NIEC membership tiers.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -45,27 +52,75 @@ function PaymentPage() {
 
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
-    status: string;
+    status: "success" | "failed" | "pending" | "activation-failed";
     membershipExpiresAt?: string | null;
+    error?: string;
   } | null>(null);
+  const [verificationAttempt, setVerificationAttempt] = useState(0);
   const [mail, setMail] = useState(email);
   const plan = PAYABLE_TIERS[tier];
   useEffect(() => setMail(email), [email]);
 
   useEffect(() => {
     if (!reference) return;
+    let active = true;
     setBusy(true);
-    verify({ data: { reference } })
-      .then(async (r) => {
-        if (r.ok && r.status === "success") await refresh();
-        setResult({
-          status: r.ok ? r.status : "failed",
-          membershipExpiresAt: r.ok && r.status === "success" ? r.membershipExpiresAt : null,
-        });
-      })
-      .catch(() => setResult({ status: "failed" }))
-      .finally(() => setBusy(false));
-  }, [reference, verify, refresh]);
+    setResult(null);
+
+    const confirmPayment = async () => {
+      let verificationError: string | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await verify({ data: { reference } });
+          if (!active) return;
+
+          if (response.ok && response.status === "success") {
+            setResult({
+              status: "success",
+              membershipExpiresAt: response.membershipExpiresAt,
+            });
+            try {
+              await refresh();
+            } catch (error) {
+              console.error("Payment confirmed, but the account could not be refreshed.", error);
+            }
+            return;
+          }
+
+          if (!response.ok && response.status === "activation_failed") {
+            setResult({ status: "activation-failed" });
+            return;
+          }
+
+          if (response.ok && ["failed", "abandoned"].includes(response.status)) {
+            setResult({ status: "failed" });
+            return;
+          }
+
+          verificationError = response.ok ? undefined : response.error;
+        } catch (error) {
+          console.error("Could not verify membership payment.", error);
+          verificationError =
+            error instanceof Error ? error.message : "Could not verify the payment.";
+        }
+
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          if (!active) return;
+        }
+      }
+
+      if (active) setResult({ status: "pending", error: verificationError });
+    };
+
+    void confirmPayment().finally(() => {
+      if (active) setBusy(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [reference, verify, refresh, verificationAttempt]);
 
   const pay = async () => {
     if (!plan) return toast.error("Select a payable membership tier first.");
@@ -105,7 +160,8 @@ function PaymentPage() {
               </div>
               <h1 className="mt-5 font-display text-2xl text-primary">Payment confirmed</h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                Thank you. Your NIEC membership payment has been received and your tier has been updated.
+                Thank you. Your NIEC membership payment has been received and your tier has been
+                updated.
                 {result.membershipExpiresAt &&
                   ` Your membership is valid through ${formatMembershipExpiryDate(result.membershipExpiresAt)}.`}
               </p>
@@ -113,11 +169,61 @@ function PaymentPage() {
                 Your payment receipt will be sent to the email address used for this payment.
               </p>
               <div className="mt-7 flex flex-wrap justify-center gap-3">
-                <Link to="/payments" className="rounded-md border px-5 py-2.5 text-sm font-medium hover:bg-muted">
+                <Link
+                  to="/payments"
+                  className="rounded-md border px-5 py-2.5 text-sm font-medium hover:bg-muted"
+                >
                   Payment history
                 </Link>
-                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">Continue to Home</Link>
+                <Link
+                  to="/dashboard"
+                  className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Continue to Home
+                </Link>
               </div>
+            </>
+          ) : result?.status === "pending" ? (
+            <>
+              <Loader2 className="mx-auto h-10 w-10 text-amber-600" />
+              <h1 className="mt-5 font-display text-2xl">Payment confirmation is pending</h1>
+              <p className="mt-3 text-sm text-muted-foreground">
+                We haven't received a final confirmation yet. Your payment may still be processing.
+                Please don't pay again; check the status in a moment.
+              </p>
+              {result.error && (
+                <p role="alert" className="mt-3 text-xs text-muted-foreground">
+                  {result.error}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setVerificationAttempt((attempt) => attempt + 1)}
+                disabled={busy}
+                className="mt-7 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {busy ? "Checking payment…" : "Check payment again"}
+              </button>
+            </>
+          ) : result?.status === "activation-failed" ? (
+            <>
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary/10">
+                <Check className="h-8 w-8 text-primary" />
+              </div>
+              <h1 className="mt-5 font-display text-2xl">Payment received</h1>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Your payment is confirmed, but we couldn't activate your membership yet. Please
+                don't pay again. Contact the IIF team with reference{" "}
+                <code className="rounded bg-muted px-1">{reference}</code>.
+              </p>
+              <button
+                type="button"
+                onClick={() => setVerificationAttempt((attempt) => attempt + 1)}
+                disabled={busy}
+                className="mt-7 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {busy ? "Retrying activation…" : "Retry membership activation"}
+              </button>
             </>
           ) : (
             <>
@@ -126,10 +232,13 @@ function PaymentPage() {
               </div>
               <h1 className="mt-5 font-display text-2xl">Payment not completed</h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                We couldn't confirm this transaction. If you were charged, contact the IIF team with reference <code className="rounded bg-muted px-1">{reference}</code>.
+                We couldn't confirm this transaction. If you were charged, contact the IIF team with
+                reference <code className="rounded bg-muted px-1">{reference}</code>.
               </p>
               <button
-                onClick={() => navigate({ to: "/payment", search: { tier, email: mail, name, reference: "" } })}
+                onClick={() =>
+                  navigate({ to: "/payment", search: { tier, email: mail, name, reference: "" } })
+                }
                 className="mt-7 rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Try again
@@ -156,10 +265,13 @@ function PaymentPage() {
 
         {plan ? (
           <div className="mt-6 rounded-xl border bg-muted/30 p-5">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Selected tier</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Selected tier
+            </div>
             <div className="mt-1 font-display text-xl">{plan.label}</div>
             <div className="mt-2 font-display text-3xl text-primary">
-              {naira(plan.amountNaira)}<span className="ml-1 text-sm text-muted-foreground">/ year</span>
+              {naira(plan.amountNaira)}
+              <span className="ml-1 text-sm text-muted-foreground">/ year</span>
             </div>
           </div>
         ) : (
@@ -168,13 +280,16 @@ function PaymentPage() {
             {Object.entries(PAYABLE_TIERS).map(([key, t]) => (
               <button
                 key={key}
-                onClick={() => navigate({ to: "/payment", search: { tier: key, email: mail, name, reference: "" } })}
+                onClick={() =>
+                  navigate({
+                    to: "/payment",
+                    search: { tier: key, email: mail, name, reference: "" },
+                  })
+                }
                 className="flex w-full items-center justify-between rounded-lg border p-4 text-left hover:border-primary/50"
               >
                 <span className="font-medium">{t.label}</span>
-                <span className="text-sm text-primary">
-                  {naira(t.amountNaira)}
-                </span>
+                <span className="text-sm text-primary">{naira(t.amountNaira)}</span>
               </button>
             ))}
             <p className="pt-2 text-xs text-muted-foreground">
@@ -198,12 +313,23 @@ function PaymentPage() {
           disabled={busy || !plan}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-          {busy ? "Redirecting to Paystack…" : plan ? `Pay ${naira(plan.amountNaira)}` : "Select a tier"}
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ShieldCheck className="h-4 w-4" />
+          )}
+          {busy
+            ? "Redirecting to Paystack…"
+            : plan
+              ? `Pay ${naira(plan.amountNaira)}`
+              : "Select a tier"}
         </button>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          You'll be redirected to Paystack to complete payment. <Link to="/" className="underline">Back to home</Link>
+          You'll be redirected to Paystack to complete payment.{" "}
+          <Link to="/" className="underline">
+            Back to home
+          </Link>
         </p>
       </div>
     </Shell>
