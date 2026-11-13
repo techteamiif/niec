@@ -90,16 +90,16 @@ function CopWorkspace() {
       supabase
         .from("cop_memberships")
         .select(
-          "member_id, joined_at, profiles!inner(id, full_name, avatar_url, organisation_name, membership_tier, application_data)",
+          "member_id, joined_at, profiles!inner(id, full_name, avatar_url, organisation_name, organisation_type, membership_tier)",
         )
         .eq("cop", cop as any),
       supabase
         .from("cop_roles")
-        .select("user_id, role, profiles:user_id(full_name, avatar_url, application_data)")
+        .select("user_id, role, profiles:user_id(full_name, avatar_url, organisation_type)")
         .eq("cop", cop as any),
       supabase
         .from("community_posts")
-        .select("*, profiles:author_id(full_name, avatar_url, application_data)")
+        .select("*, profiles:author_id(full_name, avatar_url, organisation_type)")
         .eq("community_of_practice", cop as any)
         .order("pinned_in_cop", { ascending: false })
         .order("created_at", { ascending: false })
@@ -158,7 +158,7 @@ function CopWorkspace() {
       const { data: leads, error: leadsError } = leadIds.length
         ? await supabase
             .from("profiles")
-            .select("id, full_name, avatar_url, application_data")
+            .select("id, full_name, avatar_url, organisation_type")
             .in("id", leadIds)
         : { data: [], error: null };
       if (leadsError) toast.error(`Could not load working group leads: ${leadsError.message}`);
@@ -221,7 +221,7 @@ function CopWorkspace() {
     // RFCs
     const { data: rd } = await supabase
       .from("rfcs")
-      .select("*, profiles:author_id(full_name, avatar_url, application_data)")
+      .select("*, profiles:author_id(full_name, avatar_url, organisation_type)")
       .eq("cop", cop as any)
       .order("created_at", { ascending: false });
     setRfcs(rd ?? []);

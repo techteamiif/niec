@@ -47,7 +47,7 @@ type EventAttendee = {
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
-    application_data: Database["public"]["Tables"]["profiles"]["Row"]["application_data"];
+    organisation_type: string | null;
   } | null;
 };
 
@@ -147,7 +147,7 @@ function EventDetailPage() {
       const { data: attendeeRows, error: attendeeError } = await supabase
         .from("event_attendees")
         .select(
-          "member_id, registered_at, profiles:member_id(full_name, avatar_url, application_data)",
+          "member_id, registered_at, profiles:member_id(full_name, avatar_url, organisation_type)",
         )
         .eq("event_id", eventId)
         .eq("attending", true)
@@ -235,7 +235,7 @@ function EventDetailPage() {
                   ? {
                       full_name: profile.full_name,
                       avatar_url: profile.avatar_url,
-                      application_data: profile.application_data,
+                      organisation_type: profile.organisation_type,
                     }
                   : null,
               },
