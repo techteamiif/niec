@@ -48,7 +48,7 @@ function CommunityPage() {
   const load = async () => {
     let q = supabase
       .from("community_posts")
-      .select("*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)")
+      .select("*, profiles:author_id(full_name, organisation_name, organisation_type, avatar_url)")
       .order("created_at", { ascending: false });
     if (typeFilter !== "all") q = q.eq("post_type", typeFilter as any);
     if (copFilter !== "all") q = q.eq("community_of_practice", copFilter as any);
