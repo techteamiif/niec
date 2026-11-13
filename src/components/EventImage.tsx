@@ -6,7 +6,7 @@ type EventImageProps = {
   title: string;
   className: string;
   alt?: string;
-  fit?: "cover" | "contain";
+  fit?: "cover" | "contain" | "natural";
   showPlaceholder?: boolean;
   placeholderIcon?: "file" | "image";
 };
@@ -32,12 +32,20 @@ export function EventImage({
         <img
           src={src}
           alt={alt}
-          className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"}`}
+          className={
+            fit === "natural"
+              ? "block h-auto w-full"
+              : `h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"}`
+          }
           onError={() => setFailedImageUrl(src)}
         />
       )}
       {!hasImage && showPlaceholder && (
-        <div className="grid h-full w-full place-items-center text-[#73816B]">
+        <div
+          className={`grid place-items-center text-[#73816B] ${
+            fit === "natural" ? "aspect-[4/3] w-full" : "h-full w-full"
+          }`}
+        >
           <PlaceholderIcon aria-hidden="true" className="h-8 w-8" strokeWidth={1.5} />
         </div>
       )}

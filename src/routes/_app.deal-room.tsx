@@ -119,8 +119,8 @@ function DealRoom() {
               <div className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span>Min tier: {TIER_LABELS[d.min_tier_required]}</span>
                 {d.access_price_kobo != null && (
-                  <span className="rounded bg-primary/10 px-2 py-0.5 text-primary">
-                    Individual access ₦{(d.access_price_kobo / 100).toLocaleString("en-NG")}
+                  <span className="rounded bg-primary/10 px-2 py-0.5 text-primary normal-case">
+                    One-time access ₦{(d.access_price_kobo / 100).toLocaleString("en-NG")}
                   </span>
                 )}
                 {d.category && d.category !== "general" && (
@@ -192,7 +192,7 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
     e.preventDefault();
     const parsedAccessPrice = f.access_price_naira.trim() ? Number(f.access_price_naira) : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
-      toast.error("Enter an individual access price as a positive whole number of naira.");
+      toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
     }
     const { access_price_naira: _accessPrice, ...dealFields } = f;
@@ -234,7 +234,7 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
         </div>
         <div className="space-y-1.5">
           <label htmlFor="deal-access-price" className="block text-sm font-medium">
-            Individual access price (NGN, optional)
+            One-time access price (NGN, optional)
           </label>
           <input
             id="deal-access-price"

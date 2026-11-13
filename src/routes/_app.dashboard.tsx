@@ -126,7 +126,7 @@ function Dashboard() {
               <Calendar className="h-5 w-5 text-primary" />
               Upcoming events
             </h2>
-            <Link to="/events" className="shrink-0 text-sm text-primary hover:underline">
+            <Link to="/member/events" className="shrink-0 text-sm text-primary hover:underline">
               View all
             </Link>
           </div>
@@ -141,7 +141,8 @@ function Dashboard() {
               events.map((event) => (
                 <Link
                   key={event.id}
-                  to="/events"
+                  to="/event/$eventId"
+                  params={{ eventId: event.id }}
                   className="block rounded-md border border-border/60 p-3 transition hover:border-primary"
                 >
                   <div className="text-xs text-primary">
@@ -333,7 +334,8 @@ function Dashboard() {
               {events.map((e) => (
                 <Link
                   key={e.id}
-                  to="/events"
+                  to="/event/$eventId"
+                  params={{ eventId: e.id }}
                   className="block rounded-md border border-border/60 p-3 transition hover:border-primary"
                 >
                   <div className="text-xs text-primary">

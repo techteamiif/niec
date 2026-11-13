@@ -800,7 +800,8 @@ function CopWorkspace() {
             {events.map((e) => (
               <Link
                 key={e.id}
-                to="/events"
+                to="/event/$eventId"
+                params={{ eventId: e.id }}
                 className="block rounded-xl border bg-card p-4 hover:shadow-md"
               >
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">

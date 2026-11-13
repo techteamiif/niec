@@ -9,19 +9,37 @@ export function PublicHeader({ className = "" }: { className?: string }) {
   const { user } = useAuth();
 
   return (
-    <header className={`sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-lg ${className}`}>
+    <header
+      className={`sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur-lg ${className}`}
+    >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link to="/" aria-label="NIEC Home">
           <NiecLogo variant="horizontal" theme="light" size={38} withTagline />
         </Link>
         <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
-          <a href="/#about" className="transition hover:text-foreground">About</a>
-          <a href="/#cops" className="transition hover:text-foreground">Communities</a>
-          <a href="/#impact" className="transition hover:text-foreground">Impact</a>
+          <a href="/#about" className="transition hover:text-foreground">
+            About
+          </a>
+          <a href="/#cops" className="transition hover:text-foreground">
+            Communities
+          </a>
+          <Link to="/events" className="transition hover:text-foreground">
+            Events
+          </Link>
+          <Link to="/resources" className="transition hover:text-foreground">
+            Resources
+          </Link>
+          <a href="/#impact" className="transition hover:text-foreground">
+            Impact
+          </a>
           {user ? (
-            <Link to="/dashboard" className="transition hover:text-foreground">Home</Link>
+            <Link to="/dashboard" className="transition hover:text-foreground">
+              Home
+            </Link>
           ) : (
-            <Link to="/login" className="transition hover:text-foreground">Sign in</Link>
+            <Link to="/login" className="transition hover:text-foreground">
+              Sign in
+            </Link>
           )}
         </nav>
         <div className="flex items-center gap-2">
@@ -53,13 +71,57 @@ export function PublicHeader({ className = "" }: { className?: string }) {
             </button>
           </div>
           <nav className="flex flex-col gap-1 p-6 text-lg">
-            <a href="/#about" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">About</a>
-            <a href="/#cops" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Communities</a>
-            <a href="/#impact" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Impact</a>
+            <a
+              href="/#about"
+              onClick={() => setMobileNav(false)}
+              className="rounded-md px-3 py-3 hover:bg-muted"
+            >
+              About
+            </a>
+            <a
+              href="/#cops"
+              onClick={() => setMobileNav(false)}
+              className="rounded-md px-3 py-3 hover:bg-muted"
+            >
+              Communities
+            </a>
+            <Link
+              to="/events"
+              onClick={() => setMobileNav(false)}
+              className="rounded-md px-3 py-3 hover:bg-muted"
+            >
+              Events
+            </Link>
+            <Link
+              to="/resources"
+              onClick={() => setMobileNav(false)}
+              className="rounded-md px-3 py-3 hover:bg-muted"
+            >
+              Resources
+            </Link>
+            <a
+              href="/#impact"
+              onClick={() => setMobileNav(false)}
+              className="rounded-md px-3 py-3 hover:bg-muted"
+            >
+              Impact
+            </a>
             {user ? (
-              <Link to="/dashboard" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Home</Link>
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Home
+              </Link>
             ) : (
-              <Link to="/login" onClick={() => setMobileNav(false)} className="rounded-md px-3 py-3 hover:bg-muted">Sign in</Link>
+              <Link
+                to="/login"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Sign in
+              </Link>
             )}
             <Link
               to={user ? "/dashboard" : "/apply"}

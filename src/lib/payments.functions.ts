@@ -13,10 +13,7 @@ const TIER_PRICES: Record<string, { amountKobo: number; label: string }> = {
 };
 
 function secretKey() {
-  const key =
-    process.env["PAYSTACK_SECRET_KEY"] ??
-    process.env["STRIPE_LIVE_API_KEY"] ??
-    "";
+  const key = process.env["PAYSTACK_SECRET_KEY"] ?? process.env["STRIPE_LIVE_API_KEY"] ?? "";
   if (!key) {
     console.error("ENV KEYS", Object.keys(process.env));
     throw new Error("Payment provider is not configured.");
@@ -45,15 +42,19 @@ async function getAuthenticatedUserId() {
 }
 
 export const initMembershipPayment = createServerFn({ method: "POST" })
-  .inputValidator((input: { email: string; tier: string; fullName?: string; callbackUrl: string }) => {
-    if (!input?.email || !/^\S+@\S+\.\S+$/.test(input.email)) throw new Error("A valid email is required.");
-    if (!TIER_PRICES[input.tier]) throw new Error("This tier is not payable online.");
-    if (!/^https?:\/\//.test(input.callbackUrl)) throw new Error("Invalid callback URL.");
-    return input;
-  })
+  .inputValidator(
+    (input: { email: string; tier: string; fullName?: string; callbackUrl: string }) => {
+      if (!input?.email || !/^\S+@\S+\.\S+$/.test(input.email))
+        throw new Error("A valid email is required.");
+      if (!TIER_PRICES[input.tier]) throw new Error("This tier is not payable online.");
+      if (!/^https?:\/\//.test(input.callbackUrl)) throw new Error("Invalid callback URL.");
+      return input;
+    },
+  )
   .handler(async ({ data }) => {
     const userId = await getAuthenticatedUserId();
-    if (!userId) throw new Error("Sign in to your NIEC account before making a membership payment.");
+    if (!userId)
+      throw new Error("Sign in to your NIEC account before making a membership payment.");
     const price = TIER_PRICES[data.tier]!;
     const amountKobo = price.amountKobo;
     const reference = `niec_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
@@ -120,7 +121,8 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       .eq("reference", data.reference)
       .maybeSingle();
 
-    if (paymentLookupError) throw new Error(`Could not load membership payment: ${paymentLookupError.message}`);
+    if (paymentLookupError)
+      throw new Error(`Could not load membership payment: ${paymentLookupError.message}`);
     if (!row) {
       return { ok: false as const, status: "unknown", error: "Payment reference was not found." };
     }
@@ -157,7 +159,10 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
         link,
       } as never);
       if (notificationError) {
-        console.error("[paystack:verify] receipt notification insert failed", notificationError.message);
+        console.error(
+          "[paystack:verify] receipt notification insert failed",
+          notificationError.message,
+        );
       }
     };
 
@@ -175,8 +180,18 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
           .eq("id", row.user_id)
           .select("id")
           .maybeSingle();
-        if (profileUpdateError) throw new Error(`Could not update membership tier: ${profileUpdateError.message}`);
-        if (!updatedProfile) throw new Error("The payment is confirmed, but the member profile could not be found.");
+        if (profileUpdateError || !updatedProfile) {
+          console.error(
+            "[paystack:verify] payment confirmed but membership activation failed",
+            data.reference,
+            profileUpdateError?.message ?? "Profile not found",
+          );
+          return {
+            ok: false as const,
+            status: "activation_failed" as const,
+            error: "Payment confirmed, but membership activation failed.",
+          };
+        }
       }
       await ensureReceiptNotification(paidAt, membershipExpiresAt);
 
@@ -196,19 +211,38 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
     const json = (await res.json()) as {
       status?: boolean;
       message?: string;
-      data?: { status?: string; amount?: number; currency?: string; paid_at?: string; metadata?: Record<string, unknown> };
+      data?: {
+        status?: string;
+        amount?: number;
+        currency?: string;
+        paid_at?: string;
+        metadata?: Record<string, unknown>;
+      };
     };
 
     if (!res.ok || !json.status || !json.data) {
       console.error("[paystack:verify]", res.status, json.message);
-      return { ok: false as const, status: "unknown", error: json.message ?? "Could not verify the payment." };
+      return {
+        ok: false as const,
+        status: "unknown",
+        error: json.message ?? "Could not verify the payment.",
+      };
     }
 
     const paid = json.data.status === "success";
 
     if (paid && (json.data.amount !== row.amount_kobo || json.data.currency !== "NGN")) {
-      console.error("[paystack:verify] amount mismatch", data.reference, json.data.amount, row.amount_kobo);
-      return { ok: false as const, status: "unknown", error: "Payment amount could not be verified." };
+      console.error(
+        "[paystack:verify] amount mismatch",
+        data.reference,
+        json.data.amount,
+        row.amount_kobo,
+      );
+      return {
+        ok: false as const,
+        status: "unknown",
+        error: "Payment amount could not be verified.",
+      };
     }
 
     const paidAt = row.paid_at ?? json.data.paid_at ?? new Date().toISOString();
@@ -218,14 +252,19 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       .update({
         status: paid ? "success" : (json.data.status ?? "failed"),
         paid_at: paid ? paidAt : null,
-        metadata: { paystack: json.data.metadata ?? {}, amount: json.data.amount, currency: json.data.currency },
+        metadata: {
+          paystack: json.data.metadata ?? {},
+          amount: json.data.amount,
+          currency: json.data.currency,
+        },
       } as never)
       .eq("reference", data.reference)
       .neq("status", "success")
       .select("id")
       .maybeSingle();
     const paymentUpdateError = paymentUpdate.error;
-    if (paymentUpdateError) throw new Error(`Could not update membership payment: ${paymentUpdateError.message}`);
+    if (paymentUpdateError)
+      throw new Error(`Could not update membership payment: ${paymentUpdateError.message}`);
 
     if (paid && row.user_id) {
       const { data: updatedProfile, error: profileUpdateError } = await supabaseAdmin
@@ -238,8 +277,18 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
         .eq("id", row.user_id)
         .select("id")
         .maybeSingle();
-      if (profileUpdateError) throw new Error(`Could not update membership tier: ${profileUpdateError.message}`);
-      if (!updatedProfile) throw new Error("The payment is confirmed, but the member profile could not be found.");
+      if (profileUpdateError || !updatedProfile) {
+        console.error(
+          "[paystack:verify] payment confirmed but membership activation failed",
+          data.reference,
+          profileUpdateError?.message ?? "Profile not found",
+        );
+        return {
+          ok: false as const,
+          status: "activation_failed" as const,
+          error: "Payment confirmed, but membership activation failed.",
+        };
+      }
       if (membershipExpiresAt && paymentUpdate.data) {
         await ensureReceiptNotification(paidAt, membershipExpiresAt);
       }
@@ -256,10 +305,7 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
 
 export type PurchasableResourceType = "event" | "knowledge" | "deal";
 
-async function loadPurchasableResource(
-  resourceType: PurchasableResourceType,
-  resourceId: string,
-) {
+async function loadPurchasableResource(resourceType: PurchasableResourceType, resourceId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   if (resourceType === "event") {
     return await supabaseAdmin
@@ -289,11 +335,16 @@ async function ensureResourceEntitlement(
 ) {
   if (resourceType !== "event") return;
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("event_attendees").upsert(
-    { event_id: resourceId, member_id: userId, attending: true },
-    { onConflict: "event_id,member_id" },
-  );
-  if (error) throw new Error(`Payment confirmed, but event attendance could not be registered: ${error.message}`);
+  const { error } = await supabaseAdmin
+    .from("event_attendees")
+    .upsert(
+      { event_id: resourceId, member_id: userId, attending: true },
+      { onConflict: "event_id,member_id" },
+    );
+  if (error)
+    throw new Error(
+      `Payment confirmed, but event attendance could not be registered: ${error.message}`,
+    );
 }
 
 export const initResourcePayment = createServerFn({ method: "POST" })
@@ -337,17 +388,22 @@ export const initResourcePayment = createServerFn({ method: "POST" })
         .eq("status", "success")
         .maybeSingle(),
     ]);
-    if (!profile?.email) throw new Error("Your account needs a valid email address before purchasing.");
+    if (!profile?.email)
+      throw new Error("Your account needs a valid email address before purchasing.");
     if (existingPurchase) throw new Error("You already have access to this resource.");
 
-    const rank = { observer: 0, contributor: 1, growth_partner: 2, anchor: 3, strategic_partner: 4 };
+    const rank = {
+      observer: 0,
+      contributor: 1,
+      growth_partner: 2,
+      anchor: 3,
+      strategic_partner: 4,
+    };
     const membershipActive =
       profile.membership_status === "active" &&
-      (!profile.membership_expires_at || profile.membership_expires_at >= new Date().toISOString().slice(0, 10));
-    if (
-      membershipActive &&
-      rank[profile.membership_tier] >= rank[resource.min_tier_required]
-    ) {
+      (!profile.membership_expires_at ||
+        profile.membership_expires_at >= new Date().toISOString().slice(0, 10));
+    if (membershipActive && rank[profile.membership_tier] >= rank[resource.min_tier_required]) {
       throw new Error("Your membership already includes access to this resource.");
     }
 
@@ -446,10 +502,20 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
     const json = (await response.json()) as {
       status?: boolean;
       message?: string;
-      data?: { reference?: string; status?: string; amount?: number; currency?: string; paid_at?: string };
+      data?: {
+        reference?: string;
+        status?: string;
+        amount?: number;
+        currency?: string;
+        paid_at?: string;
+      };
     };
     if (!response.ok || !json.status || !json.data) {
-      return { ok: false as const, status: "unknown", error: json.message ?? "Could not verify the purchase." };
+      return {
+        ok: false as const,
+        status: "unknown",
+        error: json.message ?? "Could not verify the purchase.",
+      };
     }
 
     if (json.data.status !== "success") {
@@ -475,7 +541,11 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
         .eq("reference", data.reference)
         .eq("user_id", userId)
         .neq("status", "success");
-      return { ok: false as const, status: "unknown", error: "Purchase amount could not be verified." };
+      return {
+        ok: false as const,
+        status: "unknown",
+        error: "Purchase amount could not be verified.",
+      };
     }
 
     const paidAt = json.data.paid_at ?? new Date().toISOString();
