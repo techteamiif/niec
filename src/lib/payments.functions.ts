@@ -368,7 +368,7 @@ export const initResourcePayment = createServerFn({ method: "POST" })
     if (!resource.access_price_kobo || resource.access_price_kobo <= 0) {
       throw new Error("This resource is not available for individual purchase.");
     }
-    if (data.resourceType === "deal" && resource.status !== "open") {
+    if ("status" in resource && resource.status !== "open") {
       throw new Error("This deal is no longer available for purchase.");
     }
 

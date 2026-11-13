@@ -29,7 +29,7 @@ function MembersPage() {
       let q = supabase
         .from("profiles")
         .select(
-          "id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at, application_data",
+          "id, full_name, avatar_url, organisation_name, organisation_type, role_title, membership_status, bio, location, sdg_focus, sectors, linkedin_url, website_url, joined_at",
         )
         .eq("membership_status", "active")
         .neq("membership_tier", "observer");

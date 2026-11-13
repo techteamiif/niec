@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { Json } from "@/integrations/supabase/types";
 import { buildMembershipPaymentReceipt, getMembershipExpiryDate } from "@/lib/membership";
 
 function verifySignature(rawBody: string, signature: string | null) {
@@ -19,7 +20,7 @@ type PaystackEvent = {
     amount?: number;
     currency?: string;
     paid_at?: string;
-    metadata?: Record<string, unknown>;
+    metadata?: Json;
   };
 };
 

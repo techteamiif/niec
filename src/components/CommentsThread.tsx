@@ -19,7 +19,7 @@ interface CommentRow {
     full_name: string;
     avatar_url: string | null;
     organisation_name: string;
-    application_data: Database["public"]["Tables"]["profiles"]["Row"]["application_data"];
+    organisation_type: Database["public"]["Tables"]["profiles"]["Row"]["organisation_type"];
   } | null;
 }
 
@@ -51,7 +51,7 @@ export function CommentsThread({
     setLoading(true);
     const { data, error } = await supabase
       .from("comments")
-      .select("*, profiles:author_id(full_name, avatar_url, organisation_name, application_data)")
+      .select("*, profiles:author_id(full_name, avatar_url, organisation_name, organisation_type)")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
     setLoading(false);

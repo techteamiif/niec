@@ -17,7 +17,7 @@ type PostDetail = PostRow & {
     full_name: string | null;
     organisation_name: string | null;
     avatar_url: string | null;
-    application_data: Database["public"]["Tables"]["profiles"]["Row"]["application_data"];
+    organisation_type: Database["public"]["Tables"]["profiles"]["Row"]["organisation_type"];
   } | null;
 };
 
@@ -35,7 +35,7 @@ function CommunityPostPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("community_posts")
-      .select("*, profiles:author_id(full_name, organisation_name, avatar_url, application_data)")
+      .select("*, profiles:author_id(full_name, organisation_name, organisation_type, avatar_url)")
       .eq("id", postId)
       .maybeSingle();
 
