@@ -2,13 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { format } from "date-fns";
-import { ArrowLeft, Building2, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
+import { ArrowLeft, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
-import { getAccountType } from "@/lib/profile-onboarding";
 import { toast } from "sonner";
 
 type MemberProfile = Pick<
@@ -27,7 +26,6 @@ type MemberProfile = Pick<
   | "linkedin_url"
   | "website_url"
   | "joined_at"
-  | "application_data"
 >;
 
 export const Route = createFileRoute("/_app/member/$memberId")({
@@ -61,7 +59,7 @@ function MemberDetailPage() {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, avatar_url, cover_image_url, organisation_name, organisation_type, role_title, bio, location, sectors, sdg_focus, linkedin_url, website_url, joined_at, application_data",
+          "id, full_name, avatar_url, cover_image_url, organisation_name, organisation_type, role_title, bio, location, sectors, sdg_focus, linkedin_url, website_url, joined_at",
         )
         .eq("id", memberId)
         .eq("membership_status", "active")
@@ -83,7 +81,6 @@ function MemberDetailPage() {
 
   const linkedinUrl = externalUrl(member?.linkedin_url ?? null);
   const websiteUrl = externalUrl(member?.website_url ?? null);
-  const isOrganisation = getAccountType(member?.application_data) === "organisation";
 
   return (
     <div className="p-6 lg:p-10">
@@ -142,24 +139,18 @@ function MemberDetailPage() {
             </div>
 
             <div className="mt-4">
-              {isOrganisation ? (
-                <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                  <h1 className="font-display text-3xl">
-                    {member.organisation_name || "Organisation"}
-                  </h1>
-                  {member.organisation_type && (
-                    <span className="text-muted-foreground">
-                      · {ORG_TYPE_LABELS[member.organisation_type]}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-display text-3xl">{member.full_name || "Member"}</h1>
-                </div>
-              )}
-              {!isOrganisation && member.role_title && (
+              <h1 className="font-display text-3xl">{member.full_name || "Member"}</h1>
+              {member.organisation_name &&
+                member.organisation_name !== "Individual member" &&
+                member.organisation_name !== member.full_name && (
+                  <p className="mt-1 text-muted-foreground">
+                    {member.organisation_name}
+                    {member.organisation_type && member.organisation_type !== "other"
+                      ? ` · ${ORG_TYPE_LABELS[member.organisation_type]}`
+                      : ""}
+                  </p>
+                )}
+              {member.role_title && (
                 <p className="mt-1 text-muted-foreground">{member.role_title}</p>
               )}
               {member.location && (

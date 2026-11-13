@@ -17,7 +17,7 @@ import { initResourcePayment } from "@/lib/payments.functions";
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url" | "application_data"
+  "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
@@ -62,7 +62,7 @@ function KnowledgeResourcePage() {
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
           .from("profiles")
-          .select("id, full_name, organisation_name, avatar_url, application_data")
+          .select("id, full_name, organisation_name, avatar_url, organisation_type")
           .eq("id", data.uploaded_by)
           .maybeSingle();
 

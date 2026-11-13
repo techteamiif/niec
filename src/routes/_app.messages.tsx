@@ -4,7 +4,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
-import type { Json } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Send } from "lucide-react";
@@ -31,7 +30,7 @@ type Profile = {
   full_name: string;
   avatar_url: string | null;
   organisation_name: string | null;
-  application_data: Json | null;
+  organisation_type: string | null;
 };
 
 function MessagesPage() {
@@ -59,7 +58,7 @@ function MessagesPage() {
     if (peerIds.length) {
       const { data: ps } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, organisation_name, application_data")
+        .select("id, full_name, avatar_url, organisation_name, organisation_type")
         .in("id", peerIds);
       const map: Record<string, Profile> = {};
       (ps ?? []).forEach((p: any) => {

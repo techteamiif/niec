@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { Json } from "@/integrations/supabase/types";
 import {
   Dialog,
   DialogContent,
@@ -44,8 +43,8 @@ type Offer = {
     full_name: string;
     avatar_url: string | null;
     organisation_name: string | null;
+    organisation_type: string | null;
     membership_tier: string;
-    application_data: Json | null;
   };
 };
 
@@ -77,7 +76,7 @@ function MentorshipPage() {
       supabase
         .from("mentorship_offers")
         .select(
-          "*, profiles:mentor_id(full_name, avatar_url, organisation_name, membership_tier, application_data)",
+          "*, profiles:mentor_id(full_name, avatar_url, organisation_name, organisation_type, membership_tier)",
         )
         .eq("active", true),
       supabase.from("mentorship_offers").select("*").eq("mentor_id", user.id).maybeSingle(),
