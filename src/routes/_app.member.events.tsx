@@ -924,20 +924,18 @@ function CreateEvent({
               </button>
             </div>
           )}
-          <div className="rounded-md bg-muted/60 p-3 text-sm">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Schedule preview
-            </div>
-            {previewSchedule ? (
+          {previewSchedule && (
+            <div className="rounded-md bg-muted/60 p-3 text-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Schedule preview
+              </div>
               <div className="mt-1 space-y-1">
                 {formatEventSchedule(previewSchedule, "", "").map((line) => (
                   <div key={line}>{line}</div>
                 ))}
               </div>
-            ) : (
-              <p className="mt-1 text-muted-foreground">Enter the event dates; adding a time is optional.</p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
@@ -1003,7 +1001,7 @@ function CreateEvent({
             />
           </div>
         ) : null}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
             <label htmlFor="event-registration-link" className="block text-sm font-medium">
               Registration link *
@@ -1017,21 +1015,6 @@ function CreateEvent({
               onChange={(e) => set("registration_link", e.target.value)}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="event-amount" className="block text-sm font-medium">External ticket fee</label>
-            <select
-              id="event-amount"
-              value={form.is_paid ? "paid" : "free"}
-              onChange={(e) => set("is_paid", e.target.value === "paid")}
-              className="h-10 w-full rounded-md border bg-background px-2 text-sm"
-            >
-              <option value="free">Free</option>
-              <option value="paid">Paid</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Describes any fee collected by your external registration provider.
-            </p>
           </div>
         </div>
         {isStaff && (
