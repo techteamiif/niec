@@ -10,6 +10,7 @@ import { sanitizeRichText } from "@/lib/rich-text";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { formatEventSchedule } from "@/lib/event-schedule";
+import { parsePriceInput } from "@/lib/price-input";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
   ArrowRight, Search, X, Pin, Trash2, Mail, ExternalLink, Shield,
@@ -20,6 +21,7 @@ import {
 import { COPS } from "@/lib/niec";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PriceInput } from "@/components/PriceInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -1196,7 +1198,7 @@ function CreatePublicationDialog({
       toast.error("Enter a valid executive summary URL.");
       return;
     }
-    const parsedAccessPrice = accessPriceNaira.trim() ? Number(accessPriceNaira) : null;
+    const parsedAccessPrice = accessPriceNaira.trim() ? parsePriceInput(accessPriceNaira) : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
       toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
@@ -1390,14 +1392,12 @@ function CreatePublicationDialog({
             </div>
             <div className="space-y-1">
               <Label htmlFor="publication-access-price">One-time access price (NGN, optional)</Label>
-              <Input
+              <PriceInput
                 id="publication-access-price"
-                type="number"
-                min="1"
-                step="1"
                 value={accessPriceNaira}
-                onChange={(event) => setAccessPriceNaira(event.target.value)}
+                onValueChange={setAccessPriceNaira}
                 placeholder="Leave blank for tier-only access"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               />
               <p className="text-xs text-muted-foreground">
                 A one-time purchase can unlock this publication without a membership upgrade.

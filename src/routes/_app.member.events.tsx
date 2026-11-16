@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { tierMeets, TIER_LABELS, TIER_RANK } from "@/lib/niec";
 import { formatEventSchedule, type EventSchedule } from "@/lib/event-schedule";
+import { parsePriceInput } from "@/lib/price-input";
+import { PriceInput } from "@/components/PriceInput";
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { Calendar, MapPin, Video, MoreVertical, Pencil, Trash2 } from "lucide-react";
@@ -617,7 +619,10 @@ function CreateEvent({
       toast.error("Choose a valid event start and end date.");
       return;
     }
-    const parsedAccessPrice = form.access_price_naira.trim() ? Number(form.access_price_naira) : null;
+    const parsedAccessPrice =
+      isStaff && form.access_price_naira.trim()
+        ? parsePriceInput(form.access_price_naira)
+        : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
       toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
@@ -1029,24 +1034,23 @@ function CreateEvent({
             </p>
           </div>
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="event-access-price" className="block text-sm font-medium">
-            NIEC one-time access price (NGN, optional)
-          </label>
-          <input
-            id="event-access-price"
-            type="number"
-            min="1"
-            step="1"
-            placeholder="Leave blank for tier-only access"
-            value={form.access_price_naira}
-            onChange={(e) => set("access_price_naira", e.target.value)}
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-          />
-          <p className="text-xs text-muted-foreground">
-            One-time payment unlocks the event and registers the buyer as attending.
-          </p>
-        </div>
+        {isStaff && (
+          <div className="space-y-1.5">
+            <label htmlFor="event-access-price" className="block text-sm font-medium">
+              NIEC one-time access price (NGN, optional)
+            </label>
+            <PriceInput
+              id="event-access-price"
+              placeholder="Leave blank for tier-only access"
+              value={form.access_price_naira}
+              onValueChange={(value) => set("access_price_naira", value)}
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              One-time payment unlocks the event and registers the buyer as attending.
+            </p>
+          </div>
+        )}
         <div className="space-y-1.5">
           <label htmlFor="event-max-attendees" className="block text-sm font-medium">
             Maximum attendees (optional)

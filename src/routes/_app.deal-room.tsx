@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { ArrowRight, Briefcase, CreditCard, Lock } from "lucide-react";
 import { initResourcePayment } from "@/lib/payments.functions";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
+import { PriceInput } from "@/components/PriceInput";
+import { parsePriceInput } from "@/lib/price-input";
 
 export const Route = createFileRoute("/_app/deal-room")({
   component: DealRoom,
@@ -190,7 +192,9 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
   });
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedAccessPrice = f.access_price_naira.trim() ? Number(f.access_price_naira) : null;
+    const parsedAccessPrice = f.access_price_naira.trim()
+      ? parsePriceInput(f.access_price_naira)
+      : null;
     if (parsedAccessPrice !== null && (!Number.isSafeInteger(parsedAccessPrice) || parsedAccessPrice <= 0)) {
       toast.error("Enter a one-time access price as a positive whole number of naira.");
       return;
@@ -200,7 +204,8 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
       ...dealFields,
       access_price_kobo: parsedAccessPrice === null ? null : parsedAccessPrice * 100,
       submitted_by: userId,
-      ticket_size_min: Number(f.ticket_size_min), ticket_size_max: Number(f.ticket_size_max),
+      ticket_size_min: parsePriceInput(f.ticket_size_min),
+      ticket_size_max: parsePriceInput(f.ticket_size_max),
       instrument_type: f.instrument_type as any, min_tier_required: f.min_tier_required as any,
     });
     if (error) return toast.error(error.message);
@@ -217,8 +222,18 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
         <input placeholder="Sector" value={f.sector} onChange={(e) => s("sector", e.target.value)} className="h-10 w-full rounded-md border bg-background px-3 text-sm" />
         <textarea placeholder="Description" value={f.description} onChange={(e) => s("description", e.target.value)} rows={4} className="w-full rounded-md border bg-background p-3 text-sm" />
         <div className="grid grid-cols-3 gap-2">
-          <input type="number" placeholder="Min" value={f.ticket_size_min} onChange={(e) => s("ticket_size_min", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
-          <input type="number" placeholder="Max" value={f.ticket_size_max} onChange={(e) => s("ticket_size_max", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
+          <PriceInput
+            placeholder="Min"
+            value={f.ticket_size_min}
+            onValueChange={(value) => s("ticket_size_min", value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm"
+          />
+          <PriceInput
+            placeholder="Max"
+            value={f.ticket_size_max}
+            onValueChange={(value) => s("ticket_size_max", value)}
+            className="h-10 rounded-md border bg-background px-3 text-sm"
+          />
           <input placeholder="Currency" value={f.currency} onChange={(e) => s("currency", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -236,14 +251,11 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
           <label htmlFor="deal-access-price" className="block text-sm font-medium">
             One-time access price (NGN, optional)
           </label>
-          <input
+          <PriceInput
             id="deal-access-price"
-            type="number"
-            min="1"
-            step="1"
             placeholder="Leave blank for tier-only access"
             value={f.access_price_naira}
-            onChange={(e) => s("access_price_naira", e.target.value)}
+            onValueChange={(value) => s("access_price_naira", value)}
             className="h-10 w-full rounded-md border bg-background px-3 text-sm"
           />
         </div>
