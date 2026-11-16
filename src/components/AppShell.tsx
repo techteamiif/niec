@@ -249,7 +249,7 @@ export function AppShell() {
       <div className="hidden lg:block lg:h-dvh lg:shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <div className="absolute inset-0 cursor-pointer bg-black/50" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0">{Sidebar}</div>
         </div>
       )}
