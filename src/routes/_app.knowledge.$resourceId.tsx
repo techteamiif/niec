@@ -79,7 +79,7 @@ function KnowledgeResourcePage() {
 
   const download = async (url: string | null) => {
     if (!resource) return;
-    if (!hasAccess && !isStaff) {
+    if (!unlocked) {
       setTierDialogOpen(true);
       return;
     }
@@ -122,7 +122,8 @@ function KnowledgeResourcePage() {
     window.open(downloadUrl, "_blank", "noopener,noreferrer");
   };
 
-  const unlocked = hasAccess || isStaff;
+  const unlocked =
+    hasAccess || isStaff || tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer");
 
   const buyAccess = async () => {
     if (!resource || purchasing) return;
@@ -192,7 +193,7 @@ function KnowledgeResourcePage() {
               <span className="rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground/80">
                 {getKnowledgeResourceAccessLabel(resource.min_tier_required)}
               </span>
-              {resource.access_price_kobo != null && (
+              {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
                 <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                   One-time access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
                 </span>
@@ -235,11 +236,13 @@ function KnowledgeResourcePage() {
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
                   Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
-                  {resource.access_price_kobo != null ? " or one-time purchase." : "."}
+                  {resource.access_price_kobo != null && resource.access_price_kobo > 0
+                    ? " or one-time purchase."
+                    : "."}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
-                {!unlocked && resource.access_price_kobo != null && (
+                {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
                   <Button type="button" onClick={() => setTierDialogOpen(true)}>
                     <CreditCard aria-hidden="true" />
                     View access options
@@ -317,7 +320,7 @@ function KnowledgeResourcePage() {
         itemType="resource"
         requiredTier={resource?.min_tier_required ?? "observer"}
         currentTier={profile?.membership_tier}
-        accessPriceKobo={resource?.access_price_kobo}
+        accessPriceKobo={unlocked ? null : resource?.access_price_kobo}
         onPayOnce={() => void buyAccess()}
         purchasing={purchasing}
       />

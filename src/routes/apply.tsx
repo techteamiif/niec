@@ -20,8 +20,9 @@ import {
   SECTOR_OPTIONS as SECTORS,
 } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronDown, ShieldCheck, Eye, EyeOff, Search, X, UserRound } from "lucide-react";
+import { Check, ChevronRight, ChevronDown, Eye, EyeOff, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
+import { TierComparisonTable } from "@/components/TierComparisonTable";
 import type { Database, Json } from "@/integrations/supabase/types";
 
 
@@ -43,11 +44,41 @@ export function ApplyOnboardingPage() {
 // const [password, setPassword] = useState();
 
 const TIERS = [
-  { key: "observer", label: "Observer", fee: "Free" },
-  { key: "contributor", label: "Enterprise", fee: "₦100,000 / yr" },
-  { key: "growth_partner", label: "Growth Partner", fee: "₦500k / yr" },
-  { key: "anchor", label: "Anchor Partner", fee: "₦1.5M / yr" },
-  { key: "strategic_partner", label: "Strategic Partner", fee: "Negotiated" },
+  {
+    key: "observer",
+    label: "Observer",
+    displayLabel: "Observer",
+    fee: "Free",
+    description: "Explore the ecosystem and read what's happening.",
+  },
+  {
+    key: "contributor",
+    label: "Enterprise",
+    displayLabel: "Enterprise",
+    fee: "₦100,000 / yr",
+    description: "Join conversations, one CoP, and start booking mentorship.",
+  },
+  {
+    key: "growth_partner",
+    label: "Growth Partner",
+    displayLabel: "Growth Partner",
+    fee: "₦500k / yr",
+    description: "Full Deal Room access, propose RFCs, mentor others.",
+  },
+  {
+    key: "anchor",
+    label: "Anchor Partner",
+    displayLabel: "Anchor",
+    fee: "₦1.5M / yr",
+    description: "Shape the agenda — create working groups and see analytics.",
+  },
+  {
+    key: "strategic_partner",
+    label: "Strategic Partner",
+    displayLabel: "Strategic Partner",
+    fee: "Negotiated",
+    description: "Everything, plus priority support and staff intros.",
+  },
 ] as const;
 
 const PAYABLE: Record<string, number> = {
@@ -331,12 +362,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         toast.error(`Please provide your ${missingDetails.join(", ")}.`);
         return;
       }
+    }
+    if (step === 3) {
       if (!tier) {
         toast.error("Please select a membership tier first.");
         return;
       }
     }
-    setStep((s) => Math.min(s + 1, 3));
+    setStep((s) => Math.min(s + 1, 4));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -480,8 +513,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             return;
           }
           toast.error(res.error);
-        } catch {
-          toast.error("We saved your application but couldn't open the payment page. You can pay from the next screen.");
+        } catch (error) {
+          console.error("[apply:payment]", error);
         }
         setDone(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -565,27 +598,23 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7FBFA]">
+    <div className={`min-h-screen ${step === 3 ? "bg-white" : "bg-[#F7FBFA]"}`}>
       <PublicHeader />
 
-      {/* Hero */}
-      <section className="px-6 pt-8 text-start text-black">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="font-display text-3xl md:text-5xl">
-            {mode === "onboarding" ? `Hi, ${firstName || "there"}` : <>Join the <span className="text-gold">NIEC</span> Community</>}
-          </h1>
-          <p className="mt-4 text-black/75">
-            {mode === "onboarding"
-              ? "Kindly complete your onboarding"
-              : "Apply for membership in Nigeria's premier impact economy network — connecting capital and community for Africa's new economy."}
-          </p>
-          {/* <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {["Deal Flow","Policy Influence","GIIS · Summit · ACII","SDG Reporting","Market Intelligence"].map(p => (
-              <span key={p} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs">{p}</span>
-            ))}
-          </div> */}
-        </div>
-      </section>
+      {step !== 3 && (
+        <section className="px-6 pt-8 text-start text-black">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="font-display text-3xl md:text-5xl">
+              {mode === "onboarding" ? `Hi, ${firstName || "there"}` : <>Join the <span className="text-gold">NIEC</span> Community</>}
+            </h1>
+            <p className="mt-4 text-black/75">
+              {mode === "onboarding"
+                ? "Kindly complete your onboarding"
+                : "Apply for membership in Nigeria's premier impact economy network — connecting capital and community for Africa's new economy."}
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Progress */}
       {/* <div className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
@@ -598,7 +627,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         </div>
       </div> */}
 
-      <main className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+      <main className={`mx-auto ${step === 3 ? "max-w-6xl" : "max-w-3xl"} space-y-6 px-6 py-10`}>
 
         {step === 2 && (
           <>
@@ -709,17 +738,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 </Field>
               </Row>
             </Section>
-            <Section title="Membership tier" desc="Select the tier that best reflects your capacity and engagement level.">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {TIERS.map((t) => (
-                  <button key={t.key} type="button" onClick={() => setTier(t.key)}
-                    className={`rounded-xl border p-4 text-left transition ${tier === t.key ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:border-primary/40"}`}>
-                    <div className="font-display text-lg">{t.label}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{t.fee}</div>
-                  </button>
-                ))}
-              </div>
-            </Section>
           </>
         ) : (
           <>
@@ -809,20 +827,61 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </Field> */}
           </Row>
         </Section>
-        <Section title="Membership tier" desc="Select the tier that best reflects your organisation's capacity and engagement level.">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {TIERS.map((t) => (
-              <button key={t.key} type="button" onClick={() => setTier(t.key)}
-                className={`rounded-xl border p-4 text-left transition ${tier === t.key ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "hover:border-primary/40"}`}>
-                <div className="font-display text-lg">{t.label}</div>
-                <div className="mt-1 text-xs text-muted-foreground">{t.fee}</div>
-              </button>
-            ))}
-          </div>
-        </Section>
           </>
         )}
         </>
+        )}
+
+        {step === 3 && (
+          <section className="space-y-5">
+            <div>
+              <h2 className="font-display text-xl text-primary">Choose your membership tier</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Select the tier that best reflects your{" "}
+                {isIndividual ? "capacity and engagement level" : "organisation's capacity and engagement level"}.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {TIERS.map((t) => {
+                const selected = tier === t.key;
+                return (
+                  <article
+                    key={t.key}
+                    className={`flex min-h-[220px] flex-col rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
+                      selected
+                        ? "border-2 border-primary ring-1 ring-primary/20"
+                        : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <h3 className="font-display text-lg leading-tight text-foreground">
+                        {t.displayLabel}
+                      </h3>
+                      <p className="mt-2 font-display text-xl font-semibold text-primary">
+                        {t.fee}
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {t.description}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setTier(t.key)}
+                      className={`mt-4 w-full rounded-full px-4 py-2 text-center text-xs font-semibold ${
+                        selected
+                          ? "border border-primary bg-transparent text-primary hover:bg-primary/5"
+                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                      }`}
+                    >
+                      {selected ? "Your selection" : "Upgrade"}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+            <TierComparisonTable />
+          </section>
         )}
 
         {step === 1 && (
@@ -1046,7 +1105,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         </>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
         <Section title="SDG focus areas" desc={`Select all Sustainable Development Goals ${isIndividual ? "you" : "your organisation"} actively work on.`}>
           <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
@@ -1099,7 +1158,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
               {busy ? "Creating account…" : "Create account"} <ChevronRight className="h-4 w-4" />
             </button>
-          ) : step < 3 ? (
+          ) : step < 4 ? (
             <button onClick={nextStep} type="button"
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
               Next <ChevronRight className="h-4 w-4" />

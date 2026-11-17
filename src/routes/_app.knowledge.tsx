@@ -240,7 +240,7 @@ function KnowledgeIndex() {
                       <span className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-foreground/80">
                         {getKnowledgeResourceAccessLabel(r.min_tier_required)}
                       </span>
-                      {r.access_price_kobo != null && (
+                      {!unlocked && r.access_price_kobo != null && r.access_price_kobo > 0 && (
                         <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
                           ₦{(r.access_price_kobo / 100).toLocaleString("en-NG")}
                         </span>
@@ -254,7 +254,7 @@ function KnowledgeIndex() {
                   />
                   {!unlocked && (
                     <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                      {r.access_price_kobo != null
+                      {r.access_price_kobo != null && r.access_price_kobo > 0
                         ? `Buy for ₦${(r.access_price_kobo / 100).toLocaleString("en-NG")} or access with ${TIER_LABELS[r.min_tier_required]} tier.`
                         : `Download access requires ${TIER_LABELS[r.min_tier_required]} tier or above.`}
                     </div>
