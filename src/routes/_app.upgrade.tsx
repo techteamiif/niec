@@ -86,13 +86,12 @@ function UpgradePage() {
                     Upgrade
                   </Link>
                 ) : (
-                  <button
-                    type="button"
-                    disabled
-                    className="mt-auto w-full cursor-not-allowed rounded-full border px-3 py-2 text-xs font-semibold text-muted-foreground"
+                  <a
+                    href="mailto:support@impactinvestorsfoundation.org"
+                    className="mt-auto block w-full rounded-full bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
                   >
-                    Contact IIF to discuss
-                  </button>
+                    Contact IIF
+                  </a>
                 )
               ) : (
                 <div aria-hidden="true" className="mt-auto h-8" />

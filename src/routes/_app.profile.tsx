@@ -1,12 +1,18 @@
 import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Building2, Globe, Linkedin, MapPin, Pencil } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { MemberBadges } from "@/components/MemberBadges";
 import { MembershipCard } from "@/components/MembershipCard";
 import { TierBadge } from "@/components/TierBadge";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { ORG_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
 import { getAccountType, readOnboardingData } from "@/lib/profile-onboarding";
+import { COMMUNICATION_OPTIONS } from "@/lib/onboarding-options";
+import type { Json } from "@/integrations/supabase/types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -32,6 +38,12 @@ function SelectedValues({ values }: { values: string[] }) {
   );
 }
 
+function mergeApplicationData(existing: Json, updates: Record<string, Json>): Json {
+  const current =
+    existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
+  return { ...current, ...updates };
+}
+
 export const Route = createFileRoute("/_app/profile")({
   component: ProfilePage,
 });
@@ -47,8 +59,21 @@ function safeExternalUrl(value: string | null) {
 }
 
 function ProfilePage() {
-  const { profile, user } = useAuth();
+  const { profile, user, refresh } = useAuth();
   const matches = useMatches();
+  const [preferredChannel, setPreferredChannel] = useState("");
+  const [communicationSaving, setCommunicationSaving] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const savedPreferredChannel = profile
+    ? (readOnboardingData(profile.application_data).comm_preference ?? "")
+    : "";
+
+  useEffect(() => {
+    setPreferredChannel(savedPreferredChannel);
+  }, [savedPreferredChannel]);
 
   if (matches.some((match) => match.routeId.startsWith("/_app/profile/"))) {
     return <Outlet />;
@@ -63,13 +88,12 @@ function ProfilePage() {
   const onboarding = readOnboardingData(profile.application_data);
   const isOrganisation = getAccountType(profile.application_data) === "organisation";
   const statementOfIntent = profile.bio || onboarding.statement_of_intent;
-  const details = [
+  const contactDetails = [
     ["Email", user.email],
     ["Phone", profile.phone],
-    [
-      "Current membership",
-      TIER_LABELS[memberTier] ?? memberTier,
-    ],
+  ].filter(([, value]) => Boolean(value)) as [string, string][];
+  const membershipDetails = [
+    ["Current membership", TIER_LABELS[memberTier] ?? memberTier],
     [
       "Membership status",
       `${profile.membership_status.charAt(0).toUpperCase()}${profile.membership_status.slice(1)}`,
@@ -82,189 +106,376 @@ function ProfilePage() {
     ],
   ].filter(([, value]) => Boolean(value)) as [string, string][];
 
+  const saveCommunicationPreference = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setCommunicationSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          application_data: mergeApplicationData(profile.application_data, {
+            comm_preference: preferredChannel,
+          }),
+        })
+        .eq("id", user.id);
+      if (error) {
+        toast.error(`Could not save communication preference: ${error.message}`);
+        return;
+      }
+      toast.success("Communication preference updated.");
+      await refresh();
+    } catch (error) {
+      toast.error(
+        `Could not save communication preference: ${error instanceof Error ? error.message : "Unexpected error"}`,
+      );
+    } finally {
+      setCommunicationSaving(false);
+    }
+  };
+
+  const changePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+        current_password: currentPassword,
+      });
+      if (error) {
+        toast.error(`Could not update password: ${error.message}`);
+        return;
+      }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password updated.");
+    } catch (error) {
+      toast.error(
+        `Could not update password: ${error instanceof Error ? error.message : "Unexpected error"}`,
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   return (
     <div className="p-6 lg:p-10">
-      <article className="w-full overflow-hidden rounded-xl border bg-card">
-        <div className="h-28 bg-[#D4A017]">
-          {profile.cover_image_url && (
-            <img src={profile.cover_image_url} alt="" className="h-full w-full object-cover" />
-          )}
-        </div>
-        <div className="px-6 pb-7 md:px-9">
-          <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <UserAvatar
-              name={profile.full_name}
-              src={profile.avatar_url}
-              size={96}
-              className="border-4 border-card"
-            />
-            <Link
-              to="/profile/edit"
-              aria-label="Edit profile"
-              title="Edit profile"
-              className="inline-flex h-10 w-10 items-center justify-center self-start rounded-md border text-muted-foreground transition hover:bg-muted hover:text-foreground sm:self-auto"
-            >
-              <Pencil className="h-4 w-4" />
-            </Link>
-          </div>
+      <Tabs defaultValue="about" className="space-y-6">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsTrigger value="about">About</TabsTrigger>
+          <TabsTrigger value="membership">Membership</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+        <TabsContent value="about" className="mt-0">
+          <article className="w-full overflow-hidden rounded-xl border bg-card">
+            <div className="h-28 bg-[#D4A017]">
+              {profile.cover_image_url && (
+                <img src={profile.cover_image_url} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
+            <div className="px-6 pb-7 md:px-9">
+              <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <UserAvatar
+                  name={profile.full_name}
+                  src={profile.avatar_url}
+                  size={96}
+                  className="border-4 border-card"
+                />
+                <Link
+                  to="/profile/edit"
+                  aria-label="Edit profile"
+                  title="Edit profile"
+                  className="inline-flex h-10 w-10 items-center justify-center self-start rounded-md border text-muted-foreground transition hover:bg-muted hover:text-foreground sm:self-auto"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Link>
+              </div>
 
-          <div className="mt-4">
-            {isOrganisation ? (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                <h1 className="font-display text-3xl">
-                  {profile.organisation_name || "Organisation"}
-                </h1>
-                {organisationType && (
-                  <span className="text-muted-foreground">· {organisationType}</span>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-display text-3xl">{profile.full_name || "Member"}</h1>
-              </div>
-            )}
-            {!isOrganisation && profile.role_title && (
-              <p className="mt-1 text-muted-foreground">{profile.role_title}</p>
-            )}
-            {profile.location && (
-              <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" /> {profile.location}
-              </div>
-            )}
-            <MemberBadges userId={user.id} />
-          </div>
-
-          <DetailSection title="Personal and membership details">
-            <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-              {details.map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 flex flex-wrap items-center gap-2 font-medium">
-                    {label === "Current membership" ? (
-                      <TierBadge tier={memberTier} />
-                    ) : (
-                      value
+              <div className="mt-4">
+                {isOrganisation ? (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                    <h1 className="font-display text-3xl">
+                      {profile.organisation_name || "Organisation"}
+                    </h1>
+                    {organisationType && (
+                      <span className="text-muted-foreground">· {organisationType}</span>
                     )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </DetailSection>
-
-          <MembershipCard profile={profile} />
-
-          {statementOfIntent && (
-            <DetailSection title="Statement of intent">
-              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
-                {statementOfIntent}
-              </p>
-            </DetailSection>
-          )}
-
-          {!!profile.sectors?.length && (
-            <DetailSection title="Investment sectors">
-              <SelectedValues values={profile.sectors} />
-            </DetailSection>
-          )}
-
-          {!!profile.sdg_focus?.length && (
-            <DetailSection title="SDG focus areas">
-              <SelectedValues values={profile.sdg_focus} />
-            </DetailSection>
-          )}
-
-          {(onboarding.aum_range || onboarding.investment_stage) && (
-            <DetailSection title="Investment focus">
-              <dl className="grid gap-4 text-sm sm:grid-cols-2">
-                {onboarding.investment_stage && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">Investment stage</dt>
-                    <dd className="mt-1">{onboarding.investment_stage}</dd>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="font-display text-3xl">{profile.full_name || "Member"}</h1>
                   </div>
                 )}
-                {onboarding.aum_range && (
-                  <div>
-                    <dt className="text-xs text-muted-foreground">AUM / annual budget</dt>
-                    <dd className="mt-1">{onboarding.aum_range}</dd>
+                {!isOrganisation && profile.role_title && (
+                  <p className="mt-1 text-muted-foreground">{profile.role_title}</p>
+                )}
+                {profile.location && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" /> {profile.location}
                   </div>
                 )}
+                <MemberBadges userId={user.id} />
+              </div>
+
+              <DetailSection title="Contact details">
+                <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                  {contactDetails.map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className="mt-1 flex flex-wrap items-center gap-2 font-medium">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </DetailSection>
+
+              {statementOfIntent && (
+                <DetailSection title="Statement of intent">
+                  <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">
+                    {statementOfIntent}
+                  </p>
+                </DetailSection>
+              )}
+
+              {!!profile.sectors?.length && (
+                <DetailSection title="Investment sectors">
+                  <SelectedValues values={profile.sectors} />
+                </DetailSection>
+              )}
+
+              {!!profile.sdg_focus?.length && (
+                <DetailSection title="SDG focus areas">
+                  <SelectedValues values={profile.sdg_focus} />
+                </DetailSection>
+              )}
+
+              {(onboarding.aum_range || onboarding.investment_stage) && (
+                <DetailSection title="Investment focus">
+                  <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                    {onboarding.investment_stage && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Investment stage</dt>
+                        <dd className="mt-1">{onboarding.investment_stage}</dd>
+                      </div>
+                    )}
+                    {onboarding.aum_range && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">AUM / annual budget</dt>
+                        <dd className="mt-1">{onboarding.aum_range}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </DetailSection>
+              )}
+
+              {onboarding.goals?.length ? (
+                <DetailSection title="What I hope to gain from NIEC">
+                  <SelectedValues values={onboarding.goals} />
+                </DetailSection>
+              ) : null}
+
+              {onboarding.contributions?.length ? (
+                <DetailSection title="What my organisation can contribute">
+                  <SelectedValues values={onboarding.contributions} />
+                </DetailSection>
+              ) : null}
+
+              {(onboarding.events_interested?.length ||
+                onboarding.event_role ||
+                onboarding.heard_from ||
+                onboarding.comm_preference) && (
+                <DetailSection title="Ecosystem engagement">
+                  <div className="space-y-4 text-sm">
+                    {!!onboarding.events_interested?.length && (
+                      <div>
+                        <h3 className="mb-2 text-xs text-muted-foreground">Events of interest</h3>
+                        <SelectedValues values={onboarding.events_interested} />
+                      </div>
+                    )}
+                    {onboarding.event_role && (
+                      <p>
+                        <span className="text-muted-foreground">Preferred event role: </span>
+                        {onboarding.event_role}
+                      </p>
+                    )}
+                    {onboarding.heard_from && (
+                      <p>
+                        <span className="text-muted-foreground">How I heard about NIEC: </span>
+                        {onboarding.heard_from}
+                      </p>
+                    )}
+                    {onboarding.comm_preference && (
+                      <p>
+                        <span className="text-muted-foreground">Preferred communication: </span>
+                        {onboarding.comm_preference}
+                      </p>
+                    )}
+                  </div>
+                </DetailSection>
+              )}
+
+              {(linkedinUrl || websiteUrl) && (
+                <section className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t pt-5 text-sm">
+                  {linkedinUrl && (
+                    <a
+                      href={linkedinUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-primary hover:underline"
+                    >
+                      <Linkedin className="h-4 w-4" /> LinkedIn
+                    </a>
+                  )}
+                  {websiteUrl && (
+                    <a
+                      href={websiteUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 text-primary hover:underline"
+                    >
+                      <Globe className="h-4 w-4" /> Website
+                    </a>
+                  )}
+                </section>
+              )}
+            </div>
+          </article>
+        </TabsContent>
+
+        <TabsContent value="membership" className="mt-0">
+          <article className="rounded-xl border bg-card p-6">
+            <h1 className="font-display text-2xl">Membership</h1>
+            <DetailSection title="Membership details">
+              <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+                {membershipDetails.map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="mt-1 flex flex-wrap items-center gap-2 font-medium">
+                      {label === "Current membership" ? <TierBadge tier={memberTier} /> : value}
+                    </dd>
+                  </div>
+                ))}
               </dl>
             </DetailSection>
-          )}
+            <MembershipCard profile={profile} />
+          </article>
+        </TabsContent>
 
-          {onboarding.goals?.length ? (
-            <DetailSection title="What I hope to gain from NIEC">
-              <SelectedValues values={onboarding.goals} />
-            </DetailSection>
-          ) : null}
+        <TabsContent value="settings" className="mt-0 space-y-6">
+          <section className="rounded-xl border bg-card p-6">
+            <h1 className="font-display text-2xl">Account security</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Change the password you use to sign in to NIEC. If you forgot your password, please{" "}
+              <Link
+                to="/forgot-password"
+                className="text-primary underline-offset-4 hover:underline"
+              >
+                request a password reset
+              </Link>
+              .
+            </p>
+            <form onSubmit={changePassword} className="mt-5 max-w-xl space-y-4">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Current password *
+                </span>
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  New password
+                </span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Confirm new password
+                </span>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={passwordSaving}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+              >
+                {passwordSaving ? "Updating…" : "Change password"}
+              </button>
+            </form>
+          </section>
 
-          {onboarding.contributions?.length ? (
-            <DetailSection title="What my organisation can contribute">
-              <SelectedValues values={onboarding.contributions} />
-            </DetailSection>
-          ) : null}
-
-          {(onboarding.events_interested?.length ||
-            onboarding.event_role ||
-            onboarding.heard_from ||
-            onboarding.comm_preference) && (
-            <DetailSection title="Ecosystem engagement">
-              <div className="space-y-4 text-sm">
-                {!!onboarding.events_interested?.length && (
-                  <div>
-                    <h3 className="mb-2 text-xs text-muted-foreground">Events of interest</h3>
-                    <SelectedValues values={onboarding.events_interested} />
-                  </div>
-                )}
-                {onboarding.event_role && (
-                  <p>
-                    <span className="text-muted-foreground">Preferred event role: </span>
-                    {onboarding.event_role}
-                  </p>
-                )}
-                {onboarding.heard_from && (
-                  <p>
-                    <span className="text-muted-foreground">How I heard about NIEC: </span>
-                    {onboarding.heard_from}
-                  </p>
-                )}
-                {onboarding.comm_preference && (
-                  <p>
-                    <span className="text-muted-foreground">Preferred communication: </span>
-                    {onboarding.comm_preference}
-                  </p>
-                )}
+          {/* <section className="rounded-xl border bg-card p-6">
+            <h2 className="font-display text-xl">Communication preferences</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose how IIF should contact you about member events, resources, and opportunities.
+            </p>
+            <form
+              onSubmit={saveCommunicationPreference}
+              className="mt-5 flex max-w-xl flex-col gap-4"
+            >
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Preferred contact channel
+                </span>
+                <select
+                  value={preferredChannel}
+                  onChange={(event) => setPreferredChannel(event.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">No preference selected</option>
+                  {COMMUNICATION_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div>
+                <button
+                  type="submit"
+                  disabled={communicationSaving}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {communicationSaving ? "Saving…" : "Save preferences"}
+                </button>
               </div>
-            </DetailSection>
-          )}
-
-          {(linkedinUrl || websiteUrl) && (
-            <section className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 border-t pt-5 text-sm">
-              {linkedinUrl && (
-                <a
-                  href={linkedinUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-primary hover:underline"
-                >
-                  <Linkedin className="h-4 w-4" /> LinkedIn
-                </a>
-              )}
-              {websiteUrl && (
-                <a
-                  href={websiteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 text-primary hover:underline"
-                >
-                  <Globe className="h-4 w-4" /> Website
-                </a>
-              )}
-            </section>
-          )}
-        </div>
-      </article>
+            </form>
+          </section> */}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
