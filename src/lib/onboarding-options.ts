@@ -53,18 +53,18 @@ export const INVESTMENT_STAGE_OPTIONS = [
 ];
 
 export const SDG_OPTIONS = [
-  "SDG 1 — No poverty",
-  "SDG 2 — Zero hunger",
-  "SDG 3 — Good health",
-  "SDG 4 — Quality education",
-  "SDG 5 — Gender equality",
-  "SDG 7 — Clean energy",
-  "SDG 8 — Decent work",
-  "SDG 9 — Industry & innovation",
-  "SDG 10 — Reduced inequality",
-  "SDG 11 — Sustainable cities",
-  "SDG 13 — Climate action",
-  "SDG 17 — Partnerships",
+  "SDG 1: No poverty",
+  "SDG 2: Zero hunger",
+  "SDG 3: Good health",
+  "SDG 4: Quality education",
+  "SDG 5: Gender equality",
+  "SDG 7: Clean energy",
+  "SDG 8: Decent work",
+  "SDG 9: Industry & innovation",
+  "SDG 10: Reduced inequality",
+  "SDG 11: Sustainable cities",
+  "SDG 13: Climate action",
+  "SDG 17: Partnerships",
 ];
 
 export const SECTOR_OPTIONS = [

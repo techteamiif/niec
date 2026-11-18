@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
@@ -20,7 +20,7 @@ import {
   SECTOR_OPTIONS as SECTORS,
 } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { Check, ChevronRight, ChevronDown, Eye, EyeOff, Search, ShieldCheck, UserRound, X } from "lucide-react";
+import { Building2, Check, CheckCircle, ChevronRight, ChevronDown, Eye, EyeOff, GraduationCap, Search, Settings, ShieldCheck, UserRound, X } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { TierComparisonTable } from "@/components/TierComparisonTable";
 import type { Database, Json } from "@/integrations/supabase/types";
@@ -154,7 +154,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const navigate = useNavigate();
   const { user, profile, loading, refresh, signOut } = useAuth();
   const [tier, setTier] = useState<typeof TIERS[number]["key"] | "">("");
-  const [accountType, setAccountType] = useState<"organisation" | "individual">("organisation");
+  const [accountType, setAccountType] = useState<"organisation" | "individual" | "">("");
   const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("");
   const [orgTypeOpen, setOrgTypeOpen] = useState(false);
@@ -168,6 +168,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [jobTitle, setJobTitle] = useState("");
   const [personalTitle, setPersonalTitle] = useState("");
   const [individualRole, setIndividualRole] = useState("");
+  const [contactPersonFirstName, setContactPersonFirstName] = useState("");
+  const [contactPersonLastName, setContactPersonLastName] = useState("");
+  const [contactPersonRole, setContactPersonRole] = useState("");
+  const [contactPersonEmail, setContactPersonEmail] = useState("");
+  const [contactPersonPhone, setContactPersonPhone] = useState("");
   const [qualificationDepartment, setQualificationDepartment] = useState("");
   const [qualificationPosition, setQualificationPosition] = useState("");
   const [qualificationInstitution, setQualificationInstitution] = useState("");
@@ -178,7 +183,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [linkedin, setLinkedin] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -198,10 +202,32 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [accountCreated, setAccountCreated] = useState(false);
   const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
   const isIndividual = mode === "onboarding" && accountType === "individual";
+  const wizardSteps = [
+    { label: "Account", Icon: UserRound },
+    { label: "Profile", Icon: GraduationCap },
+    { label: "Membership", Icon: Building2 },
+    { label: "Application", Icon: CheckCircle },
+  ];
+  const wizardProgress = ((step - 1) / (wizardSteps.length - 1)) * 100;
+  const screenTitle = step === 1
+    ? "Create Your Account"
+    : step === 2
+      ? "Complete Your Profile"
+      : step === 3
+        ? "Choose Your Membership Tier"
+        : "Complete Your Application";
+  const screenDescription = step === 1
+    ? "Create a secure account to continue with your application."
+    : step === 2
+      ? "Choose an account type and provide your profile details."
+      : step === 3
+        ? `Select the tier that best reflects your ${isIndividual ? "capacity and engagement level" : "organisation's capacity and engagement level"}.`
+        : "Share your focus areas, engagement goals, and declaration to complete your application.";
 
   useEffect(() => {
     if (!user) return;
-    setAccountType(user.user_metadata.account_type === "individual" ? "individual" : "organisation");
+    const savedAccountType = user.user_metadata.account_type;
+    setAccountType(savedAccountType === "individual" || savedAccountType === "organisation" ? savedAccountType : "");
   }, [user]);
 
   useEffect(() => {
@@ -215,6 +241,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     setJobTitle(JOB_TITLES.includes(savedJobTitle) ? savedJobTitle : "");
     setPersonalTitle(typeof metadata.personal_title === "string" ? metadata.personal_title : "");
     setIndividualRole(typeof metadata.professional_role === "string" ? metadata.professional_role : savedJobTitle);
+    setContactPersonFirstName(typeof metadata.contact_person_first_name === "string" ? metadata.contact_person_first_name : (typeof metadata.first_name === "string" ? metadata.first_name : metadataFirstName));
+    setContactPersonLastName(typeof metadata.contact_person_last_name === "string" ? metadata.contact_person_last_name : (typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" ")));
+    setContactPersonRole(typeof metadata.contact_person_role === "string" ? metadata.contact_person_role : "");
+    setContactPersonEmail(typeof metadata.contact_person_email === "string" ? metadata.contact_person_email : user.email ?? "");
+    setContactPersonPhone(typeof metadata.contact_person_phone === "string" ? metadata.contact_person_phone : "");
     setQualificationDepartment(typeof metadata.qualification_department === "string" ? metadata.qualification_department : "");
     setQualificationPosition(typeof metadata.qualification_position === "string" ? metadata.qualification_position : "");
     setQualificationInstitution(typeof metadata.qualification_institution === "string" ? metadata.qualification_institution : "");
@@ -223,7 +254,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     setIndividualBio(typeof metadata.bio === "string" ? metadata.bio : "");
     setEmail(user.email ?? profile?.email ?? "");
     setPhone(typeof metadata.phone === "string" ? metadata.phone : "");
-    setLinkedin(typeof metadata.linkedin_url === "string" ? metadata.linkedin_url : "");
     setAvatarUrl(profile?.avatar_url ?? "");
     const savedLocation = profile?.location?.split(",").map((part) => part.trim()) ?? [];
     const metadataState = typeof metadata.state === "string" ? metadata.state : "";
@@ -273,7 +303,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   };
 
   const createAccount = async () => {
-    if (!firstName || !lastName || !jobTitle || !email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       toast.error("Please complete all required fields.");
       return;
     }
@@ -285,23 +315,15 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       toast.error("Password does not match.");
       return;
     }
-    if (!validatePhone()) return;
-
     setBusy(true);
     try {
-      const fullName = `${firstName} ${lastName}`.trim();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/login?next=${encodeURIComponent("/onboarding")}`,
           data: {
-            full_name: fullName,
-            first_name: firstName,
-            last_name: lastName,
-            role_title: jobTitle,
-            phone,
-            linkedin_url: linkedin,
+            account_type: "",
           },
         },
       });
@@ -343,8 +365,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
   const nextStep = () => {
     if (step === 2) {
+      if (!accountType) {
+        toast.error("Please choose whether you are applying as an organisation or an individual.");
+        return;
+      }
       const missingDetails = isIndividual
         ? [
+            !firstName && "first name",
+            !lastName && "last name",
             !personalTitle && "title",
             !qualificationDepartment && "qualification department",
             !qualificationPosition && "qualification position",
@@ -357,6 +385,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             !orgType && "organisation type",
             !state && "state",
             !lga && "local government area",
+            !contactPersonFirstName && "contact person's first name",
+            !contactPersonLastName && "contact person's last name",
+            !contactPersonRole && "contact person's role",
+            !contactPersonEmail && "contact person's email",
           ].filter(Boolean);
       if (missingDetails.length > 0) {
         toast.error(`Please provide your ${missingDetails.join(", ")}.`);
@@ -378,12 +410,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const progress = useMemo(() => {
-    const required = [orgName, orgType, state, lga, firstName, lastName, jobTitle, email, password, confirmPassword, tier];
-    const filled = required.filter(Boolean).length;
-    return Math.round((filled / required.length) * 100);
-  }, [orgName, orgType, state, lga, firstName, lastName, jobTitle, email, password, confirmPassword, tier]);
-
   const allConsented = consents.every(Boolean);
   const phoneNumber = phone ? `+234${phone}` : "";
   const location = `${lga}, ${state}`;
@@ -394,8 +420,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       navigate({ to: "/login", search: { next: "/onboarding" } });
       return;
     }
-    if (!tier || (!isIndividual && (!orgName || !orgType || !lga)) || !state || (isIndividual && !lga) || !firstName || !lastName ||
-      (!isIndividual && !jobTitle) || (isIndividual && (!personalTitle || !qualificationDepartment || !qualificationPosition || !qualificationInstitution || !researchInterests)) || !email) {
+    if (!accountType || !tier || (!isIndividual && (!orgName || !orgType || !lga || !contactPersonFirstName || !contactPersonLastName || !contactPersonRole || !contactPersonEmail)) || !state || (isIndividual && (!lga || !firstName || !lastName)) ||
+      (isIndividual && (!personalTitle || !qualificationDepartment || !qualificationPosition || !qualificationInstitution || !researchInterests)) || !email) {
       toast.error("Please complete all required fields and pick a tier.");
       return;
     }
@@ -404,13 +430,18 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
     setBusy(true);
     try {
-      const full_name = `${firstName} ${lastName}`.trim();
+      const full_name = isIndividual
+        ? `${firstName} ${lastName}`.trim()
+        : `${contactPersonFirstName} ${contactPersonLastName}`.trim();
       const userId = user.id;
       const applicationOrganisation = isIndividual ? "Individual member" : orgName;
       const applicationOrgType: Database["public"]["Enums"]["org_type"] = isIndividual
         ? "other"
         : orgType as Database["public"]["Enums"]["org_type"];
       const applicationLocation = location;
+      const applicationEmail = isIndividual ? email : contactPersonEmail;
+      const applicationPhone = isIndividual ? phoneNumber : contactPersonPhone ? `+234${contactPersonPhone.replace(/\D/g, "").replace(/^0/, "")}` : "";
+      const applicationRole = isIndividual ? (individualRole || personalTitle) : contactPersonRole;
       const qualificationSummary = [qualificationPosition, qualificationDepartment, qualificationInstitution].filter(Boolean).join(" — ");
       const application_data = {
         account_type: isIndividual ? "individual" : "organisation",
@@ -421,6 +452,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         qualification_institution: isIndividual ? qualificationInstitution : "",
         research_interests: isIndividual ? researchInterests : "",
         research_area: isIndividual ? researchArea : "",
+        contact_person_first_name: isIndividual ? "" : contactPersonFirstName,
+        contact_person_last_name: isIndividual ? "" : contactPersonLastName,
+        contact_person_role: isIndividual ? "" : contactPersonRole,
+        contact_person_email: isIndividual ? "" : contactPersonEmail,
+        contact_person_phone: isIndividual ? "" : applicationPhone,
         requested_tier: tier,
         aum_range: aum,
         investment_stage: stage,
@@ -438,11 +474,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         _full_name: full_name,
         _organisation_name: applicationOrganisation,
         _organisation_type: applicationOrgType,
-        _role_title: isIndividual ? (individualRole || personalTitle) : jobTitle,
+        _role_title: applicationRole,
         _location: applicationLocation,
         _website_url: website || "",
-        _linkedin_url: linkedin || "",
-        _phone: phoneNumber,
+        _linkedin_url: "",
+        _phone: applicationPhone,
         _sdg_focus: sdgs,
         _sectors: sectors,
         _bio: isIndividual ? individualBio : statement || "",
@@ -457,15 +493,15 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           data: {
             userId,
             fullName: full_name,
-            email,
-            phone: phoneNumber,
+            email: applicationEmail,
+            phone: applicationPhone,
             memberType: isIndividual ? "individual" : "organisation",
             organisationName: applicationOrganisation,
             organisationType: isIndividual ? "Individual" : ORG_TYPES.find((o) => o.key === orgType)?.label ?? orgType,
-            roleTitle: isIndividual ? (individualRole || personalTitle) : jobTitle,
+            roleTitle: applicationRole,
             location: applicationLocation,
             website,
-            linkedin,
+            linkedin: "",
             personalTitle: isIndividual ? personalTitle : "",
             qualification: isIndividual ? qualificationSummary : "",
             qualificationDepartment: isIndividual ? qualificationDepartment : "",
@@ -473,6 +509,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             qualificationInstitution: isIndividual ? qualificationInstitution : "",
             researchInterests: isIndividual ? researchInterests : "",
             researchArea: isIndividual ? researchArea : "",
+            contactPersonFirstName: isIndividual ? "" : contactPersonFirstName,
+            contactPersonLastName: isIndividual ? "" : contactPersonLastName,
+            contactPersonRole: isIndividual ? "" : contactPersonRole,
+            contactPersonEmail: isIndividual ? "" : contactPersonEmail,
+            contactPersonPhone: isIndividual ? "" : applicationPhone,
             bio: isIndividual ? individualBio : "",
             avatarUrl,
             tier,
@@ -598,36 +639,59 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   }
 
   return (
-    <div className={`min-h-screen ${step === 3 ? "bg-white" : "bg-[#F7FBFA]"}`}>
+    <div className="min-h-screen bg-[#F7FBFA]">
       <PublicHeader />
 
-      {step !== 3 && (
-        <section className="px-6 pt-8 text-start text-black">
-          <div className="mx-auto max-w-2xl">
-            <h1 className="font-display text-3xl md:text-5xl">
-              {mode === "onboarding" ? `Hi, ${firstName || "there"}` : <>Join the <span className="text-gold">NIEC</span> Community</>}
-            </h1>
-            <p className="mt-4 text-black/75">
-              {mode === "onboarding"
-                ? "Kindly complete your onboarding"
-                : "Apply for membership in Nigeria's premier impact economy network — connecting capital and community for Africa's new economy."}
-            </p>
+      <div className="py-6">
+        <div
+          aria-label="Application progress"
+          className={`relative mx-auto flex items-start justify-between px-6 ${
+            step === 3 ? "max-w-6xl" : "max-w-3xl"
+          }`}
+        >
+          <div className="absolute left-[12.5%] right-[12.5%] top-5 h-1.5 rounded-full bg-slate-200">
+            <div
+              className="h-full rounded-full bg-primary/70 transition-all duration-300"
+              style={{ width: `${wizardProgress}%` }}
+            />
           </div>
-        </section>
-      )}
-
-      {/* Progress */}
-      {/* <div className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">Step {step} of 3</span>
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-            <div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="w-10 text-right text-xs font-medium text-primary">{progress}%</span>
+          {wizardSteps.map(({ label, Icon }, index) => {
+            const stepNumber = index + 1;
+            const isReached = stepNumber <= step;
+            const isCurrent = stepNumber === step;
+            return (
+              <div
+                key={label}
+                aria-current={isCurrent ? "step" : undefined}
+                className="relative z-10 flex w-1/4 flex-col items-center gap-2 text-center"
+              >
+                <div
+                  className={`grid h-10 w-10 place-items-center rounded-full transition-all ${
+                    isCurrent
+                      ? "bg-primary text-primary-foreground ring-4 ring-primary/20 shadow-md"
+                      : stepNumber < step
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-slate-200 bg-white text-slate-400"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <span className={`text-xs sm:text-sm ${isCurrent ? "font-semibold text-primary" : isReached ? "text-foreground" : "text-muted-foreground"}`}>
+                  {label}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      </div> */}
+      </div>
 
       <main className={`mx-auto ${step === 3 ? "max-w-6xl" : "max-w-3xl"} space-y-6 px-6 py-10`}>
+        <section aria-labelledby="application-step-title" className="space-y-1">
+          <h1 id="application-step-title" className="font-display text-xl text-primary">
+            {screenTitle}
+          </h1>
+          <p className="text-sm text-muted-foreground">{screenDescription}</p>
+        </section>
 
         {step === 2 && (
           <>
@@ -652,10 +716,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </div>
           </Section>
         )}
-        {isIndividual ? (
+        {accountType && (isIndividual ? (
           <>
             <Section title="Individual profile" desc="Complete your personal and professional profile.">
-              <Field label="Select title *">
+              <Row>
+                <Field label="First Name *"><Input value={firstName} placeholder="John" onChange={setFirstName} /></Field>
+                <Field label="Last Name *"><Input value={lastName} placeholder="Doe" onChange={setLastName} /></Field>
+              </Row>
+              <Field label="Select Title *">
                 <Select
                   value={personalTitle}
                   onChange={setPersonalTitle}
@@ -663,7 +731,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 />
               </Field>
               <Row>
-                <Field label="Select state *">
+                <Field label="Select State *">
                   <LocationDropdown
                     value={state}
                     options={NIGERIAN_STATES}
@@ -684,7 +752,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   />
                 </Field>
               </Row>
-              <Field label="Bio / description">
+              <Field label="Bio / Description">
                 <textarea value={individualBio} onChange={(event) => setIndividualBio(event.target.value)} rows={3}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
@@ -704,10 +772,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   />
                 </Field>
               </Row>
-              <Field label="Institution or organisation *">
+              <Field label="Institution or Organisation *">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
-              <Field label="Current research area (optional)">
+              <Field label="Current Research Area (Optional)">
                 <textarea
                   value={researchArea}
                   onChange={(event) => setResearchArea(event.target.value)}
@@ -717,7 +785,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 />
               </Field>
               <Row>
-                <Field label="Research interests *">
+                <Field label="Research Interests *">
                   <SearchableOptionsField
                     value={researchInterests}
                     onChange={setResearchInterests}
@@ -726,14 +794,13 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                     label="research interest"
                   />
                 </Field>
-                <Field label="Professional role">
+                <Field label="Professional Role">
                   <SearchableOptionsField
                     value={individualRole}
                     onChange={setIndividualRole}
                     options={JOB_TITLES}
                     placeholder="Search for professional roles"
                     label="professional role"
-                    icon="user"
                   />
                 </Field>
               </Row>
@@ -743,8 +810,8 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <>
         <Section title="Organisation details">
           <Row>
-            <Field label="Organisation name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
-            <Field label="Organisation type *">
+            <Field label="Organisation Name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
+            <Field label="Organisation Type *">
               <div className="relative">
                 <button
                   type="button"
@@ -805,11 +872,35 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               />
             </Field>
           </Row>
+          <Divider noTop>Contact person</Divider>
           <Row>
-            <Field label="Investment stage focus">
+            <Field label="First Name *"><Input value={contactPersonFirstName} placeholder="John" onChange={setContactPersonFirstName} /></Field>
+            <Field label="Last Name *"><Input value={contactPersonLastName} placeholder="Doe" onChange={setContactPersonLastName} /></Field>
+          </Row>
+          <Row>
+            <Field label="Role / Position *"><Input value={contactPersonRole} placeholder="Contact person's role" onChange={setContactPersonRole} /></Field>
+            <Field label="Email Address *"><Input value={contactPersonEmail} type="email" placeholder="name@organisation.org" onChange={setContactPersonEmail} /></Field>
+          </Row>
+          <Field label="Phone">
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
+              <Input
+                value={contactPersonPhone}
+                onChange={(value) => {
+                  const digits = value.replace(/\D/g, "").replace(/^0/, "").slice(0, 10);
+                  setContactPersonPhone(digits);
+                }}
+                type="tel"
+                placeholder="800 000 0000"
+                className="pl-14"
+              />
+            </div>
+          </Field>
+          <Row>
+            <Field label="Investment Stage Focus">
               <Select value={stage} onChange={setStage} options={[{ key: "", label: "Select stage" }, ...STAGE_OPTS.map(o => ({ key: o, label: o }))]} />
             </Field>
-            <Field label="AUM / Annual budget">
+            <Field label="AUM / Annual Budget">
               <Select value={aum} onChange={setAum} options={[{ key: "", label: "Select range" }, ...AUM_OPTS.map(o => ({ key: o, label: o }))]} />
             </Field>
           </Row>
@@ -828,19 +919,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           </Row>
         </Section>
           </>
-        )}
+        ))}
         </>
         )}
 
         {step === 3 && (
           <section className="space-y-5">
-            <div>
-              <h2 className="font-display text-xl text-primary">Choose your membership tier</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Select the tier that best reflects your{" "}
-                {isIndividual ? "capacity and engagement level" : "organisation's capacity and engagement level"}.
-              </p>
-            </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {TIERS.map((t) => {
                 const selected = tier === t.key;
@@ -870,11 +954,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                       onClick={() => setTier(t.key)}
                       className={`mt-4 w-full rounded-full px-4 py-2 text-center text-xs font-semibold ${
                         selected
-                          ? "border border-primary bg-transparent text-primary hover:bg-primary/5"
-                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                          : "border border-primary bg-transparent text-primary hover:bg-primary/5"
                       }`}
                     >
-                      {selected ? "Your selection" : "Upgrade"}
+                      {selected ? "Your selection" : t.fee === "Free" ? "Select" : "Upgrade"}
                     </button>
                   </article>
                 );
@@ -886,16 +970,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 1 && (
           <>
-        <Section title="Create an account" desc="Provide your personal and professional details to create a secure account.">
-          <Row>
-            <Field label="First name *"><Input value={firstName} placeholder="John" onChange={setFirstName} /></Field>
-            <Field label="Last name *"><Input value={lastName} placeholder="Doe" onChange={setLastName} /></Field>
-          </Row>
+        <Section title="Create an account" desc="Create a secure account to continue with your application.">
           {isIndividual ? (
             <>
               <Row>
-                <Field label="Email address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
-                <Field label="Select title *">
+                <Field label="Email Address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
+                <Field label="Select Title *">
                   <Select
                     value={personalTitle}
                     onChange={setPersonalTitle}
@@ -903,7 +983,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   />
                 </Field>
               </Row>
-              <Field label="Bio / description">
+              <Field label="Bio / Description">
                 <textarea value={individualBio} onChange={(event) => setIndividualBio(event.target.value)} rows={3}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
@@ -923,10 +1003,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   />
                 </Field>
               </Row>
-              <Field label="Institution or organisation *">
+              <Field label="Institution or Organisation *">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
-              <Field label="Current research area (optional)">
+              <Field label="Current Research Area (Optional)">
                 <textarea
                   value={researchArea}
                   onChange={(event) => setResearchArea(event.target.value)}
@@ -935,7 +1015,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </Field>
-              <Field label="Research interests *">
+              <Field label="Research Interests *">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -1021,41 +1101,19 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   onChange={(value) => setState(value as NigerianState)}
                 />
               </Field>
-              <Row>
-                <Field label="Phone">
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
-                    <Input value={phone} onChange={handlePhoneChange} type="tel" placeholder="800 000 0000" className="pl-14" />
-                  </div>
-                </Field>
-                <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
-              </Row>
+              <Field label="Phone">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
+                  <Input value={phone} onChange={handlePhoneChange} type="tel" placeholder="800 000 0000" className="pl-14" />
+                </div>
+              </Field>
             </>
           ) : (
           <>
-          <Row>
-            <Field label="Professional role *">
-              <LocationDropdown
-                value={jobTitle}
-                options={JOB_TITLES}
-                placeholder="Select professional role"
-                onChange={setJobTitle}
-              />
-            </Field>
-            <Field label="Email address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
-          </Row>
-          <Row>
-            <Field label="Phone">
-              <div className="relative">
-                <span className="absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">+234</span>
-                <Input value={phone} onChange={handlePhoneChange} type="tel" placeholder="800 000 0000" className="pl-14" />
-              </div>
-            </Field>
-            <Field label="LinkedIn"><Input value={linkedin} onChange={setLinkedin} placeholder="https://linkedin.com/in/..." /></Field>
-          </Row>
+          <Field label="Email Address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
           </>
           )}
-          <Field label="Set a password * (min 8 characters)">
+          <Field label="Create Password * (Min 8 Characters)">
             <div className="relative">
               <Input
                 value={password}
@@ -1078,7 +1136,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               </button>
             </div>
           </Field>
-          <Field label="Confirm password">
+          <Field label="Confirm Password">
             <div className="relative">
               <Input
                 value={confirmPassword}
@@ -1120,7 +1178,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
           <Divider>How did you hear about NIEC?</Divider>
           <PillRow options={HEARD} value={heard} onChange={setHeard} />
-          <Field label="Statement of intent">
+          <Field label="Statement of Intent">
             <p className="mb-2 text-xs text-muted-foreground">
               In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
             </p>
@@ -1159,10 +1217,12 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               {busy ? "Creating account…" : "Create account"} <ChevronRight className="h-4 w-4" />
             </button>
           ) : step < 4 ? (
-            <button onClick={nextStep} type="button"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
-              Next <ChevronRight className="h-4 w-4" />
-            </button>
+            mode === "onboarding" && step === 2 && !accountType ? null : (
+              <button onClick={nextStep} type="button"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+                Next <ChevronRight className="h-4 w-4" />
+              </button>
+            )
           ) : (
             <button onClick={submit} disabled={busy} type="button"
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
@@ -1170,16 +1230,18 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             </button>
           )}
 
-          {user ? (
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
-            >
-              Sign out
-            </button>
-          ) : (
-            <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
+          {mode === "signup" && (
+            user ? (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
+              >
+                Sign out
+              </button>
+            ) : (
+              <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
+            )
           )}
         </div>
         {/* <div className="flex justify-center pt-2">
@@ -1204,14 +1266,12 @@ function SearchableOptionsField({
   options,
   placeholder,
   label,
-  icon = "search",
 }: {
   value: string;
   onChange: (value: string) => void;
   options: readonly string[];
   placeholder: string;
   label: string;
-  icon?: "search" | "user";
 }) {
   const [open, setOpen] = useState(false);
   const listId = `searchable-${label.replace(/\s+/g, "-")}-options`;
@@ -1221,11 +1281,6 @@ function SearchableOptionsField({
 
   return (
     <div className="relative">
-      {icon === "user" ? (
-        <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      ) : (
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-      )}
       <input
         type="text"
         role="combobox"
@@ -1248,7 +1303,7 @@ function SearchableOptionsField({
           }
         }}
         placeholder="Search for research interests"
-        className="h-10 w-full rounded-md border border-input bg-background py-2 pl-9 pr-10 text-sm outline-none focus:border-primary"
+        className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm outline-none focus:border-primary"
       />
       {value && (
         <button
@@ -1311,7 +1366,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
   return (
     <div>
-      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <label className="text-xs font-medium tracking-wider text-muted-foreground">
         {requiredMarkerIndex === -1 ? label : (
           <>
             {label.slice(0, requiredMarkerIndex)}
@@ -1394,11 +1449,46 @@ function LocationDropdown({
   );
 }
 function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const selectedOption = options.find((option) => option.key === value);
+
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)}
-      className={`h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary`} >
-      {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-    </select>
+    <div className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((isOpen) => !isOpen)}
+        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm outline-none focus:border-primary"
+      >
+        <span className={value ? "text-foreground" : "text-muted-foreground"}>
+          {selectedOption?.label ?? ""}
+        </span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-input bg-white shadow-lg [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+        >
+          {options.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              role="option"
+              aria-selected={value === option.key}
+              onClick={() => {
+                onChange(option.key);
+                setOpen(false);
+              }}
+              className="block w-full bg-white px-3 py-2 text-left text-sm text-foreground transition hover:bg-muted"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 function PillRow({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {

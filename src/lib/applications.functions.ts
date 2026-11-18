@@ -33,6 +33,11 @@ export interface JoinApplicationInput {
   qualificationInstitution?: string;
   researchInterests?: string;
   researchArea?: string;
+  contactPersonFirstName?: string;
+  contactPersonLastName?: string;
+  contactPersonRole?: string;
+  contactPersonEmail?: string;
+  contactPersonPhone?: string;
   bio?: string;
   avatarUrl?: string;
 }
@@ -99,6 +104,11 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
         qualification_institution: clean(data.qualificationInstitution, 300) || null,
         research_interests: clean(data.researchInterests, 2000) || null,
         research_area: clean(data.researchArea, 300) || null,
+        contact_person_first_name: clean(data.contactPersonFirstName, 160) || null,
+        contact_person_last_name: clean(data.contactPersonLastName, 160) || null,
+        contact_person_role: clean(data.contactPersonRole, 160) || null,
+        contact_person_email: clean(data.contactPersonEmail, 200) || null,
+        contact_person_phone: clean(data.contactPersonPhone, 60) || null,
         bio: clean(data.bio, 4000) || null,
         avatar_url: clean(data.avatarUrl, 500) || null,
       },
