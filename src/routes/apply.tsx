@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { initMembershipPayment } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
@@ -152,6 +153,7 @@ function toggle<T>(arr: T[], v: T) {
 
 function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const navigate = useNavigate();
+  const startMembershipPayment = useServerFn(initMembershipPayment);
   const { user, profile, loading, refresh, signOut } = useAuth();
   const [tier, setTier] = useState<typeof TIERS[number]["key"] | "">("");
   const [accountType, setAccountType] = useState<"organisation" | "individual" | "">("");
@@ -541,7 +543,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       if (PAYABLE[tier]) {
         toast.success("Application saved — taking you to secure payment…");
         try {
-          const res = await initMembershipPayment({
+          const res = await startMembershipPayment({
             data: {
               email,
               tier,
@@ -554,12 +556,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             return;
           }
           toast.error(res.error);
+          navigate({
+            to: "/payment",
+            search: { tier, email, name: full_name, reference: "" },
+          });
+          return;
         } catch (error) {
           console.error("[apply:payment]", error);
+          toast.error(
+            error instanceof Error ? error.message : "Could not start the payment.",
+          );
+          navigate({
+            to: "/payment",
+            search: { tier, email, name: full_name, reference: "" },
+          });
+          return;
         }
-        setDone(true);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
       }
 
       setDone(true);
@@ -1176,6 +1188,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
           <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
+          {/*
           <Divider>How did you hear about NIEC?</Divider>
           <PillRow options={HEARD} value={heard} onChange={setHeard} />
           <Field label="Statement of Intent">
@@ -1185,6 +1198,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
           </Field>
+          */}
         </Section>
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
