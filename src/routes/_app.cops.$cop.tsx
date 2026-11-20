@@ -41,6 +41,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
+const SHOW_COP_POLLS_AND_PROPOSALS = false;
+
 export const Route = createFileRoute("/_app/cops/$cop")({
   component: CopWorkspace,
 });
@@ -432,10 +434,14 @@ function CopWorkspace() {
               <span className="inline-flex items-center gap-1">
                 <Layers className="h-3 w-3" /> {groups.length} working groups
               </span>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1">
-                <Vote className="h-3 w-3" /> {polls.length} polls
-              </span>
+              {SHOW_COP_POLLS_AND_PROPOSALS && (
+                <>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Vote className="h-3 w-3" /> {polls.length} polls
+                  </span>
+                </>
+              )}
             </div>
           </div>
           <div className="flex gap-2">
@@ -461,17 +467,21 @@ function CopWorkspace() {
           <TabsTrigger value="groups">
             <Layers className="mr-1 h-4 w-4" /> Working Groups
           </TabsTrigger>
-          <TabsTrigger value="polls">
-            <Vote className="mr-1 h-4 w-4" /> Polls
-          </TabsTrigger>
-          <TabsTrigger value="proposals">
-            <FileText className="mr-1 h-4 w-4" /> Proposals{" "}
-            {rfcs.filter((r) => r.status === "open").length > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {rfcs.filter((r) => r.status === "open").length}
-              </Badge>
-            )}
-          </TabsTrigger>
+          {SHOW_COP_POLLS_AND_PROPOSALS && (
+            <>
+              <TabsTrigger value="polls">
+                <Vote className="mr-1 h-4 w-4" /> Polls
+              </TabsTrigger>
+              <TabsTrigger value="proposals">
+                <FileText className="mr-1 h-4 w-4" /> Proposals{" "}
+                {rfcs.filter((r) => r.status === "open").length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {rfcs.filter((r) => r.status === "open").length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="events">
             <Calendar className="mr-1 h-4 w-4" /> Events
           </TabsTrigger>
@@ -671,125 +681,132 @@ function CopWorkspace() {
           </div>
         </TabsContent>
 
-        {/* Polls */}
-        <TabsContent value="polls" className="mt-6">
-          <div className="mb-4 flex justify-end">
-            {canManage && <NewPollDialog cop={cop} onCreated={load} />}
-          </div>
-          <div className="space-y-4">
-            {polls.map((p) => {
-              const opts: string[] = (p.options as any) ?? [];
-              const counts = voteCounts[p.id] ?? {};
-              const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
-              const closed = p.closes_at && new Date(p.closes_at) < new Date();
-              return (
-                <div key={p.id} className="rounded-xl border bg-card p-5">
-                  <h3 className="font-medium">{p.question}</h3>
-                  <div className="mt-3 space-y-2">
-                    {opts.map((opt, i) => {
-                      const c = counts[i] ?? 0;
-                      const pct = Math.round((c / total) * 100);
-                      const mine = (myVotes[p.id] ?? new Set()).has(i);
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => !closed && vote(p.id, i, p.multi_select)}
-                          disabled={!!closed}
-                          className={`relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition ${mine ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
-                        >
-                          <div
-                            className="absolute inset-y-0 left-0 bg-primary/10"
-                            style={{ width: `${pct}%` }}
-                          />
-                          <div className="relative flex items-center justify-between">
-                            <span>
-                              {opt} {mine && "✓"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {c} · {pct}%
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+        {SHOW_COP_POLLS_AND_PROPOSALS && (
+          <TabsContent value="polls" className="mt-6">
+            <div className="mb-4 flex justify-end">
+              {canManage && <NewPollDialog cop={cop} onCreated={load} />}
+            </div>
+            <div className="space-y-4">
+              {polls.map((p) => {
+                const opts: string[] = (p.options as any) ?? [];
+                const counts = voteCounts[p.id] ?? {};
+                const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+                const closed = p.closes_at && new Date(p.closes_at) < new Date();
+                return (
+                  <div key={p.id} className="rounded-xl border bg-card p-5">
+                    <h3 className="font-medium">{p.question}</h3>
+                    <div className="mt-3 space-y-2">
+                      {opts.map((opt, i) => {
+                        const c = counts[i] ?? 0;
+                        const pct = Math.round((c / total) * 100);
+                        const mine = (myVotes[p.id] ?? new Set()).has(i);
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => !closed && vote(p.id, i, p.multi_select)}
+                            disabled={!!closed}
+                            className={`relative w-full overflow-hidden rounded-md border px-3 py-2 text-left text-sm transition ${mine ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
+                          >
+                            <div
+                              className="absolute inset-y-0 left-0 bg-primary/10"
+                              style={{ width: `${pct}%` }}
+                            />
+                            <div className="relative flex items-center justify-between">
+                              <span>
+                                {opt} {mine && "✓"}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {c} · {pct}%
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {p.multi_select ? "Multi-select" : "Single choice"}
+                      {closed
+                        ? " · Closed"
+                        : p.closes_at
+                          ? ` · Closes ${new Date(p.closes_at).toLocaleDateString()}`
+                          : ""}
+                    </p>
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {p.multi_select ? "Multi-select" : "Single choice"}
-                    {closed
-                      ? " · Closed"
-                      : p.closes_at
-                        ? ` · Closes ${new Date(p.closes_at).toLocaleDateString()}`
-                        : ""}
-                  </p>
-                </div>
-              );
-            })}
-            {polls.length === 0 && <p className="text-sm text-muted-foreground">No polls yet.</p>}
-          </div>
-        </TabsContent>
+                );
+              })}
+              {polls.length === 0 && (
+                <p className="text-sm text-muted-foreground">No polls yet.</p>
+              )}
+            </div>
+          </TabsContent>
+        )}
 
-        {/* Proposals (RFCs) */}
-        <TabsContent value="proposals" className="mt-6">
-          <div className="mb-4 flex justify-end">
-            {joined && <NewRfcDialog cop={cop} onCreated={load} />}
-          </div>
-          <div className="space-y-3">
-            {rfcs.map((r) => {
-              const counts = rfcReactions[r.id] ?? {};
-              const mine = myRfcReactions[r.id];
-              return (
-                <div key={r.id} className="rounded-xl border bg-card p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-display text-lg">{r.title}</h3>
-                        <RfcStatusBadge s={r.status} />
-                      </div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {r.profiles?.full_name} · {new Date(r.created_at).toLocaleDateString()}
+        {SHOW_COP_POLLS_AND_PROPOSALS && (
+          <TabsContent value="proposals" className="mt-6">
+            <div className="mb-4 flex justify-end">
+              {joined && <NewRfcDialog cop={cop} onCreated={load} />}
+            </div>
+            <div className="space-y-3">
+              {rfcs.map((r) => {
+                const counts = rfcReactions[r.id] ?? {};
+                const mine = myRfcReactions[r.id];
+                return (
+                  <div key={r.id} className="rounded-xl border bg-card p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-display text-lg">{r.title}</h3>
+                          <RfcStatusBadge s={r.status} />
+                        </div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {r.profiles?.full_name} · {new Date(r.created_at).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm">{r.body}</p>
-                  {r.status !== "open" && r.decision_note && (
-                    <p className="mt-2 rounded-md bg-muted/50 p-2 text-xs">
-                      <strong>Decision note:</strong> {r.decision_note}
-                    </p>
-                  )}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => reactRfc(r.id, "support")}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "support" ? "border-success bg-success/10 text-primary" : "hover:bg-muted"}`}
-                    >
-                      <ThumbsUp className="h-3 w-3" /> Support {counts.support ?? 0}
-                    </button>
-                    <button
-                      onClick={() => reactRfc(r.id, "concern")}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "concern" ? "border-destructive bg-destructive/10 text-destructive" : "hover:bg-muted"}`}
-                    >
-                      <AlertTriangle className="h-3 w-3" /> Concern {counts.concern ?? 0}
-                    </button>
-                    <button
-                      onClick={() => reactRfc(r.id, "watching")}
-                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "watching" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"}`}
-                    >
-                      <Eye className="h-3 w-3" /> Watching {counts.watching ?? 0}
-                    </button>
-                    {canManage && r.status === "open" && (
-                      <DecideRfcDialog rfcId={r.id} onDecided={(s, n) => decideRfc(r.id, s, n)} />
+                    <p className="mt-2 whitespace-pre-wrap text-sm">{r.body}</p>
+                    {r.status !== "open" && r.decision_note && (
+                      <p className="mt-2 rounded-md bg-muted/50 p-2 text-xs">
+                        <strong>Decision note:</strong> {r.decision_note}
+                      </p>
                     )}
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => reactRfc(r.id, "support")}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "support" ? "border-success bg-success/10 text-primary" : "hover:bg-muted"}`}
+                      >
+                        <ThumbsUp className="h-3 w-3" /> Support {counts.support ?? 0}
+                      </button>
+                      <button
+                        onClick={() => reactRfc(r.id, "concern")}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "concern" ? "border-destructive bg-destructive/10 text-destructive" : "hover:bg-muted"}`}
+                      >
+                        <AlertTriangle className="h-3 w-3" /> Concern {counts.concern ?? 0}
+                      </button>
+                      <button
+                        onClick={() => reactRfc(r.id, "watching")}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${mine === "watching" ? "border-primary bg-primary/10 text-primary" : "hover:bg-muted"}`}
+                      >
+                        <Eye className="h-3 w-3" /> Watching {counts.watching ?? 0}
+                      </button>
+                      {canManage && r.status === "open" && (
+                        <DecideRfcDialog
+                          rfcId={r.id}
+                          onDecided={(s, n) => decideRfc(r.id, s, n)}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            {rfcs.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No proposals yet.{" "}
-                {joined ? "Be the first to submit one." : "Join the CoP to submit one."}
-              </p>
-            )}
-          </div>
-        </TabsContent>
+                );
+              })}
+              {rfcs.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No proposals yet.{" "}
+                  {joined ? "Be the first to submit one." : "Join the CoP to submit one."}
+                </p>
+              )}
+            </div>
+          </TabsContent>
+        )}
 
         {/* Events */}
         <TabsContent value="events" className="mt-6">

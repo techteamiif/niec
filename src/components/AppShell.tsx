@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NiecLogo } from "@/components/brand/NiecLogo";
+import { toast } from "sonner";
 
 type NavItem = {
   to: string;
@@ -147,13 +148,21 @@ export function AppShell() {
 
           if (comingSoon) {
             return (
-              <div
+              <button
                 key={to}
+                type="button"
+                onClick={() =>
+                  toast.info(
+                    to === "/messages"
+                      ? "Message is not available at the moment"
+                      : `${label} is not available at the moment`,
+                  )
+                }
                 aria-disabled="true"
                 className="my-0.5 flex cursor-not-allowed items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60"
               >
                 {itemContent}
-              </div>
+              </button>
             );
           }
 

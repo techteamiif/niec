@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { initMembershipPayment } from "@/lib/payments.functions";
@@ -151,6 +151,12 @@ function toggle<T>(arr: T[], v: T) {
   return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 }
 
+function maskEmail(email: string) {
+  const [localPart, domain] = email.split("@");
+  if (!localPart || !domain) return email;
+  return `${localPart.slice(0, 4)}***@${domain}`;
+}
+
 function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const navigate = useNavigate();
   const startMembershipPayment = useServerFn(initMembershipPayment);
@@ -160,6 +166,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [orgName, setOrgName] = useState("");
   const [orgType, setOrgType] = useState("");
   const [orgTypeOpen, setOrgTypeOpen] = useState(false);
+  const orgTypeDropdownRef = useDismissableDropdown<HTMLDivElement>(orgTypeOpen, setOrgTypeOpen);
   const [state, setState] = useState<NigerianState | "">("");
   const [lga, setLga] = useState("");
   const [website, setWebsite] = useState("");
@@ -180,6 +187,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [qualificationInstitution, setQualificationInstitution] = useState("");
   const [researchInterests, setResearchInterests] = useState("");
   const [researchInterestOpen, setResearchInterestOpen] = useState(false);
+  const researchInterestDropdownRef = useDismissableDropdown<HTMLDivElement>(
+    researchInterestOpen,
+    setResearchInterestOpen,
+  );
   const [researchArea, setResearchArea] = useState("");
   const [individualBio, setIndividualBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -604,25 +615,31 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             <Check className="h-10 w-10 text-primary" />
           </div>
           <h1 className="mt-6 font-display text-3xl text-primary">
-            {awaitingVerification ? "Verify your email address" : "Application submitted"}
+            {awaitingVerification ? "Confirm your email" : "Application submitted"}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {awaitingVerification ? (
-              <>Please check your inbox and click the confirmation link to complete your account setup.</>
+              <>
+                Your verification link has been sent to {maskEmail(email)}. Click the link to
+                complete your setup.
+              </>
             ) : (
               <>Thank you, {firstName}. Your {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>} has been received. Your account is ready to use — continue to your dashboard to get started.</>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             {awaitingVerification ? (
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Can't find it? Check your spam folder,
+                </p>
                 <button
                   type="button"
                   onClick={resendConfirmationEmail}
                   disabled={resendingEmail}
                   className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {resendingEmail ? "Sending…" : "Resend Email"}
+                  {resendingEmail ? "Sending…" : "Resend the email"}
                 </button>
                 <button
                   type="button"
@@ -633,7 +650,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   }}
                   className="text-sm text-primary underline-offset-4 hover:underline"
                 >
-                  Change Email Address
+                  Change your email address
                 </button>
               </div>
             ) : (
@@ -822,9 +839,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <>
         <Section title="Organisation details">
           <Row>
-            <Field label="Organisation Name *"><Input value={orgName} onChange={setOrgName} placeholder="Full registered name" /></Field>
+            <Field label="Organisation Name *"><Input value={orgName} onChange={setOrgName} placeholder="Enter name of organisation" /></Field>
             <Field label="Organisation Type *">
-              <div className="relative">
+              <div ref={orgTypeDropdownRef} className="relative">
                 <button
                   type="button"
                   aria-haspopup="listbox"
@@ -884,7 +901,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
               />
             </Field>
           </Row>
-          <Divider noTop>Contact person</Divider>
+          <h3 className="mt-2 font-display text-xl text-primary">Contact person</h3>
           <Row>
             <Field label="First Name *"><Input value={contactPersonFirstName} placeholder="John" onChange={setContactPersonFirstName} /></Field>
             <Field label="Last Name *"><Input value={contactPersonLastName} placeholder="Doe" onChange={setContactPersonLastName} /></Field>
@@ -937,22 +954,43 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 3 && (
           <section className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div
+              role="radiogroup"
+              aria-label="Membership tier"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+            >
               {TIERS.map((t) => {
                 const selected = tier === t.key;
                 return (
-                  <article
-                    key={t.key}
-                    className={`flex min-h-[220px] flex-col rounded-2xl border bg-white p-4 text-left shadow-sm transition ${
-                      selected
-                        ? "border-2 border-primary ring-1 ring-primary/20"
-                        : "border-border hover:border-primary/40"
-                    }`}
-                  >
-                    <div className="flex-1">
-                      <h3 className="font-display text-lg leading-tight text-foreground">
-                        {t.displayLabel}
-                      </h3>
+                  <label key={t.key} className="block cursor-pointer">
+                    <input
+                      type="radio"
+                      className="peer sr-only"
+                      name="membership-tier"
+                      value={t.key}
+                      checked={selected}
+                      onChange={() => setTier(t.key)}
+                    />
+                    <div
+                      className={`flex min-h-[220px] flex-col rounded-2xl border bg-white p-4 text-left shadow-sm transition peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 ${
+                        selected
+                          ? "border-2 border-primary ring-1 ring-primary/20"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <div className="flex flex-1 items-start justify-between gap-3">
+                        <h3 className="font-display text-lg leading-tight text-foreground">
+                          {t.displayLabel}
+                        </h3>
+                        <span
+                          aria-hidden="true"
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                            selected ? "border-primary" : "border-muted-foreground"
+                          }`}
+                        >
+                          {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                        </span>
+                      </div>
                       <p className="mt-2 font-display text-xl font-semibold text-primary">
                         {t.fee}
                       </p>
@@ -960,19 +998,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                         {t.description}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => setTier(t.key)}
-                      className={`mt-4 w-full rounded-full px-4 py-2 text-center text-xs font-semibold ${
-                        selected
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "border border-primary bg-transparent text-primary hover:bg-primary/5"
-                      }`}
-                    >
-                      {selected ? "Your selection" : t.fee === "Free" ? "Select" : "Upgrade"}
-                    </button>
-                  </article>
+                  </label>
                 );
               })}
             </div>
@@ -1028,7 +1054,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 />
               </Field>
               <Field label="Research Interests *">
-                <div className="relative">
+                <div ref={researchInterestDropdownRef} className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
@@ -1288,13 +1314,14 @@ function SearchableOptionsField({
   label: string;
 }) {
   const [open, setOpen] = useState(false);
+  const dropdownRef = useDismissableDropdown<HTMLDivElement>(open, setOpen);
   const listId = `searchable-${label.replace(/\s+/g, "-")}-options`;
   const matchingOptions = options.filter((option) =>
     option.toLowerCase().includes(value.trim().toLowerCase()),
   );
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <input
         type="text"
         role="combobox"
@@ -1407,6 +1434,27 @@ function Input({ value, onChange, type = "text", placeholder, className = "", li
     />
   );
 }
+function useDismissableDropdown<T extends HTMLElement>(
+  open: boolean,
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>,
+) {
+  const dropdownRef = useRef<T>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !dropdownRef.current?.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [open, setOpen]);
+
+  return dropdownRef;
+}
 function LocationDropdown({
   value,
   options,
@@ -1421,9 +1469,10 @@ function LocationDropdown({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const dropdownRef = useDismissableDropdown<HTMLDivElement>(open, setOpen);
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <button
         type="button"
         aria-haspopup="listbox"
@@ -1464,10 +1513,11 @@ function LocationDropdown({
 }
 function Select({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { key: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
+  const dropdownRef = useDismissableDropdown<HTMLDivElement>(open, setOpen);
   const selectedOption = options.find((option) => option.key === value);
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
       <button
         type="button"
         aria-haspopup="listbox"

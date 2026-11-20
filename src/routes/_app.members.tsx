@@ -6,6 +6,7 @@ import { UserAvatar } from "@/components/Avatar";
 import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
 import { MapPin, Search, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/members")({
   validateSearch: z.object({ q: z.string().optional() }),
@@ -113,13 +114,13 @@ function MembersPage() {
               )}
             </Link>
             {user && m.id !== user.id && (
-              <Link
-                to="/messages"
-                search={{ to: m.id }}
+              <button
+                type="button"
+                onClick={() => toast.info("Message is not available at the moment")}
                 className="mx-auto mt-4 flex w-fit items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted"
               >
                 <MessageCircle className="h-3 w-3" /> Message
-              </Link>
+              </button>
             )}
           </div>
         ))}

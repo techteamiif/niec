@@ -2,6 +2,11 @@ import type { Json } from "@/integrations/supabase/types";
 
 export interface OnboardingData {
   account_type?: "individual" | "organisation";
+  contact_person_first_name?: string;
+  contact_person_last_name?: string;
+  contact_person_role?: string;
+  contact_person_email?: string;
+  contact_person_phone?: string;
   requested_tier?: string;
   aum_range?: string;
   investment_stage?: string;
