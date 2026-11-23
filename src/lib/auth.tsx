@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadProfile, user]);
   const signOut = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/";
+    window.location.href = "/login";
   };
 
   const isStaff = roles.includes("admin") || roles.includes("super_admin");
