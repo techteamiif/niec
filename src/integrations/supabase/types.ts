@@ -794,6 +794,7 @@ export type Database = {
           amount_kobo: number
           created_at: string
           currency: string
+          guest_email: string | null
           id: string
           metadata: Json
           paid_at: string | null
@@ -801,12 +802,13 @@ export type Database = {
           resource_id: string
           resource_type: string
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount_kobo: number
           created_at?: string
           currency?: string
+          guest_email?: string | null
           id?: string
           metadata?: Json
           paid_at?: string | null
@@ -814,12 +816,13 @@ export type Database = {
           resource_id: string
           resource_type: string
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount_kobo?: number
           created_at?: string
           currency?: string
+          guest_email?: string | null
           id?: string
           metadata?: Json
           paid_at?: string | null
@@ -827,7 +830,7 @@ export type Database = {
           resource_id?: string
           resource_type?: string
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

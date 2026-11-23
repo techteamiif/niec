@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { initMembershipPayment, verifyMembershipPayment } from "@/lib/payments.functions";
 import { PublicHeader } from "@/components/PublicHeader";
 import { useAuth } from "@/lib/auth";
-import { formatMembershipExpiryDate } from "@/lib/membership";
+import { formatMembershipExpiryDate, formatMembershipPaymentDate } from "@/lib/membership";
 
 export const Route = createFileRoute("/payment")({
   head: () => ({
@@ -53,6 +53,7 @@ function PaymentPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
     status: "success" | "failed" | "pending" | "activation-failed";
+    membershipPaidAt?: string | null;
     membershipExpiresAt?: string | null;
     error?: string;
   } | null>(null);
@@ -77,6 +78,7 @@ function PaymentPage() {
           if (response.ok && response.status === "success") {
             setResult({
               status: "success",
+              membershipPaidAt: response.membershipPaidAt,
               membershipExpiresAt: response.membershipExpiresAt,
             });
             try {
@@ -158,12 +160,12 @@ function PaymentPage() {
               <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary/10">
                 <Check className="h-8 w-8 text-primary" />
               </div>
-              <h1 className="mt-5 font-display text-2xl text-primary">Payment confirmed</h1>
+              <h1 className="mt-5 font-display text-2xl text-primary">Payment successful</h1>
               <p className="mt-3 text-sm text-muted-foreground">
                 Thank you. Your NIEC membership payment has been received and your tier has been
                 updated.
-                {result.membershipExpiresAt &&
-                  ` Your membership is valid through ${formatMembershipExpiryDate(result.membershipExpiresAt)}.`}
+                {result.membershipPaidAt && result.membershipExpiresAt &&
+                  ` Your membership is valid from ${formatMembershipPaymentDate(result.membershipPaidAt)} through ${formatMembershipExpiryDate(result.membershipExpiresAt)}.`}
               </p>
               <p className="mt-3 text-xs text-muted-foreground">
                 Your payment receipt will be sent to the email address used for this payment.

@@ -200,6 +200,7 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
         status: "success",
         amountKobo: row.amount_kobo,
         tier: row.tier,
+        membershipPaidAt: paidAt,
         membershipExpiresAt,
       };
     }
@@ -299,6 +300,7 @@ export const verifyMembershipPayment = createServerFn({ method: "POST" })
       status: paid ? "success" : (json.data.status ?? "failed"),
       amountKobo: json.data.amount ?? row.amount_kobo,
       tier: row.tier,
+      membershipPaidAt: paid ? paidAt : null,
       membershipExpiresAt,
     };
   });
@@ -362,18 +364,29 @@ async function ensureResourceEntitlement(
 }
 
 export const initResourcePayment = createServerFn({ method: "POST" })
-  .inputValidator((input: { resourceType: PurchasableResourceType; resourceId: string }) => {
+  .inputValidator((input: {
+    resourceType: PurchasableResourceType;
+    resourceId: string;
+    email?: string;
+  }) => {
     if (!input?.resourceId || !/^[0-9a-f-]{36}$/i.test(input.resourceId)) {
       throw new Error("Invalid resource.");
     }
     if (!["event", "knowledge", "deal"].includes(input.resourceType)) {
       throw new Error("This resource cannot be purchased.");
     }
-    return input;
+    const email = input.email?.trim().toLowerCase();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Enter a valid email address.");
+    }
+    return { ...input, email };
   })
   .handler(async ({ data }) => {
     const userId = await getAuthenticatedUserId();
-    if (!userId) throw new Error("Sign in before purchasing resource access.");
+    if (!userId && data.resourceType !== "knowledge") {
+      throw new Error("Sign in before purchasing this item.");
+    }
+    if (!userId && !data.email) throw new Error("Enter an email address to purchase this resource.");
 
     const resourceResult = await loadPurchasableResource(data.resourceType, data.resourceId);
     if (resourceResult.error) throw new Error("Could not load this resource.");
@@ -396,38 +409,43 @@ export const initResourcePayment = createServerFn({ method: "POST" })
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: profile }, { data: existingPurchase }] = await Promise.all([
-      supabaseAdmin
+    let buyerEmail = data.email ?? "";
+    if (userId) {
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("email, membership_tier, membership_status, membership_expires_at")
         .eq("id", userId)
-        .maybeSingle(),
-      supabaseAdmin
+        .maybeSingle();
+      if (profileError) throw new Error(`Could not load your account: ${profileError.message}`);
+      if (!profile?.email)
+        throw new Error("Your account needs a valid email address before purchasing.");
+      buyerEmail = profile.email;
+
+      const { data: existingPurchase, error: purchaseError } = await supabaseAdmin
         .from("resource_purchases")
         .select("id")
         .eq("user_id", userId)
         .eq("resource_type", data.resourceType)
         .eq("resource_id", data.resourceId)
         .eq("status", "success")
-        .maybeSingle(),
-    ]);
-    if (!profile?.email)
-      throw new Error("Your account needs a valid email address before purchasing.");
-    if (existingPurchase) throw new Error("You already have access to this resource.");
+        .maybeSingle();
+      if (purchaseError) throw new Error(`Could not check previous purchases: ${purchaseError.message}`);
+      if (existingPurchase) throw new Error("You already have access to this resource.");
 
-    const rank = {
-      observer: 0,
-      contributor: 1,
-      growth_partner: 2,
-      anchor: 3,
-      strategic_partner: 4,
-    };
-    const membershipActive =
-      profile.membership_status === "active" &&
-      (!profile.membership_expires_at ||
-        profile.membership_expires_at >= new Date().toISOString().slice(0, 10));
-    if (membershipActive && rank[profile.membership_tier] >= rank[resource.min_tier_required]) {
-      throw new Error("Your membership already includes access to this resource.");
+      const rank = {
+        observer: 0,
+        contributor: 1,
+        growth_partner: 2,
+        anchor: 3,
+        strategic_partner: 4,
+      };
+      const membershipActive =
+        profile.membership_status === "active" &&
+        (!profile.membership_expires_at ||
+          profile.membership_expires_at >= new Date().toISOString().slice(0, 10));
+      if (membershipActive && rank[profile.membership_tier] >= rank[resource.min_tier_required]) {
+        throw new Error("Your membership already includes access to this resource.");
+      }
     }
 
     const reference = `niec_resource_${Date.now()}_${globalThis.crypto.randomUUID()}`;
@@ -438,6 +456,7 @@ export const initResourcePayment = createServerFn({ method: "POST" })
 
     const { error: insertError } = await supabaseAdmin.from("resource_purchases").insert({
       user_id: userId,
+      guest_email: userId ? null : buyerEmail,
       resource_type: data.resourceType,
       resource_id: data.resourceId,
       amount_kobo: resource.access_price_kobo,
@@ -454,7 +473,7 @@ export const initResourcePayment = createServerFn({ method: "POST" })
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: profile.email,
+        email: buyerEmail,
         amount: resource.access_price_kobo,
         currency: "NGN",
         reference,
@@ -491,29 +510,56 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const userId = await getAuthenticatedUserId();
-    if (!userId) throw new Error("Sign in to verify this purchase.");
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: purchase, error: lookupError } = await supabaseAdmin
       .from("resource_purchases")
-      .select("id, user_id, resource_type, resource_id, amount_kobo, status, paid_at")
+      .select("id, user_id, guest_email, reference, resource_type, resource_id, amount_kobo, status, paid_at")
       .eq("reference", data.reference)
-      .eq("user_id", userId)
       .maybeSingle();
     if (lookupError) throw new Error(`Could not load resource purchase: ${lookupError.message}`);
     if (!purchase) return { ok: false as const, status: "unknown" };
+    if (purchase.user_id && purchase.user_id !== userId) {
+      return { ok: false as const, status: "unknown" };
+    }
 
     const complete = async () => {
-      await ensureResourceEntitlement(
-        purchase.resource_type as PurchasableResourceType,
-        purchase.resource_id,
-        userId,
-      );
+      if (purchase.user_id && purchase.resource_type === "event") {
+        await ensureResourceEntitlement(
+          purchase.resource_type as PurchasableResourceType,
+          purchase.resource_id,
+          purchase.user_id,
+        );
+      }
+      let emailDelivery: "sent" | "suppressed" | "failed" | "not_applicable" = "not_applicable";
+      if (!purchase.user_id && purchase.guest_email) {
+        try {
+          const { sendGuestResourcePurchaseConfirmationEmail } = await import(
+            "@/lib/resource-purchase-email.server"
+          );
+          emailDelivery = await sendGuestResourcePurchaseConfirmationEmail({
+            email: purchase.guest_email,
+            resourceType: purchase.resource_type,
+            resourceId: purchase.resource_id,
+            amountKobo: purchase.amount_kobo,
+            reference: purchase.reference,
+            origin: new URL(getRequest().url).origin,
+          });
+        } catch (error) {
+          console.error(
+            "[paystack:resource:confirmation-email]",
+            data.reference,
+            error instanceof Error ? error.message : "Unknown email delivery error",
+          );
+          emailDelivery = "failed";
+        }
+      }
       return {
         ok: true as const,
         status: "success" as const,
         resourceType: purchase.resource_type as PurchasableResourceType,
         resourceId: purchase.resource_id,
+        guestEmail: purchase.user_id ? null : purchase.guest_email,
+        emailDelivery,
       };
     };
     if (purchase.status === "success") return complete();
@@ -543,13 +589,18 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
 
     if (json.data.status !== "success") {
       const allowedStatuses = ["failed", "abandoned"] as const;
-      const status = allowedStatuses.find((value) => value === json.data?.status) ?? "failed";
-      await supabaseAdmin
-        .from("resource_purchases")
-        .update({ status })
-        .eq("reference", data.reference)
-        .eq("user_id", userId)
-        .neq("status", "success");
+      const status = allowedStatuses.find((value) => value === json.data?.status);
+      if (status) {
+        const { error: statusError } = await supabaseAdmin
+          .from("resource_purchases")
+          .update({ status })
+          .eq("reference", data.reference)
+          .neq("status", "success");
+        if (statusError) {
+          throw new Error(`Could not update resource purchase status: ${statusError.message}`);
+        }
+      }
+      if (!status) return { ok: false as const, status: "pending" as const };
       return { ok: false as const, status };
     }
 
@@ -558,12 +609,12 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
       json.data.amount !== purchase.amount_kobo ||
       json.data.currency !== "NGN"
     ) {
-      await supabaseAdmin
+      const { error: flagError } = await supabaseAdmin
         .from("resource_purchases")
         .update({ status: "flagged" })
         .eq("reference", data.reference)
-        .eq("user_id", userId)
         .neq("status", "success");
+      if (flagError) throw new Error(`Could not flag unverified resource payment: ${flagError.message}`);
       return {
         ok: false as const,
         status: "unknown",
@@ -576,8 +627,32 @@ export const verifyResourcePayment = createServerFn({ method: "POST" })
       .from("resource_purchases")
       .update({ status: "success", paid_at: paidAt })
       .eq("reference", data.reference)
-      .eq("user_id", userId)
       .neq("status", "success");
     if (updateError) throw new Error(`Could not update resource purchase: ${updateError.message}`);
     return complete();
+  });
+
+export const linkGuestResourcePurchases = createServerFn({ method: "POST" })
+  .inputValidator((input: Record<string, never>) => input)
+  .handler(async () => {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) throw new Error("Sign in to link your resource purchases.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: result, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (userError) throw new Error(`Could not verify account email: ${userError.message}`);
+    const confirmedEmail = result.user.email_confirmed_at
+      ? result.user.email?.trim().toLowerCase()
+      : null;
+    if (!confirmedEmail) return { linked: 0, emailConfirmed: false };
+
+    const { data: linkedPurchases, error: linkError } = await supabaseAdmin
+      .from("resource_purchases")
+      .update({ user_id: userId })
+      .is("user_id", null)
+      .eq("guest_email", confirmedEmail)
+      .eq("status", "success")
+      .select("id");
+    if (linkError) throw new Error(`Could not link resource purchases: ${linkError.message}`);
+    return { linked: linkedPurchases?.length ?? 0, emailConfirmed: true };
   });

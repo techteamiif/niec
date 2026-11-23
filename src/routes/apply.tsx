@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getCountries, getCountryCallingCode, isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { supabase } from "@/integrations/supabase/client";
-import { initMembershipPayment } from "@/lib/payments.functions";
+import { initMembershipPayment, linkGuestResourcePurchases } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { useAuth } from "@/lib/auth";
 import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
@@ -30,6 +30,7 @@ import { ArrowRight, Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, Gr
 import { PublicHeader } from "@/components/PublicHeader";
 import { TierComparisonTable } from "@/components/TierComparisonTable";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { z } from "zod";
 
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const COUNTRY_OPTIONS = getCountries()
@@ -53,8 +54,16 @@ export const Route = createFileRoute("/apply")({
       { name: "description", content: "Apply to join the Nigeria Impact Economy Community — a members' network for impact investors, social enterprises and ecosystem partners." },
     ],
   }),
-  component: () => <ApplyPage mode="signup" />,
+  validateSearch: z.object({
+    email: z.string().optional(),
+  }),
+  component: SignupPage,
 });
+
+function SignupPage() {
+  const { email } = Route.useSearch();
+  return <ApplyPage mode="signup" initialEmail={email ?? ""} />;
+}
 
 export function ApplyOnboardingPage() {
   return <ApplyPage mode="onboarding" />;
@@ -198,9 +207,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
+function ApplyPage({
+  mode,
+  initialEmail = "",
+}: {
+  mode: "signup" | "onboarding";
+  initialEmail?: string;
+}) {
   const navigate = useNavigate();
   const startMembershipPayment = useServerFn(initMembershipPayment);
+  const linkGuestPurchases = useServerFn(linkGuestResourcePurchases);
   const { user, profile, loading, refresh, signOut } = useAuth();
   const draftKey = applicationDraftKey(user?.id);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
@@ -235,7 +251,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [researchArea, setResearchArea] = useState("");
   const [individualBio, setIndividualBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState("");
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>("NG");
   const [password, setPassword] = useState("");
@@ -256,6 +272,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [done, setDone] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
+  useEffect(() => {
+    if (initialEmail) setEmail(initialEmail);
+  }, [initialEmail]);
   const isIndividual = mode === "onboarding" && accountType === "individual";
   const wizardSteps = [
     { label: "Profile", Icon: GraduationCap },
@@ -612,6 +631,17 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       }
 
       if (data.session) {
+        try {
+          await linkGuestPurchases({ data: {} });
+        } catch (linkError) {
+          console.error(
+            "[apply:link-guest-resource-purchases]",
+            linkError instanceof Error ? linkError.message : "Unknown linking error",
+          );
+          toast.error(
+            "Your account was created, but resource purchases could not be linked yet. Check your purchase email for the secure resource link.",
+          );
+        }
         toast.success("Account created. Continue with your onboarding.");
         navigate({ to: "/onboarding", replace: true });
       } else {

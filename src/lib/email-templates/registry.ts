@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { template as joinApplicationTemplate } from './join-application'
+import { template as resourcePurchaseTemplate } from './resource-purchase'
 
 export interface TemplateEntry {
   component: ComponentType<any>
@@ -16,4 +17,5 @@ export interface TemplateEntry {
  */
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'join-application': joinApplicationTemplate,
+  'resource-purchase': resourcePurchaseTemplate,
 }

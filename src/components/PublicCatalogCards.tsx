@@ -108,21 +108,12 @@ function ResourceCardContent({ resource }: { resource: PublicResourcePreview }) 
 }
 
 export function PublicResourceCard({ resource }: { resource: PublicResourcePreview }) {
-  const { user } = useAuth();
   const content = <ResourceCardContent resource={resource} />;
 
-  return user ? (
+  return (
     <Link
       to="/knowledge/$resourceId"
       params={{ resourceId: resource.id }}
-      className="block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      {content}
-    </Link>
-  ) : (
-    <Link
-      to="/login"
-      search={{ next: `/knowledge/${resource.id}` }}
       className="block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {content}

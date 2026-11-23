@@ -13,38 +13,106 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
+import {
+  getGuestKnowledgeDownloadUrl,
+  getPublicKnowledgeResource,
+  hasGuestKnowledgePurchase,
+} from "@/lib/public-resource.functions";
+import { z } from "zod";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
+type ResourceDetails = Pick<
+  KnowledgeResource,
+  | "id"
+  | "title"
+  | "description"
+  | "resource_type"
+  | "community_of_practice"
+  | "min_tier_required"
+  | "cover_image_url"
+  | "created_at"
+  | "access_price_kobo"
+  | "downloads_count"
+  | "uploaded_by"
+> & {
+  file_url: string | null;
+  executive_summary_url: string | null;
+};
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
   "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
+  validateSearch: z.object({
+    purchaseReference: z.string().optional(),
+  }),
   component: KnowledgeResourcePage,
 });
 
 function KnowledgeResourcePage() {
   const { resourceId } = Route.useParams();
-  const { profile, isStaff } = useAuth();
-  const [resource, setResource] = useState<KnowledgeResource | null>(null);
+  const purchaseReference = Route.useSearch().purchaseReference ?? "";
+  const { user, profile, isStaff, loading: authLoading } = useAuth();
+  const [resource, setResource] = useState<ResourceDetails | null>(null);
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [guestEmail, setGuestEmail] = useState("");
   const startPurchase = useServerFn(initResourcePayment);
+  const loadPublicResource = useServerFn(getPublicKnowledgeResource);
+  const checkGuestPurchase = useServerFn(hasGuestKnowledgePurchase);
+  const getGuestDownloadUrl = useServerFn(getGuestKnowledgeDownloadUrl);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setResource(null);
     setAuthor(null);
+    setHasAccess(false);
+
+    if (authLoading) return;
 
     void (async () => {
+      if (!user) {
+        try {
+          const { resource: publicResource, author: publicAuthor } = await loadPublicResource({
+            data: { resourceId },
+          });
+          if (!active) return;
+          if (!publicResource) {
+            setResource(null);
+            return;
+          }
+          setResource({
+            ...publicResource,
+            file_url: null,
+            executive_summary_url: null,
+          });
+          setAuthor(publicAuthor);
+          if (purchaseReference) {
+            const purchased = await checkGuestPurchase({
+              data: { resourceId, purchaseReference },
+            });
+            if (active) setHasAccess(purchased);
+          }
+        } catch (error) {
+          if (active) {
+            toast.error(error instanceof Error ? error.message : "Could not load this resource.");
+          }
+        } finally {
+          if (active) setLoading(false);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from("knowledge_resources")
-        .select("*")
+        .select(
+          "id, title, description, resource_type, community_of_practice, min_tier_required, cover_image_url, created_at, access_price_kobo, downloads_count, uploaded_by, file_url, executive_summary_url",
+        )
         .eq("id", resourceId)
         .maybeSingle();
 
@@ -53,10 +121,11 @@ function KnowledgeResourcePage() {
       setResource(data);
       setLoading(false);
 
-      const { data: access } = await supabase.rpc("has_resource_access", {
+      const { data: access, error: accessError } = await supabase.rpc("has_resource_access", {
         _resource_type: "knowledge",
         _resource_id: resourceId,
       });
+      if (accessError) toast.error(`Could not verify resource access: ${accessError.message}`);
       if (active) setHasAccess(access ?? false);
 
       if (data?.uploaded_by) {
@@ -75,14 +144,43 @@ function KnowledgeResourcePage() {
     return () => {
       active = false;
     };
-  }, [resourceId]);
+  }, [
+    authLoading,
+    checkGuestPurchase,
+    loadPublicResource,
+    purchaseReference,
+    resourceId,
+    user,
+  ]);
 
-  const download = async (url: string | null) => {
+  const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
     if (!unlocked) {
       setTierDialogOpen(true);
       return;
     }
+    if (!user) {
+      try {
+        const { downloadUrl } = await getGuestDownloadUrl({
+          data: {
+            resourceId: resource.id,
+            fileType,
+            purchaseReference: purchaseReference || undefined,
+          },
+        });
+        setResource((current) =>
+          current
+            ? { ...current, downloads_count: (current.downloads_count ?? 0) + 1 }
+            : current,
+        );
+        window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not download this resource.");
+      }
+      return;
+    }
+
+    const url = fileType === "pdf" ? resource.file_url : resource.executive_summary_url;
     if (!url) {
       toast.info("No file attached yet.");
       return;
@@ -123,14 +221,23 @@ function KnowledgeResourcePage() {
   };
 
   const unlocked =
-    hasAccess || isStaff || tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer");
+    hasAccess ||
+    isStaff ||
+    tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer") ||
+    (!user &&
+      resource?.min_tier_required === "observer" &&
+      resource.access_price_kobo === null);
 
   const buyAccess = async () => {
     if (!resource || purchasing) return;
     setPurchasing(true);
     try {
       const result = await startPurchase({
-        data: { resourceType: "knowledge", resourceId: resource.id },
+        data: {
+          resourceType: "knowledge",
+          resourceId: resource.id,
+          email: user ? undefined : guestEmail,
+        },
       });
       if (!result.ok) throw new Error(result.error);
       window.location.href = result.authorizationUrl;
@@ -158,7 +265,7 @@ function KnowledgeResourcePage() {
   return (
     <div className="p-6 lg:p-10">
       <Link
-        to="/knowledge"
+        to={user ? "/knowledge" : "/resources"}
         className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" /> Knowledge Hub
@@ -251,14 +358,14 @@ function KnowledgeResourcePage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void download(resource.executive_summary_url)}
+                  onClick={() => void download("summary")}
                 >
                   <Download aria-hidden="true" /> Download executive summary
                 </Button>
                 <Button
                   type="button"
                   className="bg-[#003302] text-white hover:bg-[#003302]/90"
-                  onClick={() => void download(resource.file_url)}
+                  onClick={() => void download("pdf")}
                 >
                   <FileText aria-hidden="true" /> Download PDF
                 </Button>
@@ -323,6 +430,9 @@ function KnowledgeResourcePage() {
         accessPriceKobo={unlocked ? null : resource?.access_price_kobo}
         onPayOnce={() => void buyAccess()}
         purchasing={purchasing}
+        requiresEmail={!user}
+        emailValue={guestEmail}
+        onEmailChange={setGuestEmail}
       />
     </div>
   );

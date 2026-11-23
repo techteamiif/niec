@@ -54,12 +54,16 @@ export const Route = createFileRoute("/api/paystack-webhook")({
           .maybeSingle();
 
         if (!row) {
-          const { data: purchase } = await supabaseAdmin
+          const { data: purchase, error: purchaseLookupError } = await supabaseAdmin
             .from("resource_purchases")
-            .select("id, user_id, resource_type, resource_id, amount_kobo, status, paid_at")
+            .select("id, user_id, guest_email, reference, resource_type, resource_id, amount_kobo, status, paid_at")
             .eq("reference", reference)
             .maybeSingle();
 
+          if (purchaseLookupError) {
+            console.error("[paystack:webhook] resource purchase lookup failed", reference, purchaseLookupError.message);
+            return new Response("Could not load resource purchase", { status: 500 });
+          }
           if (!purchase) return new Response("ok", { status: 200 });
 
           if (evt.event === "charge.success") {
@@ -87,7 +91,7 @@ export const Route = createFileRoute("/api/paystack-webhook")({
               return new Response("Could not update resource purchase", { status: 500 });
             }
 
-            if (purchase.resource_type === "event") {
+            if (purchase.resource_type === "event" && purchase.user_id) {
               const { error: attendanceError } = await supabaseAdmin.from("event_attendees").upsert(
                 { event_id: purchase.resource_id, member_id: purchase.user_id, attending: true },
                 { onConflict: "event_id,member_id" },
@@ -98,10 +102,37 @@ export const Route = createFileRoute("/api/paystack-webhook")({
               }
             }
           } else if (evt.event === "charge.failed" && purchase.status === "pending") {
-            await supabaseAdmin
+            const { error: failureUpdateError } = await supabaseAdmin
               .from("resource_purchases")
               .update({ status: "failed" })
               .eq("reference", reference);
+            if (failureUpdateError) {
+              console.error("[paystack:webhook] resource failure update failed", reference, failureUpdateError.message);
+              return new Response("Could not update resource purchase", { status: 500 });
+            }
+          }
+
+          if (evt.event === "charge.success" && purchase.guest_email) {
+            try {
+              const { sendGuestResourcePurchaseConfirmationEmail } = await import(
+                "@/lib/resource-purchase-email.server"
+              );
+              await sendGuestResourcePurchaseConfirmationEmail({
+                email: purchase.guest_email,
+                resourceType: purchase.resource_type,
+                resourceId: purchase.resource_id,
+                amountKobo: purchase.amount_kobo,
+                reference: purchase.reference,
+                origin: new URL(request.url).origin,
+              });
+            } catch (error) {
+              console.error(
+                "[paystack:webhook] resource purchase confirmation email failed",
+                reference,
+                error instanceof Error ? error.message : "Unknown email delivery error",
+              );
+              return new Response("Could not send purchase confirmation", { status: 500 });
+            }
           }
 
           return new Response("ok", { status: 200 });

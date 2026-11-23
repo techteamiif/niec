@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { useAuth } from "@/lib/auth";
+import { linkGuestResourcePurchases } from "@/lib/payments.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/email-verified")({
   component: EmailVerifiedPage,
@@ -10,6 +14,29 @@ export const Route = createFileRoute("/email-verified")({
 function EmailVerifiedPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const linkPurchases = useServerFn(linkGuestResourcePurchases);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    let active = true;
+    void linkPurchases({ data: {} })
+      .then(({ linked }) => {
+        if (active && linked > 0) {
+          toast.success("Your resource purchase has been linked to your account.");
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error(
+          "[email-verified:link-resource-purchases]",
+          error instanceof Error ? error.message : "Unknown linking error",
+        );
+        toast.error("Your account is verified, but a resource purchase could not be linked.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [linkPurchases, loading, user]);
 
   return (
     <div className="min-h-screen bg-[#F7FBFA]">

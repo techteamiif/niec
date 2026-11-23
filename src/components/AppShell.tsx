@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
+import { PublicHeader } from "@/components/PublicHeader";
 import { TierBadge } from "@/components/TierBadge";
 import {
   AlertDialog,
@@ -64,19 +65,27 @@ export function AppShell() {
   const { user, profile, isStaff, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const isPublicKnowledgeResource = /^\/knowledge\/[^/]+$/.test(path);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [loading, user, navigate]);
+    if (!loading && !user && !isPublicKnowledgeResource) navigate({ to: "/login" });
+  }, [loading, user, navigate, isPublicKnowledgeResource]);
 
   useEffect(() => {
-    if (!loading && user && profile && !isStaff && profile.crm_stage !== "applicant") {
+    if (
+      !loading &&
+      user &&
+      profile &&
+      !isStaff &&
+      profile.crm_stage !== "applicant" &&
+      !isPublicKnowledgeResource
+    ) {
       navigate({ to: "/onboarding", replace: true });
     }
-  }, [loading, user, profile, isStaff, navigate]);
+  }, [loading, user, profile, isStaff, navigate, isPublicKnowledgeResource]);
 
   useEffect(() => {
     if (!user) return;
@@ -107,7 +116,16 @@ export function AppShell() {
     };
   }, [user]);
 
-  if (loading || !user || !profile || (!isStaff && profile.crm_stage !== "applicant")) {
+  if (isPublicKnowledgeResource && !user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <PublicHeader />
+        <Outlet />
+      </div>
+    );
+  }
+
+  if (loading || !user || !profile || (!isStaff && profile.crm_stage !== "applicant" && !isPublicKnowledgeResource)) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         Loading…
