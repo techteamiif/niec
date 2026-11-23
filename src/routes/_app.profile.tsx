@@ -65,6 +65,7 @@ function ProfilePage() {
   const matches = useMatches();
   const navigate = useNavigate();
   const runDeleteOwnAccount = useServerFn(deleteOwnAccount);
+  const [profileTab, setProfileTab] = useState("about");
   const [settingsSection, setSettingsSection] = useState<"email" | "password" | "deactivate" | "delete">("email");
   const [preferredChannel, setPreferredChannel] = useState("");
   const [communicationSaving, setCommunicationSaving] = useState(false);
@@ -85,6 +86,12 @@ function ProfilePage() {
   useEffect(() => {
     setPreferredChannel(savedPreferredChannel);
   }, [savedPreferredChannel]);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "settings") {
+      setProfileTab("settings");
+    }
+  }, []);
 
   useEffect(() => {
     if (!profile || !user?.email || profile.email === user.email) return;
@@ -200,7 +207,8 @@ function ProfilePage() {
     setEmailSaving(true);
     setEmailConfirmationSent(false);
     try {
-      const { error } = await supabase.auth.updateUser({ email });
+      const emailRedirectTo = new URL("/profile?tab=settings", window.location.origin).toString();
+      const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo });
       if (error) {
         toast.error(`Could not update email address: ${error.message}`);
         return;
@@ -240,7 +248,7 @@ function ProfilePage() {
 
   return (
     <div className="p-6 lg:p-10">
-      <Tabs defaultValue="about" className="space-y-6">
+      <Tabs value={profileTab} onValueChange={setProfileTab} className="space-y-6">
         <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="membership">Membership</TabsTrigger>
