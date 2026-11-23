@@ -310,22 +310,36 @@ async function loadPurchasableResource(resourceType: PurchasableResourceType, re
   if (resourceType === "event") {
     return await supabaseAdmin
       .from("events")
-      .select("id, title, access_price_kobo, min_tier_required")
+      .select("id, title, access_price_kobo, min_tier_required, created_by")
       .eq("id", resourceId)
       .maybeSingle();
   }
   if (resourceType === "knowledge") {
     return await supabaseAdmin
       .from("knowledge_resources")
-      .select("id, title, access_price_kobo, min_tier_required")
+      .select("id, title, access_price_kobo, min_tier_required, uploaded_by")
       .eq("id", resourceId)
       .maybeSingle();
   }
   return await supabaseAdmin
     .from("deal_opportunities")
-    .select("id, title, access_price_kobo, min_tier_required, status")
+    .select("id, title, access_price_kobo, min_tier_required, status, submitted_by")
     .eq("id", resourceId)
     .maybeSingle();
+}
+
+async function isStaffCreator(userId: string | null) {
+  if (!userId) return false;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .in("role", ["admin", "super_admin"])
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`Could not verify resource creator: ${error.message}`);
+  return data !== null;
 }
 
 async function ensureResourceEntitlement(
@@ -365,6 +379,15 @@ export const initResourcePayment = createServerFn({ method: "POST" })
     if (resourceResult.error) throw new Error("Could not load this resource.");
     const resource = resourceResult.data;
     if (!resource) throw new Error("This resource is unavailable.");
+    const creatorId =
+      "created_by" in resource
+        ? resource.created_by
+        : "uploaded_by" in resource
+          ? resource.uploaded_by
+          : resource.submitted_by;
+    if (!(await isStaffCreator(creatorId))) {
+      throw new Error("One-time purchase is only available for admin-created resources.");
+    }
     if (!resource.access_price_kobo || resource.access_price_kobo <= 0) {
       throw new Error("This resource is not available for individual purchase.");
     }

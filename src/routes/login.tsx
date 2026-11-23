@@ -95,7 +95,7 @@ function LoginPage() {
           </p>
           <form onSubmit={handle} className="mt-5 space-y-4">
             <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email *</label>
+              <label className="text-xs font-medium tracking-wider text-muted-foreground">Email Address *</label>
               <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@organisation.org"
                 className="mt-1.5 h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-primary" />
@@ -103,7 +103,7 @@ function LoginPage() {
             {mode === "signin" && (
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Password *</label>
+                  <label className="text-xs font-medium tracking-wider text-muted-foreground">Password *</label>
                   <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                     Forgot password?
                   </Link>

@@ -154,7 +154,7 @@ function ImpactLanding() {
         <div className="mx-auto max-w-7xl px-6 py-20">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Coming together</div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">NIEC convenings</div>
               <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Upcoming events.</h2>
             </div>
             <Link to="/events" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">

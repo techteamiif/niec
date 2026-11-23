@@ -128,13 +128,13 @@ function MemberDetailPage() {
                 className="border-4 border-card"
               />
               {user && member.id !== user.id && (
-                <Link
-                  to="/messages"
-                  search={{ to: member.id }}
+                <button
+                  type="button"
+                  onClick={() => toast.info("Message is not available at the moment")}
                   className="inline-flex items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
                 >
                   <MessageCircle className="h-4 w-4" /> Message
-                </Link>
+                </button>
               )}
             </div>
 

@@ -2,9 +2,15 @@ import type { Json } from "@/integrations/supabase/types";
 
 export interface OnboardingData {
   account_type?: "individual" | "organisation";
+  contact_person_first_name?: string;
+  contact_person_last_name?: string;
+  contact_person_role?: string;
+  contact_person_email?: string;
+  contact_person_phone?: string;
   requested_tier?: string;
   aum_range?: string;
   investment_stage?: string;
+  capital_provided?: string;
   goals?: string[];
   contributions?: string[];
   events_interested?: string[];
@@ -38,6 +44,7 @@ export function readOnboardingData(value: Json): OnboardingData {
     requested_tier: stringValue("requested_tier"),
     aum_range: stringValue("aum_range"),
     investment_stage: stringValue("investment_stage"),
+    capital_provided: stringValue("capital_provided"),
     goals: stringArray("goals"),
     contributions: stringArray("contributions"),
     events_interested: stringArray("events_interested"),

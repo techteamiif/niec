@@ -25,6 +25,7 @@ export interface JoinApplicationInput {
   commPreference?: string;
   aumRange?: string;
   investmentStage?: string;
+  capitalProvided?: string;
   statement?: string;
   personalTitle?: string;
   qualification?: string;
@@ -33,6 +34,11 @@ export interface JoinApplicationInput {
   qualificationInstitution?: string;
   researchInterests?: string;
   researchArea?: string;
+  contactPersonFirstName?: string;
+  contactPersonLastName?: string;
+  contactPersonRole?: string;
+  contactPersonEmail?: string;
+  contactPersonPhone?: string;
   bio?: string;
   avatarUrl?: string;
 }
@@ -92,6 +98,7 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
       statement: clean(data.statement, 4000) || null,
       details: {
         account_type: data.memberType === "individual" ? "individual" : "organisation",
+        capital_provided: clean(data.capitalProvided, 80) || null,
         personal_title: clean(data.personalTitle, 40) || null,
         qualification: clean(data.qualification, 300) || null,
         qualification_department: clean(data.qualificationDepartment, 160) || null,
@@ -99,6 +106,11 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
         qualification_institution: clean(data.qualificationInstitution, 300) || null,
         research_interests: clean(data.researchInterests, 2000) || null,
         research_area: clean(data.researchArea, 300) || null,
+        contact_person_first_name: clean(data.contactPersonFirstName, 160) || null,
+        contact_person_last_name: clean(data.contactPersonLastName, 160) || null,
+        contact_person_role: clean(data.contactPersonRole, 160) || null,
+        contact_person_email: clean(data.contactPersonEmail, 200) || null,
+        contact_person_phone: clean(data.contactPersonPhone, 60) || null,
         bio: clean(data.bio, 4000) || null,
         avatar_url: clean(data.avatarUrl, 500) || null,
       },
@@ -147,6 +159,7 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
           commPreference: row.comm_preference ?? "",
           aumRange: row.aum_range ?? "",
           investmentStage: row.investment_stage ?? "",
+          capitalProvided: clean(data.capitalProvided, 80),
           statement: row.statement ?? "",
           personalTitle: clean(data.personalTitle, 40),
           qualification: clean(data.qualification, 300),

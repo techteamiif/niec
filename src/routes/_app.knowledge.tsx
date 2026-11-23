@@ -2,6 +2,8 @@ import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-route
 import { useEffect, useState } from "react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { EventImage } from "@/components/EventImage";
+import { CreatePublicationDialog } from "@/components/admin/CreatePublicationDialog";
+import { EditPublicationDialog, type PublicationEditRecord } from "@/components/admin/EditPublicationDialog";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/lib/auth";
@@ -13,8 +15,24 @@ import {
   getKnowledgeResourceAccessLabel,
 } from "@/lib/niec";
 import { richTextToPlainText } from "@/lib/rich-text";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 
@@ -38,6 +56,51 @@ function KnowledgeIndex() {
   const [access, setAccess] = useState("all");
   const [search, setSearch] = useState("");
   const [purchasedResourceIds, setPurchasedResourceIds] = useState<Set<string>>(new Set());
+  const [createResourceOpen, setCreateResourceOpen] = useState(false);
+  const [editResource, setEditResource] = useState<PublicationEditRecord | null>(null);
+  const [resourceToDelete, setResourceToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const refreshResources = async () => {
+    let query = supabase
+      .from("knowledge_resources")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (type !== "all")
+      query = query.eq("resource_type", type as Database["public"]["Enums"]["resource_type"]);
+    if (cop !== "all")
+      query = query.eq("community_of_practice", cop as Database["public"]["Enums"]["cop_type"]);
+    const { data, error } = await query;
+    if (error) {
+      toast.error(`Unable to refresh resources: ${error.message}`);
+      return;
+    }
+    setItems(data ?? []);
+  };
+
+  const deleteResource = async () => {
+    if (!resourceToDelete || !user || deleting) return;
+    setDeleting(true);
+    const { data, error } = await supabase
+      .from("knowledge_resources")
+      .delete()
+      .eq("id", resourceToDelete.id)
+      .eq("uploaded_by", user.id)
+      .select("id")
+      .maybeSingle();
+    setDeleting(false);
+    if (error) {
+      toast.error(`Could not delete resource: ${error.message}`);
+      return;
+    }
+    if (!data) {
+      toast.error("You do not have permission to delete this resource.");
+      return;
+    }
+    toast.success("Resource deleted.");
+    setResourceToDelete(null);
+    setItems((current) => current.filter((resource) => resource.id !== data.id));
+  };
 
   useEffect(() => {
     (async () => {
@@ -87,11 +150,22 @@ function KnowledgeIndex() {
 
   return (
     <div className="p-6 lg:p-10">
-      <div className="mb-6">
-        <h1 className="font-display text-3xl">Knowledge Hub</h1>
-        <p className="text-sm text-muted-foreground">
-          Reports, case studies, policy briefs, datasets and toolkits.
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl">Knowledge Hub</h1>
+          <p className="text-sm text-muted-foreground">
+            Reports, case studies, policy briefs, datasets and toolkits.
+          </p>
+        </div>
+        {isStaff && (
+          <button
+            type="button"
+            onClick={() => setCreateResourceOpen(true)}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            + Add resource
+          </button>
+        )}
       </div>
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
         <input
@@ -144,57 +218,83 @@ function KnowledgeIndex() {
             isStaff ||
             purchasedResourceIds.has(r.id);
           const accessCategory = getKnowledgeResourceAccessCategory(r.min_tier_required);
+          const canManageResource = isStaff && !!user && r.uploaded_by === user.id;
           return (
-            <Link
-              key={r.id}
-              to="/knowledge/$resourceId"
-              params={{ resourceId: r.id }}
-              className="group flex items-stretch gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md"
-            >
-              <EventImage
-                src={r.cover_image_url}
-                title={r.title}
-                alt={`${r.title} cover`}
-                placeholderIcon="file"
-                className="h-24 w-20 shrink-0 self-start overflow-hidden rounded-md sm:h-28 sm:w-24"
-              />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                    <span>{r.resource_type.replace(/_/g, " ")}</span>
-                    <span className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-foreground/80">
-                      {getKnowledgeResourceAccessLabel(r.min_tier_required)}
-                    </span>
-                    {r.access_price_kobo != null && (
-                      <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
-                        ₦{(r.access_price_kobo / 100).toLocaleString("en-NG")}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="font-display text-base leading-tight">{r.title}</h3>
-                </div>
-                <RichTextContent
-                  content={r.description}
-                  className="mt-3 line-clamp-3 text-xs text-muted-foreground [&_h2]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
+            <div key={r.id} className="relative">
+              <Link
+                to="/knowledge/$resourceId"
+                params={{ resourceId: r.id }}
+                className="group flex items-stretch gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-md"
+              >
+                <EventImage
+                  src={r.cover_image_url}
+                  title={r.title}
+                  alt={`${r.title} cover`}
+                  placeholderIcon="file"
+                  className="h-24 w-20 shrink-0 self-start overflow-hidden rounded-md sm:h-28 sm:w-24"
                 />
-                {!unlocked && (
-                  <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
-                    {r.access_price_kobo != null
-                      ? `Buy for ₦${(r.access_price_kobo / 100).toLocaleString("en-NG")} or access with ${TIER_LABELS[r.min_tier_required]} tier.`
-                      : `Download access requires ${TIER_LABELS[r.min_tier_required]} tier or above.`}
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <span>{r.resource_type.replace(/_/g, " ")}</span>
+                      <span className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-foreground/80">
+                        {getKnowledgeResourceAccessLabel(r.min_tier_required)}
+                      </span>
+                      {!unlocked && r.access_price_kobo != null && r.access_price_kobo > 0 && (
+                        <span className="rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-primary">
+                          ₦{(r.access_price_kobo / 100).toLocaleString("en-NG")}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-display text-base leading-tight">{r.title}</h3>
                   </div>
-                )}
-                <div className="mt-auto flex items-center justify-between gap-2 pt-4">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    ↓ {r.downloads_count ?? 0}
+                  <RichTextContent
+                    content={r.description}
+                    className="mt-3 line-clamp-3 text-xs text-muted-foreground [&_h2]:font-semibold [&_li]:ml-4 [&_ol]:list-decimal [&_ul]:list-disc"
+                  />
+                  {!unlocked && (
+                    <div className="mt-3 rounded-md border border-dashed bg-muted/30 p-2 text-[11px] text-muted-foreground">
+                      {r.access_price_kobo != null && r.access_price_kobo > 0
+                        ? `Buy for ₦${(r.access_price_kobo / 100).toLocaleString("en-NG")} or access with ${TIER_LABELS[r.min_tier_required]} tier.`
+                        : `Download access requires ${TIER_LABELS[r.min_tier_required]} tier or above.`}
+                    </div>
+                  )}
+                  <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      ↓ {r.downloads_count ?? 0}
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:underline">
+                      View resource{" "}
+                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                    </span>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:underline">
-                    View resource{" "}
-                    <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                  </span>
                 </div>
-              </div>
-            </Link>
+              </Link>
+              {canManageResource && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`Manage ${r.title}`}
+                      className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                    >
+                      <MoreVertical className="h-5 w-5" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-36">
+                    <DropdownMenuItem onSelect={() => setEditResource(r)}>
+                      <Pencil /> Edit resource
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setResourceToDelete({ id: r.id, title: r.title })}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 /> Delete resource
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           );
         })}
         {filtered.length === 0 && (
@@ -203,6 +303,49 @@ function KnowledgeIndex() {
           </div>
         )}
       </div>
+      {isStaff && (
+        <CreatePublicationDialog
+          open={createResourceOpen}
+          onClose={() => setCreateResourceOpen(false)}
+          onCreated={refreshResources}
+        />
+      )}
+      <EditPublicationDialog
+        open={!!editResource}
+        onClose={() => setEditResource(null)}
+        onSaved={refreshResources}
+        record={editResource}
+      />
+      <AlertDialog
+        open={!!resourceToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setResourceToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this resource?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {resourceToDelete?.title
+                ? `"${resourceToDelete.title}" will be permanently removed from the Knowledge Hub.`
+                : "This resource will be permanently removed from the Knowledge Hub."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => {
+                event.preventDefault();
+                void deleteResource();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting…" : "Delete resource"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

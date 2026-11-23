@@ -145,6 +145,6 @@ export function getKnowledgeResourceAccessLabel(
 ): string {
   const category = getKnowledgeResourceAccessCategory(minTierRequired);
   if (category === "free") return "Free";
-  if (category === "paid-membership") return "Paid + membership";
+  if (category === "paid-membership") return "Paid";
   return "Paid";
 }

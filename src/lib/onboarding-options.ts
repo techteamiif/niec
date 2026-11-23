@@ -44,27 +44,35 @@ export const AUM_OPTIONS = [
 ];
 
 export const INVESTMENT_STAGE_OPTIONS = [
-  "Seed / early stage",
+  "Seed/early stage",
   "Growth stage",
-  "Scale / expansion",
-  "Debt / blended finance",
-  "Grant / catalytic capital",
+  "Scale/expansion",
   "Multiple stages",
 ];
 
+export const CAPITAL_PROVIDED_OPTIONS = [
+  "Debt/Blended Finance",
+  "Grant/Catalytic Capital",
+  "All",
+];
+
+export const ORG_TYPES_WITH_INVESTMENT_STAGE = ["investor", "dfi", "accelerator", "foundation"];
+export const ORG_TYPES_WITH_CAPITAL_PROVIDED = ["investor", "dfi", "government"];
+export const ORG_TYPES_WITH_AUM = ["investor", "social_enterprise", "accelerator", "foundation"];
+
 export const SDG_OPTIONS = [
-  "SDG 1 — No poverty",
-  "SDG 2 — Zero hunger",
-  "SDG 3 — Good health",
-  "SDG 4 — Quality education",
-  "SDG 5 — Gender equality",
-  "SDG 7 — Clean energy",
-  "SDG 8 — Decent work",
-  "SDG 9 — Industry & innovation",
-  "SDG 10 — Reduced inequality",
-  "SDG 11 — Sustainable cities",
-  "SDG 13 — Climate action",
-  "SDG 17 — Partnerships",
+  "SDG 1: No poverty",
+  "SDG 2: Zero hunger",
+  "SDG 3: Good health",
+  "SDG 4: Quality education",
+  "SDG 5: Gender equality",
+  "SDG 7: Clean energy",
+  "SDG 8: Decent work",
+  "SDG 9: Industry & innovation",
+  "SDG 10: Reduced inequality",
+  "SDG 11: Sustainable cities",
+  "SDG 13: Climate action",
+  "SDG 17: Partnerships",
 ];
 
 export const SECTOR_OPTIONS = [

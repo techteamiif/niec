@@ -1,8 +1,9 @@
 import React from 'react'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+  Heading, Hr, Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailLayout } from './layout'
 
 export interface JoinApplicationProps {
   fullName?: string
@@ -28,6 +29,7 @@ export interface JoinApplicationProps {
   commPreference?: string
   aumRange?: string
   investmentStage?: string
+  capitalProvided?: string
   statement?: string
   personalTitle?: string
   qualification?: string
@@ -52,22 +54,20 @@ const Row = ({ label, value }: { label: string; value: string }) => (
 )
 
 const JoinApplicationEmail = (p: JoinApplicationProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>{`New NIEC application — ${val(p.organisationName)} (${val(p.tierLabel)})`}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Section style={header}>
-          <Text style={eyebrow}>NIEC Connect · Membership</Text>
-          <Heading style={h1}>New membership application</Heading>
-        </Section>
-
-        <Section style={highlight}>
-          <Text style={highlightLine}><strong>{val(p.organisationName)}</strong></Text>
-          <Text style={highlightLine}>Tier requested: <strong>{val(p.tierLabel)}</strong></Text>
-          <Text style={highlightLine}>Fee: <strong>{val(p.amountLabel)}</strong> · Payment: {val(p.paymentStatus)}</Text>
-          <Text style={highlightMuted}>Submitted {val(p.submittedAt)}</Text>
-        </Section>
+  <EmailLayout
+    preview={`New NIEC application — ${val(p.organisationName)} (${val(p.tierLabel)})`}
+    eyebrow="NIEC Connect · Membership"
+    title="New membership application"
+    highlight={
+      <>
+        <Text style={highlightLine}><strong>{val(p.organisationName)}</strong></Text>
+        <Text style={highlightLine}>Tier requested: <strong>{val(p.tierLabel)}</strong></Text>
+        <Text style={highlightLine}>Fee: <strong>{val(p.amountLabel)}</strong> · Payment: {val(p.paymentStatus)}</Text>
+        <Text style={highlightMuted}>Submitted {val(p.submittedAt)}</Text>
+      </>
+    }
+    footer="This application is also available in the NIEC Connect admin CRM under Applications."
+  >
 
         <Heading as="h2" style={h2}>Primary contact</Heading>
         <Row label="Applicant type" value={p.memberType === 'individual' ? 'Individual' : 'Organisation'} />
@@ -99,6 +99,7 @@ const JoinApplicationEmail = (p: JoinApplicationProps) => (
             <Row label="Website" value={val(p.website)} />
             <Row label="AUM / annual budget" value={val(p.aumRange)} />
             <Row label="Investment stage focus" value={val(p.investmentStage)} />
+            <Row label="Capital provided" value={val(p.capitalProvided)} />
           </>
         )}
 
@@ -116,13 +117,7 @@ const JoinApplicationEmail = (p: JoinApplicationProps) => (
         <Heading as="h2" style={h2}>Statement of intent</Heading>
         <Text style={rowValue}>{val(p.statement)}</Text>
 
-        <Hr style={hr} />
-        <Text style={footer}>
-          This application is also available in the NIEC Connect admin CRM under Applications.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+  </EmailLayout>
 )
 
 export const template = {
@@ -149,17 +144,10 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, Helvetica, sans-serif' }
-const container = { padding: '24px', maxWidth: '640px' }
-const header = { borderBottom: '3px solid #C9A227', paddingBottom: '12px' }
-const eyebrow = { margin: '0', fontSize: '11px', letterSpacing: '1.5px', textTransform: 'uppercase' as const, color: '#C9A227' }
-const h1 = { margin: '6px 0 0', fontSize: '22px', color: '#0B4F3A' }
 const h2 = { margin: '20px 0 8px', fontSize: '14px', textTransform: 'uppercase' as const, letterSpacing: '1px', color: '#0B4F3A' }
-const highlight = { backgroundColor: '#F2F8F5', borderRadius: '10px', padding: '16px', margin: '18px 0' }
 const highlightLine = { margin: '0 0 4px', fontSize: '14px', color: '#12261F' }
 const highlightMuted = { margin: '6px 0 0', fontSize: '12px', color: '#5B6B64' }
 const row = { margin: '0 0 10px' }
 const rowLabel = { fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.6px', color: '#7A8A83' }
 const rowValue = { fontSize: '14px', color: '#12261F' }
 const hr = { borderColor: '#E3EBE7', margin: '18px 0' }
-const footer = { fontSize: '12px', color: '#7A8A83' }

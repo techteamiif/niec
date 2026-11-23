@@ -54,7 +54,7 @@ function CopsIndex() {
     <div className="p-6 lg:p-10">
       <div className="mb-6">
         <h1 className="font-display text-3xl">Communities of Practice</h1>
-        <p className="text-sm text-muted-foreground">Specialist working groups within NIEC. Open a CoP to see its feed, working groups, polls, events, and leaderboard.</p>
+        <p className="text-sm text-muted-foreground">Specialist working groups within NIEC. Open a CoP to see its feed, working groups, events, and leaderboard.</p>
       </div>
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
         {COPS.map((c) => {
