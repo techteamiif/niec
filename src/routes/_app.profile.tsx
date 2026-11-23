@@ -65,13 +65,15 @@ function ProfilePage() {
   const matches = useMatches();
   const navigate = useNavigate();
   const runDeleteOwnAccount = useServerFn(deleteOwnAccount);
+  const pendingEmailChangeKey = user?.id ? `niec:pending-email-change:v1:${user.id}` : null;
   const [profileTab, setProfileTab] = useState("about");
   const [settingsSection, setSettingsSection] = useState<"email" | "password" | "deactivate" | "delete">("email");
   const [preferredChannel, setPreferredChannel] = useState("");
   const [communicationSaving, setCommunicationSaving] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
-  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [emailChangeNotice, setEmailChangeNotice] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -92,6 +94,58 @@ function ProfilePage() {
       setProfileTab("settings");
     }
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || !pendingEmailChangeKey) return;
+    try {
+      const savedPendingEmail = localStorage.getItem(pendingEmailChangeKey);
+      setPendingEmail(savedPendingEmail ?? "");
+      if (savedPendingEmail) {
+        setEmailChangeNotice(
+          `The change to ${savedPendingEmail} is pending. Check your email inboxes for the confirmation link or links.`,
+        );
+      } else {
+        setEmailChangeNotice("");
+      }
+    } catch (error) {
+      console.error("[profile:email-change:restore]", error);
+      toast.error("Could not restore the pending email change status.");
+    }
+
+    const authMessage = new URLSearchParams(window.location.hash.slice(1)).get("message");
+    if (authMessage) {
+      const needsSecondConfirmation = authMessage.toLowerCase().includes(
+        "proceed to confirm link sent to the other email",
+      );
+      setEmailChangeNotice(
+        needsSecondConfirmation
+          ? "The first confirmation was accepted. Check the other email inbox and open its confirmation link to finish changing your address."
+          : "The confirmation link was accepted. Your address will update after all required confirmations are complete.",
+      );
+      void supabase.auth.refreshSession().then(({ error }) => {
+        if (error) console.error("[profile:email-change:refresh-session]", error);
+      });
+    }
+  }, [pendingEmailChangeKey, user?.id]);
+
+  useEffect(() => {
+    if (
+      !pendingEmail ||
+      !user?.email ||
+      pendingEmail.toLowerCase() !== user.email.toLowerCase() ||
+      !pendingEmailChangeKey
+    ) {
+      return;
+    }
+    try {
+      localStorage.removeItem(pendingEmailChangeKey);
+    } catch (error) {
+      console.error("[profile:email-change:clear]", error);
+      toast.error("Your email changed, but the pending status could not be cleared from this device.");
+    }
+    setPendingEmail("");
+    setEmailChangeNotice(`Your email address has been updated to ${user.email}.`);
+  }, [pendingEmail, pendingEmailChangeKey, user?.email]);
 
   useEffect(() => {
     if (!profile || !user?.email || profile.email === user.email) return;
@@ -205,7 +259,7 @@ function ProfilePage() {
     }
 
     setEmailSaving(true);
-    setEmailConfirmationSent(false);
+    setEmailChangeNotice("");
     try {
       const emailRedirectTo = new URL("/profile?tab=settings", window.location.origin).toString();
       const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo });
@@ -213,8 +267,19 @@ function ProfilePage() {
         toast.error(`Could not update email address: ${error.message}`);
         return;
       }
-      setEmailConfirmationSent(true);
-      toast.success("Email confirmation sent. Your address will change after confirmation.");
+      setPendingEmail(email);
+      setEmailChangeNotice(
+        "Confirmation link or links sent. Depending on your account’s security settings, you may need to confirm both the current and new email addresses.",
+      );
+      if (pendingEmailChangeKey) {
+        try {
+          localStorage.setItem(pendingEmailChangeKey, email);
+        } catch (storageError) {
+          console.error("[profile:email-change:save]", storageError);
+          toast.error("The confirmation was sent, but its pending status could not be saved on this device.");
+        }
+      }
+      toast.success("Check your email inboxes to complete the address change.");
     } catch (error) {
       toast.error(
         `Could not update email address: ${error instanceof Error ? error.message : "Unexpected error"}`,
@@ -504,7 +569,7 @@ function ProfilePage() {
                       value={newEmail}
                       onChange={(event) => {
                         setNewEmail(event.target.value);
-                        setEmailConfirmationSent(false);
+                        if (!pendingEmail) setEmailChangeNotice("");
                       }}
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     />
@@ -516,9 +581,9 @@ function ProfilePage() {
                   >
                     {emailSaving ? "Sending confirmation…" : "Update email"}
                   </button>
-                  {emailConfirmationSent && (
+                  {emailChangeNotice && (
                     <p role="status" className="text-sm text-muted-foreground">
-                      A confirmation message was sent to {newEmail.trim()}. Your current address remains active until you confirm.
+                      {emailChangeNotice}
                     </p>
                   )}
                 </form>
