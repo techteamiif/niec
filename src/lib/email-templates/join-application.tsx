@@ -29,6 +29,7 @@ export interface JoinApplicationProps {
   commPreference?: string
   aumRange?: string
   investmentStage?: string
+  capitalProvided?: string
   statement?: string
   personalTitle?: string
   qualification?: string
@@ -98,6 +99,7 @@ const JoinApplicationEmail = (p: JoinApplicationProps) => (
             <Row label="Website" value={val(p.website)} />
             <Row label="AUM / annual budget" value={val(p.aumRange)} />
             <Row label="Investment stage focus" value={val(p.investmentStage)} />
+            <Row label="Capital provided" value={val(p.capitalProvided)} />
           </>
         )}
 

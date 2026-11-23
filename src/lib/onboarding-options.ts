@@ -44,13 +44,21 @@ export const AUM_OPTIONS = [
 ];
 
 export const INVESTMENT_STAGE_OPTIONS = [
-  "Seed / early stage",
+  "Seed/early stage",
   "Growth stage",
-  "Scale / expansion",
-  "Debt / blended finance",
-  "Grant / catalytic capital",
+  "Scale/expansion",
   "Multiple stages",
 ];
+
+export const CAPITAL_PROVIDED_OPTIONS = [
+  "Debt/Blended Finance",
+  "Grant/Catalytic Capital",
+  "All",
+];
+
+export const ORG_TYPES_WITH_INVESTMENT_STAGE = ["investor", "dfi", "accelerator", "foundation"];
+export const ORG_TYPES_WITH_CAPITAL_PROVIDED = ["investor", "dfi", "government"];
+export const ORG_TYPES_WITH_AUM = ["investor", "social_enterprise", "accelerator", "foundation"];
 
 export const SDG_OPTIONS = [
   "SDG 1: No poverty",

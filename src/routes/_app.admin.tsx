@@ -1484,6 +1484,7 @@ function ApplicationsTab({ members }: { members: Profile[] }) {
                 <Detail label="LinkedIn" value={open.linkedin_url || "—"} />
                 <Detail label="AUM / budget" value={open.aum_range || "—"} />
                 <Detail label="Investment stage" value={open.investment_stage || "—"} />
+                <Detail label="Capital provided" value={open.details?.capital_provided || "—"} />
                 <Detail label="SDG focus" value={(open.sdg_focus ?? []).join(", ") || "—"} />
                 <Detail label="Sectors" value={(open.sectors ?? []).join(", ") || "—"} />
                 <Detail label="Goals" value={(open.goals ?? []).join(", ") || "—"} />

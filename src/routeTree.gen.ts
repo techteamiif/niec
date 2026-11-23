@@ -18,6 +18,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as EventsRouteImport } from './routes/events'
+import { Route as EmailVerifiedRouteImport } from './routes/email-verified'
 import { Route as ApplyRouteImport } from './routes/apply'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -94,6 +95,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const EventsRoute = EventsRouteImport.update({
   id: '/events',
   path: '/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailVerifiedRoute = EmailVerifiedRouteImport.update({
+  id: '/email-verified',
+  path: '/email-verified',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApplyRoute = ApplyRouteImport.update({
@@ -264,6 +270,7 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/email-verified': typeof EmailVerifiedRoute
   '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -306,6 +313,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/apply': typeof ApplyRoute
+  '/email-verified': typeof EmailVerifiedRoute
   '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/apply': typeof ApplyRoute
+  '/email-verified': typeof EmailVerifiedRoute
   '/events': typeof EventsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -394,6 +403,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/apply'
+    | '/email-verified'
     | '/events'
     | '/forgot-password'
     | '/login'
@@ -436,6 +446,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/apply'
+    | '/email-verified'
     | '/events'
     | '/forgot-password'
     | '/login'
@@ -479,6 +490,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/apply'
+    | '/email-verified'
     | '/events'
     | '/forgot-password'
     | '/login'
@@ -523,6 +535,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ApplyRoute: typeof ApplyRoute
+  EmailVerifiedRoute: typeof EmailVerifiedRoute
   EventsRoute: typeof EventsRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
@@ -606,6 +619,13 @@ declare module '@tanstack/react-router' {
       path: '/events'
       fullPath: '/events'
       preLoaderRoute: typeof EventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email-verified': {
+      id: '/email-verified'
+      path: '/email-verified'
+      fullPath: '/email-verified'
+      preLoaderRoute: typeof EmailVerifiedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/apply': {
@@ -926,6 +946,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ApplyRoute: ApplyRoute,
+  EmailVerifiedRoute: EmailVerifiedRoute,
   EventsRoute: EventsRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,

@@ -23,7 +23,7 @@ export const SignupEmail = ({
   <EmailLayout
     preview={`Confirm your email for ${siteName}`}
     eyebrow="NIEC Connect · Account"
-    title="Confirm your email"
+    title="Confirm your email address"
     footer="If you didn't create an account, you can safely ignore this email."
     darkModeCss={darkModeCss}
   >
@@ -32,12 +32,12 @@ export const SignupEmail = ({
       <Link href={siteUrl} style={emailLink}><strong>{siteName}</strong></Link>!
     </Text>
     <Text style={emailText}>
-      Please confirm your email address ({' '}
+      Confirm your email address ({' '}
       <Link href={`mailto:${recipient}`} style={emailLink}>{recipient}</Link>
-      {' '}) by clicking the button below:
+      {' '}) to activate your account. After confirmation, you will see a success page with a button to continue to your application.
     </Text>
     <Button className="dm-btn" style={emailButton} href={confirmationUrl}>
-      Verify Email
+      Confirm email address
     </Button>
   </EmailLayout>
 )

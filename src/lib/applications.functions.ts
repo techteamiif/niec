@@ -25,6 +25,7 @@ export interface JoinApplicationInput {
   commPreference?: string;
   aumRange?: string;
   investmentStage?: string;
+  capitalProvided?: string;
   statement?: string;
   personalTitle?: string;
   qualification?: string;
@@ -97,6 +98,7 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
       statement: clean(data.statement, 4000) || null,
       details: {
         account_type: data.memberType === "individual" ? "individual" : "organisation",
+        capital_provided: clean(data.capitalProvided, 80) || null,
         personal_title: clean(data.personalTitle, 40) || null,
         qualification: clean(data.qualification, 300) || null,
         qualification_department: clean(data.qualificationDepartment, 160) || null,
@@ -157,6 +159,7 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
           commPreference: row.comm_preference ?? "",
           aumRange: row.aum_range ?? "",
           investmentStage: row.investment_stage ?? "",
+          capitalProvided: clean(data.capitalProvided, 80),
           statement: row.statement ?? "",
           personalTitle: clean(data.personalTitle, 40),
           qualification: clean(data.qualification, 300),

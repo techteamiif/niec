@@ -1,5 +1,6 @@
-import { createFileRoute, Link, Outlet, useMatches } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useMatches, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Building2, Globe, Linkedin, MapPin, Pencil } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { MemberBadges } from "@/components/MemberBadges";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 import { ORG_TYPE_LABELS, TIER_LABELS } from "@/lib/niec";
 import { getAccountType, readOnboardingData } from "@/lib/profile-onboarding";
 import { COMMUNICATION_OPTIONS } from "@/lib/onboarding-options";
+import { deleteOwnAccount } from "@/lib/account.functions";
 import type { Json } from "@/integrations/supabase/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -61,12 +63,21 @@ function safeExternalUrl(value: string | null) {
 function ProfilePage() {
   const { profile, user, refresh } = useAuth();
   const matches = useMatches();
+  const navigate = useNavigate();
+  const runDeleteOwnAccount = useServerFn(deleteOwnAccount);
+  const [settingsSection, setSettingsSection] = useState<"email" | "password" | "deactivate" | "delete">("email");
   const [preferredChannel, setPreferredChannel] = useState("");
   const [communicationSaving, setCommunicationSaving] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailConfirmationSent, setEmailConfirmationSent] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [accountDeleting, setAccountDeleting] = useState(false);
   const savedPreferredChannel = profile
     ? (readOnboardingData(profile.application_data).comm_preference ?? "")
     : "";
@@ -74,6 +85,17 @@ function ProfilePage() {
   useEffect(() => {
     setPreferredChannel(savedPreferredChannel);
   }, [savedPreferredChannel]);
+
+  useEffect(() => {
+    if (!profile || !user?.email || profile.email === user.email) return;
+    void supabase
+      .from("profiles")
+      .update({ email: user.email })
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) toast.error(`Could not sync your confirmed email address: ${error.message}`);
+      });
+  }, [profile?.email, user?.email, user?.id]);
 
   if (matches.some((match) => match.routeId.startsWith("/_app/profile/"))) {
     return <Outlet />;
@@ -164,6 +186,55 @@ function ProfilePage() {
       );
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const updateEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const email = newEmail.trim().toLowerCase();
+    if (!email || email === user?.email?.toLowerCase()) {
+      toast.error("Enter a new email address that differs from your current one.");
+      return;
+    }
+
+    setEmailSaving(true);
+    setEmailConfirmationSent(false);
+    try {
+      const { error } = await supabase.auth.updateUser({ email });
+      if (error) {
+        toast.error(`Could not update email address: ${error.message}`);
+        return;
+      }
+      setEmailConfirmationSent(true);
+      toast.success("Email confirmation sent. Your address will change after confirmation.");
+    } catch (error) {
+      toast.error(
+        `Could not update email address: ${error instanceof Error ? error.message : "Unexpected error"}`,
+      );
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
+  const deleteAccount = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (deleteConfirmation !== "DELETE") {
+      toast.error('Type "DELETE" exactly to confirm account deletion.');
+      return;
+    }
+
+    setAccountDeleting(true);
+    try {
+      await runDeleteOwnAccount({
+        data: { password: deletePassword, confirmation: deleteConfirmation },
+      });
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) console.error("[profile:delete-account:local-signout]", error);
+      toast.success("Your account has been permanently deleted.");
+      navigate({ to: "/login", replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not delete the account.");
+      setAccountDeleting(false);
     }
   };
 
@@ -260,7 +331,7 @@ function ProfilePage() {
                 </DetailSection>
               )}
 
-              {(onboarding.aum_range || onboarding.investment_stage) && (
+              {(onboarding.aum_range || onboarding.investment_stage || onboarding.capital_provided) && (
                 <DetailSection title="Investment focus">
                   <dl className="grid gap-4 text-sm sm:grid-cols-2">
                     {onboarding.investment_stage && (
@@ -273,6 +344,12 @@ function ProfilePage() {
                       <div>
                         <dt className="text-xs text-muted-foreground">AUM / annual budget</dt>
                         <dd className="mt-1">{onboarding.aum_range}</dd>
+                      </div>
+                    )}
+                    {onboarding.capital_provided && (
+                      <div>
+                        <dt className="text-xs text-muted-foreground">Capital provided</dt>
+                        <dd className="mt-1">{onboarding.capital_provided}</dd>
                       </div>
                     )}
                   </dl>
@@ -372,8 +449,76 @@ function ProfilePage() {
           </article>
         </TabsContent>
 
-        <TabsContent value="settings" className="mt-0 space-y-6">
-          <section className="rounded-xl border bg-card p-6">
+        <TabsContent value="settings" className="mt-0">
+          <section className="grid overflow-hidden rounded-xl border bg-card md:grid-cols-[220px_minmax(0,1fr)]">
+            <aside className="border-b p-4 md:border-b-0 md:border-r">
+              <h1 className="font-display text-2xl">Settings</h1>
+              <nav aria-label="Account settings" className="mt-4 flex gap-2 overflow-x-auto md:flex-col">
+                {([
+                  ["email", "Update Email Address"],
+                  ["password", "Password"],
+                  ["deactivate", "Deactivate Account"],
+                  ["delete", "Delete Account"],
+                ] as const).map(([section, label]) => (
+                  <button
+                    key={section}
+                    type="button"
+                    aria-current={settingsSection === section ? "page" : undefined}
+                    onClick={() => setSettingsSection(section)}
+                    className={`shrink-0 rounded-md px-3 py-2 text-left text-sm transition md:w-full ${
+                      settingsSection === section
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            </aside>
+            <div className="min-w-0 p-6">
+            {settingsSection === "email" && (
+              <section>
+                <h2 className="font-display text-2xl">Update Email Address</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Your current email address is <span className="font-medium text-foreground">{user.email}</span>.
+                  Confirm the new address before it takes effect.
+                </p>
+                <form onSubmit={updateEmail} className="mt-5 max-w-xl space-y-4">
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                      New email address
+                    </span>
+                    <input
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={newEmail}
+                      onChange={(event) => {
+                        setNewEmail(event.target.value);
+                        setEmailConfirmationSent(false);
+                      }}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={emailSaving}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    {emailSaving ? "Sending confirmation…" : "Update email"}
+                  </button>
+                  {emailConfirmationSent && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      A confirmation message was sent to {newEmail.trim()}. Your current address remains active until you confirm.
+                    </p>
+                  )}
+                </form>
+              </section>
+            )}
+
+            {settingsSection === "password" && (
+          <section>
             <h1 className="font-display text-2xl">Account security</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Change the password you use to sign in to NIEC. If you forgot your password, please{" "}
@@ -436,6 +581,68 @@ function ProfilePage() {
               </button>
             </form>
           </section>
+            )}
+
+            {settingsSection === "deactivate" && (
+              <section>
+                <h2 className="font-display text-2xl">Deactivate Account</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Temporary account deactivation is informational for now. Contact{" "}
+                  <a
+                    href="mailto:info@impactinvestorsfoundation.org"
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    info@impactinvestorsfoundation.org
+                  </a>{" "}
+                  to request help. Deactivation does not delete your profile or account data.
+                </p>
+              </section>
+            )}
+
+            {settingsSection === "delete" && (
+              <section>
+                <h2 className="font-display text-2xl text-destructive">Delete Account</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  This permanently removes your sign-in account and profile, along with profile-linked content.
+                  Membership application and payment history may be retained with the account link removed.
+                  This action cannot be undone.
+                </p>
+                <form onSubmit={deleteAccount} className="mt-5 max-w-xl space-y-4">
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Current password *
+                    </span>
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={deletePassword}
+                      onChange={(event) => setDeletePassword(event.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                  </label>
+                  <label className="block text-sm">
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Type DELETE to confirm
+                    </span>
+                    <input
+                      type="text"
+                      required
+                      value={deleteConfirmation}
+                      onChange={(event) => setDeleteConfirmation(event.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={accountDeleting}
+                    className="rounded-md bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60"
+                  >
+                    {accountDeleting ? "Deleting account…" : "Permanently delete account"}
+                  </button>
+                </form>
+              </section>
+            )}
 
           {/* <section className="rounded-xl border bg-card p-6">
             <h2 className="font-display text-xl">Communication preferences</h2>
@@ -474,6 +681,8 @@ function ProfilePage() {
               </div>
             </form>
           </section> */}
+            </div>
+          </section>
         </TabsContent>
       </Tabs>
     </div>
