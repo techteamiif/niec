@@ -32,6 +32,7 @@ export const JOB_TITLES = [
   "Research Director",
   "Board Chair",
   "Board Member",
+  "Other",
 ];
 
 export const AUM_OPTIONS = [

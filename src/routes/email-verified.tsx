@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { useAuth } from "@/lib/auth";
 
@@ -17,12 +17,10 @@ function EmailVerifiedPage() {
       <main className="mx-auto max-w-xl px-6 py-20 text-center">
         <div className="rounded-2xl border bg-white p-8 shadow-sm">
           {loading ? (
-            <>
-              <h1 className="font-display text-2xl text-primary">Verifying your email</h1>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Please wait while we confirm your email address.
-              </p>
-            </>
+            <div role="status" aria-live="polite">
+              <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" aria-hidden="true" />
+              <span className="sr-only">Loading</span>
+            </div>
           ) : user ? (
             <>
               <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary/10">

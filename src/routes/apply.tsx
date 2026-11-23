@@ -173,7 +173,7 @@ const CONSENTS = [
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
 const INDIVIDUAL_CONSENTS = [
-  "I confirm that the information provided is accurate and belongs to me.",
+  "I confirm that the information provided is accurate.",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
@@ -260,7 +260,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const wizardSteps = [
     { label: "Profile", Icon: GraduationCap },
     { label: "Membership", Icon: Building2 },
-    { label: "Application", Icon: CheckCircle },
+    { label: "Interest", Icon: CheckCircle },
   ];
   const wizardProgress = ((step - 2) / (wizardSteps.length - 1)) * 100;
   const screenTitle = step === 1
@@ -655,10 +655,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             !firstName && "first name",
             !lastName && "last name",
             !personalTitle && "title",
-            !qualificationDepartment && "qualification department",
-            !qualificationPosition && "qualification position",
-            !qualificationInstitution && "institution or organisation",
-            researchInterests.length === 0 && "research interests",
             ...(isInNigeria
               ? [!state && "state", !lga && "local government area"]
               : [!country.trim() && "country"]),
@@ -711,7 +707,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       ? !state || !lga
       : !country.trim();
     if (!accountType || !tier || locationMissing || (!isIndividual && (!orgName || !orgType || !contactPersonFirstName || !contactPersonLastName || !contactPersonRole || !contactPersonEmail)) || (isIndividual && (!firstName || !lastName)) ||
-      (isIndividual && (!personalTitle || !qualificationDepartment || !qualificationPosition || !qualificationInstitution || researchInterests.length === 0)) || !email) {
+      (isIndividual && !personalTitle) || !email) {
       toast.error("Please complete all required fields and pick a tier.");
       return;
     }
@@ -1052,14 +1048,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                     options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
                   />
                 </Field>
-                <Field label="Professional Role">
+                <Field label="Professional Role (Optional)">
                   <SearchableOptionDropdown
                     selectedKey={individualRole}
                     onChange={setIndividualRole}
                     onClear={() => setIndividualRole("")}
                     options={JOB_TITLE_DROPDOWN_OPTIONS}
-                    placeholder="Select professional role"
-                    searchPlaceholder="Search professional roles"
+                    placeholder="Select or add a professional role"
+                    searchPlaceholder="Search or add a professional role"
                     ariaLabel="Professional role"
                     allowCustom
                     onCustomValue={setIndividualRole}
@@ -1083,22 +1079,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
               <Row>
-                <Field label="Department *">
+                <Field label="Department (Optional)">
                   <Select
                     value={qualificationDepartment}
                     onChange={setQualificationDepartment}
                     options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
                   />
                 </Field>
-                <Field label="Position *">
+                <Field label="Department Role (Optional)">
                   <Select
                     value={qualificationPosition}
                     onChange={setQualificationPosition}
-                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                    options={[{ key: "", label: "Select department role" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
                   />
                 </Field>
               </Row>
-              <Field label="Institution or Organisation *">
+              <Field label="Institution or Organisation (Optional)">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
               <Field label="Current Research Area (Optional)">
@@ -1110,7 +1106,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </Field>
-              <Field label="Research Interests *">
+              <Field label="Research Interests (Optional)">
                 <SearchableMultiSelectField
                   values={researchInterests}
                   onChange={setResearchInterests}
@@ -1362,14 +1358,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                     options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
                   />
                 </Field>
-                <Field label="Professional Role">
+                <Field label="Professional Role (Optional)">
                   <SearchableOptionDropdown
                     selectedKey={individualRole}
                     onChange={setIndividualRole}
                     onClear={() => setIndividualRole("")}
                     options={JOB_TITLE_DROPDOWN_OPTIONS}
-                    placeholder="Select professional role"
-                    searchPlaceholder="Search professional roles"
+                    placeholder="Select or add a professional role"
+                    searchPlaceholder="Search or add a professional role"
                     ariaLabel="Professional role"
                     allowCustom
                     onCustomValue={setIndividualRole}
@@ -1382,22 +1378,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
               <Row>
-                <Field label="Department *">
+                <Field label="Department (Optional)">
                   <Select
                     value={qualificationDepartment}
                     onChange={setQualificationDepartment}
                     options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
                   />
                 </Field>
-                <Field label="Position *">
+                <Field label="Department Role (Optional)">
                   <Select
                     value={qualificationPosition}
                     onChange={setQualificationPosition}
-                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                    options={[{ key: "", label: "Select department role" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
                   />
                 </Field>
               </Row>
-              <Field label="Institution or Organisation *">
+              <Field label="Institution or Organisation (Optional)">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
               <Field label="Current Research Area (Optional)">
@@ -1409,7 +1405,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </Field>
-              <Field label="Research Interests *">
+              <Field label="Research Interests (Optional)">
                 <SearchableMultiSelectField
                   values={researchInterests}
                   onChange={setResearchInterests}
@@ -1452,7 +1448,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <Field label="Email Address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
           </>
           )}
-          <Field label="Create Password * (Min 8 Characters)">
+          <Field label="Create Password *">
             <div className="relative">
               <Input
                 value={password}
@@ -1474,6 +1470,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 )}
               </button>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Password must be at least 8 characters.
+            </p>
           </Field>
           <Field label="Confirm Password">
             <div className="relative">
@@ -1504,9 +1503,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 4 && (
           <>
-        <Section title="SDG focus areas" desc={`Select all Sustainable Development Goals ${isIndividual ? "you" : "your organisation"} actively work on.`}>
+        <Section title="SDG focus areas" desc="Select all Sustainable Development Goals you actively work on.">
           <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
-          <Divider>Investment sectors</Divider>
+          <Divider>Investment sectors (if applicable)</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
 
@@ -1781,7 +1780,7 @@ function ProfileLocationFields({
               }}
               className="accent-primary"
             />
-            Not in Nigeria
+            Outside Nigeria
           </label>
         </div>
       </fieldset>

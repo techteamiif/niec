@@ -339,7 +339,7 @@ function ProfilePage() {
               </Field>
             </div>
             <MultiSelect label="SDG focus areas" options={SDG_OPTIONS} values={form.sdg_focus} onChange={(values) => update("sdg_focus", values)} />
-            <MultiSelect label="Investment sectors" options={SECTOR_OPTIONS} values={form.sectors} onChange={(values) => update("sectors", values)} />
+            <MultiSelect label="Investment sectors (if applicable)" options={SECTOR_OPTIONS} values={form.sectors} onChange={(values) => update("sectors", values)} />
             <SaveButton busy={busy.investment} />
           </form>
 
