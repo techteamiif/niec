@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { ArrowLeft, CreditCard, Download, FileText, Share2 } from "lucide-react";
+import { CreditCard, Download, FileText, Share2 } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -14,9 +14,18 @@ import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
   getPublicKnowledgeResource,
   hasGuestKnowledgePurchase,
 } from "@/lib/public-resource.functions";
+import { richTextToPlainText } from "@/lib/rich-text";
 import { z } from "zod";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
@@ -43,16 +52,71 @@ type ResourceAuthor = Pick<
   "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
+const siteUrl = (
+  (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+  import.meta.env?.VITE_SITE_URL ||
+  "https://niec-connect.dextrus.workers.dev"
+).replace(/\/+$/, "");
+
+function getAbsoluteImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) return undefined;
+  try {
+    const url = new URL(imageUrl, siteUrl);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
   validateSearch: z.object({
     purchaseReference: z.string().optional(),
   }),
+  loader: ({ params }) =>
+    /^[0-9a-f-]{36}$/i.test(params.resourceId)
+      ? getPublicKnowledgeResource({ data: { resourceId: params.resourceId } })
+      : { resource: null, author: null },
+  head: ({ loaderData, params }) => {
+    const resource = loaderData?.resource;
+    const title = resource ? `${resource.title} | NIEC Knowledge Hub` : "Resource not found | NIEC";
+    const description =
+      (resource?.description
+        ? richTextToPlainText(resource.description).replace(/\s+/g, " ").trim().slice(0, 200)
+        : "") || "Explore resources from the NIEC Knowledge Hub.";
+    const imageUrl = getAbsoluteImageUrl(resource?.cover_image_url);
+    const canonicalUrl = `${siteUrl}/knowledge/${encodeURIComponent(params.resourceId)}`;
+    const socialTitle = resource?.title ?? title;
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: socialTitle },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: canonicalUrl },
+        { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
+        { name: "twitter:title", content: socialTitle },
+        { name: "twitter:description", content: description },
+        ...(imageUrl
+          ? [
+              { property: "og:image", content: imageUrl },
+              { property: "og:image:secure_url", content: imageUrl },
+              { property: "og:image:alt", content: socialTitle },
+              { name: "twitter:image", content: imageUrl },
+              { name: "twitter:image:alt", content: socialTitle },
+            ]
+          : []),
+      ],
+    };
+  },
   component: KnowledgeResourcePage,
 });
 
 function KnowledgeResourcePage() {
   const { resourceId } = Route.useParams();
   const purchaseReference = Route.useSearch().purchaseReference ?? "";
+  const { resource: publicResource, author: publicAuthor } = Route.useLoaderData();
   const { user, profile, isStaff, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [resource, setResource] = useState<ResourceDetails | null>(null);
@@ -64,7 +128,6 @@ function KnowledgeResourcePage() {
   const [purchasing, setPurchasing] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const startPurchase = useServerFn(initResourcePayment);
-  const loadPublicResource = useServerFn(getPublicKnowledgeResource);
   const checkGuestPurchase = useServerFn(hasGuestKnowledgePurchase);
 
   useEffect(() => {
@@ -79,21 +142,14 @@ function KnowledgeResourcePage() {
 
     void (async () => {
       if (!user) {
+        if (!publicResource) {
+          setResource(null);
+          setLoading(false);
+          return;
+        }
+        setResource({ ...publicResource, file_url: null, executive_summary_url: null });
+        setAuthor(publicAuthor);
         try {
-          const { resource: publicResource, author: publicAuthor } = await loadPublicResource({
-            data: { resourceId },
-          });
-          if (!active) return;
-          if (!publicResource) {
-            setResource(null);
-            return;
-          }
-          setResource({
-            ...publicResource,
-            file_url: null,
-            executive_summary_url: null,
-          });
-          setAuthor(publicAuthor);
           if (purchaseReference) {
             const purchased = await checkGuestPurchase({
               data: { resourceId, purchaseReference },
@@ -156,7 +212,8 @@ function KnowledgeResourcePage() {
   }, [
     authLoading,
     checkGuestPurchase,
-    loadPublicResource,
+    publicAuthor,
+    publicResource,
     purchaseReference,
     resourceId,
     user,
@@ -258,12 +315,25 @@ function KnowledgeResourcePage() {
 
   return (
     <div className="p-6 lg:p-10">
-      <Link
-        to="/resources"
-        className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Resources
-      </Link>
+      <Breadcrumb className="mb-5">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/">Home</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/resources">Resources</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{resource?.title ?? "Resource"}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {loading ? (
         <div className="rounded-xl border bg-card p-8 text-sm text-muted-foreground">

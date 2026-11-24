@@ -42,11 +42,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
           <a href="/#impact" className="transition hover:text-foreground">
             Impact
           </a>
-          {user ? (
-            <Link to="/dashboard" className="transition hover:text-foreground">
-              Dashboard
-            </Link>
-          ) : (
+          {!user && (
             <Link to="/login" search={returnSearch} className="transition hover:text-foreground">
               Sign in
             </Link>
@@ -126,15 +122,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
             >
               Impact
             </a>
-            {user ? (
-              <Link
-                to="/dashboard"
-                onClick={() => setMobileNav(false)}
-                className="rounded-md px-3 py-3 hover:bg-muted"
-              >
-                Dashboard
-              </Link>
-            ) : (
+            {!user && (
               <Link
                 to="/login"
                 search={returnSearch}
