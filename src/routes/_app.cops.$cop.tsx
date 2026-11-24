@@ -425,7 +425,18 @@ function CopWorkspace() {
         <div className="flex flex-col gap-4 p-6 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="font-display text-3xl">{meta.name}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{meta.description}</p>
+            <div className="mt-2 max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mandate</p>
+              <p className="mt-1 text-sm text-muted-foreground">{meta.mandate}</p>
+            </div>
+            {"subgroups" in meta && (
+              <div className="mt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Focus areas</p>
+                <ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">
+                  {meta.subgroups.map((subgroup) => <li key={subgroup}>{subgroup}</li>)}
+                </ul>
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Users className="h-3 w-3" /> {members.length} members

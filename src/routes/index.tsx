@@ -211,7 +211,7 @@ function ImpactLanding() {
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Six communities of practice</div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Four communities of practice</div>
               <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Where members do the work.</h2>
             </div>
             <p className="max-w-sm text-sm text-muted-foreground">
@@ -225,7 +225,7 @@ function ImpactLanding() {
                 <div className="relative">
                   <span className="inline-block h-2 w-2 rounded-full" />
                   <h3 className="mt-4 font-display text-xl text-foreground">{c.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.mandate}</p>
                 </div>
               </div>
             ))}

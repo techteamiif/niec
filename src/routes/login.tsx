@@ -5,9 +5,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
+import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
 
-function safeNext(v: unknown): string | undefined {
-  return typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : undefined;
+function getPostLoginPath(next: string, requiresOnboarding: boolean) {
+  if (!requiresOnboarding) return next;
+  return next === "/dashboard" || next === "/onboarding"
+    ? "/onboarding"
+    : pathWithNext("/onboarding", next);
 }
 
 export const Route = createFileRoute("/login")({
@@ -21,7 +25,9 @@ export const Route = createFileRoute("/login")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): { next?: string } => ({ next: safeNext(s.next) }),
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({
+    next: safeInternalPath(s.next),
+  }),
   component: LoginPage,
 });
 
@@ -39,7 +45,7 @@ function LoginPage() {
   useEffect(() => {
     if (loading || !user || !profile || navigationStarted.current) return;
     navigationStarted.current = true;
-    const destination = !isStaff && profile.crm_stage !== "applicant" ? "/onboarding" : next;
+    const destination = getPostLoginPath(next, !isStaff && profile.crm_stage !== "applicant");
     navigate({ href: destination });
   }, [loading, user, profile, isStaff, navigate, next]);
 
@@ -58,7 +64,10 @@ function LoginPage() {
         if (rolesError) throw rolesError;
         navigationStarted.current = true;
         const staff = (roles ?? []).some(({ role }) => role === "admin" || role === "super_admin");
-        const destination = !staff && memberProfile?.crm_stage !== "applicant" ? "/onboarding" : next;
+        const destination = getPostLoginPath(
+          next,
+          !staff && memberProfile?.crm_stage !== "applicant",
+        );
         navigate({ href: destination });
       } else {
         const { error } = await supabase.auth.signInWithOtp({

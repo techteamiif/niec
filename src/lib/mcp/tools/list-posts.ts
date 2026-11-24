@@ -7,7 +7,7 @@ export default defineTool({
   title: "List community posts",
   description: "List recent NIEC community feed posts, optionally filtered by Community of Practice slug or post type.",
   inputSchema: {
-    cop: z.string().optional().describe("Community of Practice slug, e.g. 'niiric'."),
+    cop: z.string().optional().describe("Community of Practice slug, e.g. 'niric'."),
     post_type: z
       .enum(["discussion", "opportunity", "event", "knowledge", "announcement"])
       .optional(),

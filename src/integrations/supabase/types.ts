@@ -1613,9 +1613,9 @@ export type Database = {
       app_role: "member" | "admin" | "super_admin"
       cop_role: "chair" | "co_chair" | "steward"
       cop_type:
-        | "giis-inclusive-impact"
+        | "icc"
         | "climate-green-finance"
-        | "niiric"
+        | "niric"
         | "policy-acii"
         | "capital-deals"
         | "eso-collaborative"
@@ -1821,9 +1821,9 @@ export const Constants = {
       app_role: ["member", "admin", "super_admin"],
       cop_role: ["chair", "co_chair", "steward"],
       cop_type: [
-        "giis-inclusive-impact",
+        "icc",
         "climate-green-finance",
-        "niiric",
+        "niric",
         "policy-acii",
         "capital-deals",
         "eso-collaborative",

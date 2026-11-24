@@ -11,10 +11,8 @@ export default defineTool({
     content: z.string().trim().min(1),
     cop: z
       .enum([
-        "giis-inclusive-impact",
-        "climate-green-finance",
-        "niiric",
-        "policy-acii",
+        "icc",
+        "niric",
         "capital-deals",
         "eso-collaborative",
         "general",

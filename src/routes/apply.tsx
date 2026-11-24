@@ -26,9 +26,10 @@ import {
   SECTOR_OPTIONS as SECTORS,
 } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { ArrowRight, Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, Search, Settings, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Eye, EyeOff, Search, Settings, ShieldCheck, X } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { TierComparisonTable } from "@/components/TierComparisonTable";
+import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { z } from "zod";
 
@@ -56,17 +57,18 @@ export const Route = createFileRoute("/apply")({
   }),
   validateSearch: z.object({
     email: z.string().optional(),
+    next: z.string().optional().transform(safeInternalPath),
   }),
   component: SignupPage,
 });
 
 function SignupPage() {
-  const { email } = Route.useSearch();
-  return <ApplyPage mode="signup" initialEmail={email ?? ""} />;
+  const { email, next } = Route.useSearch();
+  return <ApplyPage mode="signup" initialEmail={email ?? ""} nextPath={next} />;
 }
 
-export function ApplyOnboardingPage() {
-  return <ApplyPage mode="onboarding" />;
+export function ApplyOnboardingPage({ nextPath }: { nextPath?: string }) {
+  return <ApplyPage mode="onboarding" nextPath={nextPath} />;
 }
 
 // const [password, setPassword] = useState();
@@ -76,7 +78,7 @@ const TIERS = [
     key: "observer",
     label: "Observer",
     displayLabel: "Observer",
-    fee: "Free",
+    fee: "Free forever",
     description: "Explore the ecosystem and read what's happening.",
   },
   {
@@ -204,9 +206,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function ApplyPage({
   mode,
   initialEmail = "",
+  nextPath,
 }: {
   mode: "signup" | "onboarding";
   initialEmail?: string;
+  nextPath?: string;
 }) {
   const navigate = useNavigate();
   const linkGuestPurchases = useServerFn(linkGuestResourcePurchases);
@@ -269,12 +273,6 @@ function ApplyPage({
     if (initialEmail) setEmail(initialEmail);
   }, [initialEmail]);
   const isIndividual = mode === "onboarding" && accountType === "individual";
-  const wizardSteps = [
-    { label: "Profile", Icon: GraduationCap },
-    { label: "Membership", Icon: Building2 },
-    { label: "Interest", Icon: CheckCircle },
-  ];
-  const wizardProgress = ((step - 2) / (wizardSteps.length - 1)) * 100;
   const screenTitle = step === 1
     ? "Create your account"
     : step === 2
@@ -563,11 +561,19 @@ function ApplyPage({
   useEffect(() => {
     if (loading) return;
     if (mode === "onboarding" && !user) {
-      navigate({ to: "/login", search: { next: "/onboarding" }, replace: true });
+      navigate({
+        to: "/login",
+        search: { next: nextPath ?? "/onboarding" },
+        replace: true,
+      });
     } else if (mode === "signup" && user && profile) {
-      navigate({ href: profile.crm_stage === "applicant" ? "/dashboard" : "/onboarding", replace: true });
+      const destination =
+        profile.crm_stage === "applicant"
+          ? nextPath ?? "/dashboard"
+          : pathWithNext("/onboarding", nextPath);
+      navigate({ href: destination, replace: true });
     }
-  }, [loading, mode, user, profile, navigate]);
+  }, [loading, mode, user, profile, navigate, nextPath]);
 
   const handlePhoneChange = (value: string) => {
     let digits = value.replace(/\D/g, "");
@@ -609,7 +615,10 @@ function ApplyPage({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+          emailRedirectTo: new URL(
+            pathWithNext("/email-verified", nextPath),
+            window.location.origin,
+          ).toString(),
           data: {
             account_type: "",
           },
@@ -646,7 +655,7 @@ function ApplyPage({
           );
         }
         toast.success("Account created. Continue with your onboarding.");
-        navigate({ to: "/onboarding", replace: true });
+        navigate({ href: pathWithNext("/onboarding", nextPath), replace: true });
       } else {
         setAccountCreated(true);
         toast.success("Account created. Verify your email to continue.");
@@ -665,7 +674,10 @@ function ApplyPage({
         type: "signup",
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+          emailRedirectTo: new URL(
+            pathWithNext("/email-verified", nextPath),
+            window.location.origin,
+          ).toString(),
         },
       });
       if (error) throw error;
@@ -862,7 +874,9 @@ function ApplyPage({
             statement,
           },
         });
-        if (!res.ok) toast.error(res.error);
+        if (!res.ok) {
+          console.error("[apply:record] CRM record failed after application submission", res.error);
+        }
       } catch (e) {
         console.error("[apply:record]", e);
       }
@@ -920,7 +934,9 @@ function ApplyPage({
                 ) : (
                   " Your Observer membership is free."
                 )}{" "}
-                Continue to your dashboard to get started.
+                {nextPath
+                  ? "Continue back to the resource you wanted to download."
+                  : "Continue to your dashboard to get started."}
               </>
             )}
           </p>
@@ -953,9 +969,13 @@ function ApplyPage({
             ) : (
               <>
                 <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
-                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Continue to dashboard
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => navigate({ href: nextPath ?? "/dashboard" })}
+                  className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  {nextPath ? "Return to resource" : "Continue to dashboard"}
+                </button>
               </>
             )}
           </div>
@@ -968,6 +988,7 @@ function ApplyPage({
     <div className="min-h-screen bg-[#F7FBFA]">
       <PublicHeader />
 
+      {/*
       {mode === "onboarding" && (
         <div className="py-6">
           <div
@@ -1012,14 +1033,43 @@ function ApplyPage({
           </div>
         </div>
       )}
+      */}
 
       <main className={`mx-auto ${step === 3 ? "max-w-6xl" : step === 1 ? "max-w-lg" : "max-w-3xl"} space-y-6 px-6 py-10`}>
         {step !== 1 && (
           <section aria-labelledby="application-step-title" className="space-y-1">
-            <h1 id="application-step-title" className="font-display text-xl text-primary">
-              {screenTitle}
-            </h1>
-            <p className="text-sm text-muted-foreground">{screenDescription}</p>
+            <div
+              className={
+                step === 3
+                  ? "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                  : ""
+              }
+            >
+              <div className="space-y-1">
+                <h1 id="application-step-title" className="font-display text-xl text-primary">
+                  {screenTitle}
+                </h1>
+                <p className="text-sm text-muted-foreground">{screenDescription}</p>
+              </div>
+              {step === 3 && (
+                <div className="flex shrink-0 justify-end gap-3">
+                  <button
+                    onClick={prevStep}
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={nextStep}
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    Next <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -1574,47 +1624,59 @@ function ApplyPage({
         )}
 
       
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          {step > (mode === "onboarding" ? 2 : 1) && (
-            <button onClick={prevStep} type="button"
-              className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
-              Previous
-            </button>
-          )}
-          
-          {step === 1 && mode === "signup" ? (
-            <button onClick={createAccount} disabled={busy} type="button"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-              {busy ? "Creating account…" : "Create account"} <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : step < 4 ? (
-            mode === "onboarding" && step === 2 && !accountType ? null : (
-              <button onClick={nextStep} type="button"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
-                Next <ArrowRight className="h-4 w-4" />
-              </button>
-            )
-          ) : (
-            <button onClick={submit} disabled={busy} type="button"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-              {busy ? "Submitting…" : "Submit application"} <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
+        {(step !== 3 || mode === "signup") && (
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            {step !== 3 && (
+              <>
+                {step > (mode === "onboarding" ? 2 : 1) && (
+                  <button onClick={prevStep} type="button"
+                    className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
+                    Previous
+                  </button>
+                )}
 
-          {mode === "signup" && (
-            user ? (
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
-              >
-                Sign out
-              </button>
-            ) : (
-              <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
-            )
-          )}
-        </div>
+                {step === 1 && mode === "signup" ? (
+                  <button onClick={createAccount} disabled={busy} type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                    {busy ? "Creating account…" : "Create account"} <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : step < 4 ? (
+                  mode === "onboarding" && step === 2 && !accountType ? null : (
+                    <button onClick={nextStep} type="button"
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+                      Next <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )
+                ) : (
+                  <button onClick={submit} disabled={busy} type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                    {busy ? "Submitting…" : "Submit application"} <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </>
+            )}
+
+            {mode === "signup" && (
+              user ? (
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
+                >
+                  Sign out
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  search={nextPath ? { next: nextPath } : {}}
+                  className="text-sm text-muted-foreground hover:text-primary ml-3"
+                >
+                  Already a member? Sign in
+                </Link>
+              )
+            )}
+          </div>
+        )}
         {/* <div className="flex justify-center pt-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Reviewed by IIF within 5 business days

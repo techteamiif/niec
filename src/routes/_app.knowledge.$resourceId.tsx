@@ -157,7 +157,10 @@ function KnowledgeResourcePage() {
   const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
     if (!user) {
-      navigate({ to: "/apply" });
+      const resourceDestination = `/knowledge/${encodeURIComponent(resourceId)}${
+        purchaseReference ? `?purchaseReference=${encodeURIComponent(purchaseReference)}` : ""
+      }`;
+      navigate({ to: "/apply", search: { next: resourceDestination } });
       return;
     }
     if (!unlocked) {

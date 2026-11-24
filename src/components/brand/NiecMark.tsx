@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
  * NIEC brand mark — a stylised network/agora.
  * - Outer hex: connective tissue (IIF Green)
  * - Centre node: anchor / convening (IIF Gold)
- * - Six satellite nodes: the 6 Communities of Practice (Ecosystem Teal)
+ * - Satellite nodes: Communities of Practice (Ecosystem Teal)
  */
 export function NiecMark({
   size = 40,

@@ -6,14 +6,20 @@ import { useAuth } from "@/lib/auth";
 import { linkGuestResourcePurchases } from "@/lib/payments.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
 
 export const Route = createFileRoute("/email-verified")({
+  validateSearch: (search: Record<string, unknown>) => {
+    const next = safeInternalPath(search.next);
+    return next ? { next } : {};
+  },
   component: EmailVerifiedPage,
 });
 
 function EmailVerifiedPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const linkPurchases = useServerFn(linkGuestResourcePurchases);
 
   useEffect(() => {
@@ -59,7 +65,7 @@ function EmailVerifiedPage() {
               </p>
               <button
                 type="button"
-                onClick={() => navigate({ to: "/onboarding" })}
+                onClick={() => navigate({ href: pathWithNext("/onboarding", next) })}
                 className="mt-8 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
                 Continue
@@ -73,6 +79,7 @@ function EmailVerifiedPage() {
               </p>
               <Link
                 to="/login"
+                search={next ? { next } : {}}
                 className="mt-8 inline-flex rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
               >
                 Back to sign in
