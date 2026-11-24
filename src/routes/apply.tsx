@@ -1582,6 +1582,7 @@ function ApplyPage({
 
         {step === 4 && (
           <>
+        {/*
         <Section
           title="SDG focus areas"
           desc={`Select all Sustainable Development Goals ${isIndividual ? "you actively work on" : "your organisation actively works on"}.`}
@@ -1590,7 +1591,8 @@ function ApplyPage({
           <Divider>Investment sectors (if applicable)</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
-
+        */}
+        {/*
         <Section title="Ecosystem engagement">
           <Divider noTop>
             {isIndividual
@@ -1600,18 +1602,19 @@ function ApplyPage({
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
           <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
-          {/*
-          <Divider>How did you hear about NIEC?</Divider>
-          <PillRow options={HEARD} value={heard} onChange={setHeard} />
-          <Field label="Statement of Intent">
-            <p className="mb-2 text-xs text-muted-foreground">
-              In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
-            </p>
-            <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-          </Field>
-          */}
         </Section>
+        */}
+        {/*
+        <Divider>How did you hear about NIEC?</Divider>
+        <PillRow options={HEARD} value={heard} onChange={setHeard} />
+        <Field label="Statement of Intent">
+          <p className="mb-2 text-xs text-muted-foreground">
+            In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
+          </p>
+          <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+        </Field>
+        */}
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
               <p className="mb-3 text-xs text-gold-foreground/80">
