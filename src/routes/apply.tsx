@@ -177,7 +177,7 @@ function formatResearchInterests(interests: string[]): string {
 }
 
 const CONSENTS = [
-  "I confirm that the information provided is accurate and I am authorised to represent my organisation.",
+  "I confirm that the information provided is accurate",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
@@ -1864,7 +1864,14 @@ function ProfileLocationFields({
             selectedKey={country}
             options={COUNTRY_LOCATION_OPTIONS}
             placeholder="Select country"
-            onChange={setCountry}
+            onChange={(value) => {
+              if (value === "Nigeria") {
+                setIsInNigeria(true);
+                setCountry("");
+                return;
+              }
+              setCountry(value);
+            }}
           />
         </Field>
       )}
