@@ -308,11 +308,6 @@ function KnowledgeResourcePage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-b pb-5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-3 py-1 text-xs font-medium text-muted-foreground">
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                {resource.downloads_count ?? 0}{" "}
-                {(resource.downloads_count ?? 0) === 1 ? "download" : "downloads"}
-              </span>
               <Button type="button" variant="ghost" size="sm" onClick={() => void share()}>
                 <Share2 aria-hidden="true" /> Share
               </Button>

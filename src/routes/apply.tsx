@@ -177,7 +177,7 @@ function formatResearchInterests(interests: string[]): string {
 }
 
 const CONSENTS = [
-  "I confirm that the information provided is accurate",
+  "I confirm that the information provided is accurate.",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
