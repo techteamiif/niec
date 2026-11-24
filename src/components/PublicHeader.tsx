@@ -14,7 +14,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link to="/" aria-label="NIEC Home">
-          <NiecLogo variant="horizontal" theme="light" size={38} withTagline />
+          <NiecLogo variant="horizontal" theme="light" size={50} withTagline />
         </Link>
         <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
           <a href="/#about" className="transition hover:text-foreground">

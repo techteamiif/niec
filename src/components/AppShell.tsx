@@ -137,7 +137,7 @@ export function AppShell() {
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-4">
         <Link to="/dashboard" className="flex items-center">
-          <NiecLogo variant="horizontal" theme="dark" size={36} withTagline />
+          <NiecLogo variant="horizontal" theme="dark" size={48} withTagline />
         </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)}>
           <X className="h-5 w-5" />

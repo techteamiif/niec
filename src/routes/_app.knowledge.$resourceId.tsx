@@ -265,10 +265,10 @@ function KnowledgeResourcePage() {
   return (
     <div className="p-6 lg:p-10">
       <Link
-        to={user ? "/knowledge" : "/resources"}
+        to="/resources"
         className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" /> Knowledge Hub
+        <ArrowLeft className="h-4 w-4" /> Resources
       </Link>
 
       {loading ? (

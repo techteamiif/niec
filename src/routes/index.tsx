@@ -296,7 +296,7 @@ function ImpactLanding() {
 
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-10 text-xs text-muted-foreground md:flex-row">
-          <NiecLogo variant="horizontal" theme="light" size={28} />
+          <NiecLogo variant="horizontal" theme="light" size={42} />
           <div>© {new Date().getFullYear()} Impact Investors Foundation · Convened in Lagos, Nigeria</div>
         </div>
       </footer>

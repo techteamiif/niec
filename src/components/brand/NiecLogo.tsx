@@ -1,3 +1,5 @@
+import greenLogo from "@/assets/NIEC Logo/NIEC Logo Green.png";
+import whiteLogo from "@/assets/NIEC Logo/NIEC Logo White.png";
 import { cn } from "@/lib/utils";
 import { NiecMark } from "./NiecMark";
 
@@ -17,38 +19,14 @@ export function NiecLogo({
   withTagline?: boolean;
   className?: string;
 }) {
-  const word = theme === "dark" ? "text-white" : "text-foreground";
-  const tagline = theme === "dark" ? "text-white/55" : "text-muted-foreground";
-
   if (variant === "mark") return <NiecMark size={size} theme={theme} className={className} />;
 
-  if (variant === "stacked") {
-    return (
-      <div className={cn("flex flex-col items-center gap-2", className)}>
-        <NiecMark size={size} theme={theme} />
-        <div className="text-center leading-tight">
-          <div className={cn("font-display text-2xl tracking-tight", word)}>NIEC</div>
-          {withTagline && (
-            <div className={cn("mt-1 text-[10px] uppercase tracking-[0.2em]", tagline)}>
-              Nigeria Impact Economy Community
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={cn("flex items-center gap-3", className)}>
-      <NiecMark size={size} theme={theme} />
-      <div className="leading-tight">
-        <div className={cn("font-display text-xl tracking-tight", word)}>NIEC</div>
-        {withTagline && (
-          <div className={cn("mt-0.5 text-[9px] uppercase tracking-[0.22em]", tagline)}>
-            Nigeria Impact Economy
-          </div>
-        )}
-      </div>
-    </div>
+    <img
+      src={theme === "dark" ? whiteLogo : greenLogo}
+      alt={withTagline ? "NIEC — Nigeria Impact Economy Community" : "NIEC"}
+      className={cn("block w-auto object-contain", className)}
+      style={{ height: size * (variant === "stacked" ? 1.5 : 1) }}
+    />
   );
 }
