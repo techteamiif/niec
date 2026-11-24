@@ -285,17 +285,27 @@ function ApplyPage({
   const screenTitle = step === 1
     ? "Create your account"
     : step === 2
-      ? "Complete your profile"
+      ? accountType === "organisation"
+        ? "Complete your organisation profile"
+        : "Complete your profile"
       : step === 3
         ? "Choose your membership tier"
-        : "Complete your application";
+        : isIndividual
+          ? "Complete your application"
+          : "Complete your organisation's application";
   const screenDescription = step === 1
     ? "Create a secure account to continue with your application."
     : step === 2
-      ? "Choose an account type and provide your profile details."
+      ? accountType === "organisation"
+        ? "Provide your organisation and contact person details."
+        : accountType === "individual"
+          ? "Provide your personal and professional details."
+          : "Choose an account type and provide your profile details."
       : step === 3
         ? `Select the tier that best reflects your ${isIndividual ? "capacity and engagement level" : "organisation's capacity and engagement level"}.`
-        : "Share your focus areas, engagement goals, and declaration to complete your application.";
+        : isIndividual
+          ? "Share your focus areas, engagement goals, and declaration to complete your application."
+          : "Share your organisation's focus areas, engagement goals, and declaration to complete the application.";
 
   useEffect(() => {
     if (!user) return;
@@ -1533,14 +1543,21 @@ function ApplyPage({
 
         {step === 4 && (
           <>
-        <Section title="SDG focus areas" desc="Select all Sustainable Development Goals you actively work on.">
+        <Section
+          title="SDG focus areas"
+          desc={`Select all Sustainable Development Goals ${isIndividual ? "you actively work on" : "your organisation actively works on"}.`}
+        >
           <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
           <Divider>Investment sectors (if applicable)</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
 
         <Section title="Ecosystem engagement">
-          <Divider noTop>What do you hope to gain from NIEC?</Divider>
+          <Divider noTop>
+            {isIndividual
+              ? "What do you hope to gain from NIEC?"
+              : "What does your organisation hope to gain from NIEC?"}
+          </Divider>
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
           <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
@@ -1558,7 +1575,11 @@ function ApplyPage({
         </Section>
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
-              <p className="mb-3 text-xs text-gold-foreground/80">By submitting this application you confirm the following — please tick each item:</p>
+              <p className="mb-3 text-xs text-gold-foreground/80">
+                {isIndividual
+                  ? "By submitting this application you confirm the following — please tick each item:"
+                  : "By submitting on behalf of your organisation, you confirm the following — please tick each item:"}
+              </p>
               {(isIndividual ? INDIVIDUAL_CONSENTS : CONSENTS).map((c, i) => (
                 <label key={i} className="flex cursor-pointer items-start gap-3 py-2 text-sm">
                   <input type="checkbox" checked={consents[i]} onChange={() => {
