@@ -53,9 +53,9 @@ function EmailVerifiedPage() {
               <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-primary/10">
                 <CheckCircle2 className="h-10 w-10 text-primary" aria-hidden="true" />
               </div>
-              <h1 className="mt-6 font-display text-3xl text-primary">Email verified</h1>
+              <h1 className="mt-6 font-display text-3xl text-primary">Email verified successfully</h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                Your email address has been confirmed. Continue to complete your profile and application.
+                Your email address verification was successful. Continue to complete your profile and application.
               </p>
               <button
                 type="button"
