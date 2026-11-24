@@ -20,6 +20,7 @@ function CopsLayout() {
 
 function CopsIndex() {
   const { user, profile, isStaff } = useAuth();
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [joined, setJoined] = useState<Set<string>>(new Set());
 
   const load = async () => {
@@ -28,10 +29,13 @@ function CopsIndex() {
       toast.error(`Could not load CoP memberships: ${error.message}`);
       return;
     }
+    const membershipCounts: Record<string, number> = {};
     const j = new Set<string>();
     (data ?? []).forEach((r) => {
+      membershipCounts[r.cop] = (membershipCounts[r.cop] ?? 0) + 1;
       if (r.member_id === user?.id) j.add(r.cop);
     });
+    setCounts(membershipCounts);
     setJoined(j);
   };
   useEffect(() => { load(); }, [user]);
@@ -56,53 +60,40 @@ function CopsIndex() {
         <h1 className="font-display text-3xl">Communities of Practice</h1>
         <p className="text-sm text-muted-foreground">Specialist working groups within NIEC. Open a CoP to see its feed, working groups, events, and leaderboard.</p>
       </div>
-      <div className="overflow-x-auto rounded-lg border bg-card">
-        <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-          <thead className="bg-primary text-primary-foreground">
-            <tr>
-              <th className="border border-border/50 px-3 py-2.5 font-semibold">Community of Practice</th>
-              <th className="border border-border/50 px-3 py-2.5 font-semibold">Manager</th>
-              <th className="border border-border/50 px-3 py-2.5 font-semibold">Mandate</th>
-            </tr>
-          </thead>
-          <tbody>
-            {COPS.map((c) => {
-              const isIn = joined.has(c.key);
-              return (
-                <tr key={c.key} className="odd:bg-card even:bg-muted/30">
-                  <td className="w-[30%] border border-border p-3 align-top">
-                    <h2 className="font-semibold text-primary">{c.name}</h2>
-                    {"subgroups" in c && (
-                      <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm">
-                        {c.subgroups.map((subgroup) => <li key={subgroup}>{subgroup}</li>)}
-                      </ul>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => toggle(c.key)}
-                        className={`rounded-md px-3 py-1.5 text-xs font-semibold ${isIn ? "border bg-background hover:bg-muted" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
-                      >
-                        {isIn ? "Leave" : "Join"}
-                      </button>
-                      <Link
-                        to="/cops/$cop"
-                        params={{ cop: c.key }}
-                        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
-                      >
-                        Open <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    </div>
-                  </td>
-                  <td className="border border-border p-3 align-top">
-                    {c.manager.map((manager) => <div key={manager}>{manager}</div>)}
-                  </td>
-                  <td className="border border-border p-3 align-top">{c.mandate}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {COPS.map((c) => {
+          const isIn = joined.has(c.key);
+          return (
+            <div key={c.key} className="group overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-lg">
+              <div className="h-3" style={{ backgroundColor: c.color }} />
+              <div className="p-6">
+                <h3 className="font-display text-xl">{c.name}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{c.mandate}</p>
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {counts[c.key] ?? 0} {(counts[c.key] ?? 0) > 1 ? "Members" : "Member"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggle(c.key)}
+                      className={`rounded-md px-3 py-1.5 text-xs font-semibold ${isIn ? "border bg-background hover:bg-muted" : "bg-primary text-primary-foreground hover:bg-primary/90"}`}
+                    >
+                      {isIn ? "Leave" : "Join"}
+                    </button>
+                    <Link
+                      to="/cops/$cop"
+                      params={{ cop: c.key }}
+                      className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                    >
+                      Open <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

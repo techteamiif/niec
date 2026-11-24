@@ -313,7 +313,9 @@ function ApplyPage({
     setLastName(typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" "));
     const savedJobTitle = typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "";
     setJobTitle(JOB_TITLES.includes(savedJobTitle) ? savedJobTitle : "");
-    setPersonalTitle(typeof metadata.personal_title === "string" ? metadata.personal_title : "");
+    setPersonalTitle((currentTitle) =>
+      currentTitle || (typeof metadata.personal_title === "string" ? metadata.personal_title : ""),
+    );
     setIndividualRole(typeof metadata.professional_role === "string" ? metadata.professional_role : savedJobTitle);
     setContactPersonFirstName(typeof metadata.contact_person_first_name === "string" ? metadata.contact_person_first_name : (typeof metadata.first_name === "string" ? metadata.first_name : metadataFirstName));
     setContactPersonLastName(typeof metadata.contact_person_last_name === "string" ? metadata.contact_person_last_name : (typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" ")));
@@ -348,6 +350,7 @@ function ApplyPage({
 
   useEffect(() => {
     if (loading || (mode === "onboarding" && !user)) return;
+    if (hydratedDraftKey === draftKey) return;
 
     let draft: Record<string, unknown> | null = null;
     try {
