@@ -1066,6 +1066,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1094,6 +1098,10 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           membership_expires_at?: string | null
+          membership_trial_expired_at?: string | null
+          membership_trial_expires_at?: string | null
+          membership_trial_started_at?: string | null
+          membership_trial_tier?: Database["public"]["Enums"]["membership_tier"] | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1122,6 +1130,10 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           membership_expires_at?: string | null
+          membership_trial_expired_at?: string | null
+          membership_trial_expires_at?: string | null
+          membership_trial_started_at?: string | null
+          membership_trial_tier?: Database["public"]["Enums"]["membership_tier"] | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1373,6 +1385,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1410,6 +1426,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1498,6 +1518,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1566,6 +1590,12 @@ export type Database = {
           _website_url: string
         }
         Returns: undefined
+      }
+      start_membership_trial: {
+        Args: {
+          _tier: Database["public"]["Enums"]["membership_tier"]
+        }
+        Returns: string
       }
       tier_meets: {
         Args: {

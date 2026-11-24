@@ -109,14 +109,14 @@ function ResourcePaymentPage() {
               <p className="mt-3 text-sm text-muted-foreground">
                 {purchase?.guestEmail
                   ? purchase.emailDelivery === "sent"
-                    ? `Thank you. Your purchase is confirmed. A secure resource link has been sent to ${purchase.guestEmail}.`
-                    : "Thank you. Your purchase is confirmed. Open the resource below to access your purchase."
+                    ? `Thank you. Your purchase is confirmed. A link to view the resource details has been sent to ${purchase.guestEmail}. Sign up to download it.`
+                    : "Thank you. Your purchase is confirmed. Open the resource below to view its details. Sign up to download it."
                   : "Your purchase is confirmed. Event purchases also register you as attending."}
               </p>
               {purchase?.guestEmail &&
                 (purchase.emailDelivery === "failed" || purchase.emailDelivery === "suppressed") && (
                   <p role="alert" className="mt-3 text-sm text-destructive">
-                    We could not send the purchase email. You can still open your resource from this page.
+                    We could not send the purchase email. You can still view the resource details from this page.
                   </p>
                 )}
               <a href={destination.href} className="mt-7 inline-flex rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground">
@@ -153,14 +153,14 @@ function ResourcePaymentPage() {
           <DialogHeader>
             <DialogTitle>Thank you for your purchase</DialogTitle>
             <DialogDescription>
-              Your resource is ready. Would you like to create a free NIEC account using{" "}
-              <span className="font-medium text-foreground">{purchase?.guestEmail}</span>? Your
-              purchase will be linked after you verify your email.
+              Create a free NIEC account using{" "}
+              <span className="font-medium text-foreground">{purchase?.guestEmail}</span> to
+              download the resource. Your purchase will be linked after you verify your email.
             </DialogDescription>
           </DialogHeader>
           {purchase?.emailDelivery === "failed" || purchase?.emailDelivery === "suppressed" ? (
             <p role="alert" className="text-sm text-destructive">
-              We could not send the follow-up email. Your resource link is available here.
+              We could not send the follow-up email. You can still view the resource details here.
             </p>
           ) : null}
           <DialogFooter className="sm:justify-between">

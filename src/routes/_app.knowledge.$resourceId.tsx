@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
 import {
-  getGuestKnowledgeDownloadUrl,
   getPublicKnowledgeResource,
   hasGuestKnowledgePurchase,
 } from "@/lib/public-resource.functions";
@@ -54,17 +53,18 @@ function KnowledgeResourcePage() {
   const { resourceId } = Route.useParams();
   const purchaseReference = Route.useSearch().purchaseReference ?? "";
   const { user, profile, isStaff, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [resource, setResource] = useState<ResourceDetails | null>(null);
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [hasGuestPurchase, setHasGuestPurchase] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [guestEmail, setGuestEmail] = useState("");
   const startPurchase = useServerFn(initResourcePayment);
   const loadPublicResource = useServerFn(getPublicKnowledgeResource);
   const checkGuestPurchase = useServerFn(hasGuestKnowledgePurchase);
-  const getGuestDownloadUrl = useServerFn(getGuestKnowledgeDownloadUrl);
 
   useEffect(() => {
     let active = true;
@@ -72,6 +72,7 @@ function KnowledgeResourcePage() {
     setResource(null);
     setAuthor(null);
     setHasAccess(false);
+    setHasGuestPurchase(false);
 
     if (authLoading) return;
 
@@ -96,7 +97,7 @@ function KnowledgeResourcePage() {
             const purchased = await checkGuestPurchase({
               data: { resourceId, purchaseReference },
             });
-            if (active) setHasAccess(purchased);
+            if (active) setHasGuestPurchase(purchased);
           }
         } catch (error) {
           if (active) {
@@ -155,28 +156,12 @@ function KnowledgeResourcePage() {
 
   const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
-    if (!unlocked) {
-      setTierDialogOpen(true);
+    if (!user) {
+      navigate({ to: "/apply" });
       return;
     }
-    if (!user) {
-      try {
-        const { downloadUrl } = await getGuestDownloadUrl({
-          data: {
-            resourceId: resource.id,
-            fileType,
-            purchaseReference: purchaseReference || undefined,
-          },
-        });
-        setResource((current) =>
-          current
-            ? { ...current, downloads_count: (current.downloads_count ?? 0) + 1 }
-            : current,
-        );
-        window.open(downloadUrl, "_blank", "noopener,noreferrer");
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not download this resource.");
-      }
+    if (!unlocked) {
+      setTierDialogOpen(true);
       return;
     }
 
@@ -223,10 +208,8 @@ function KnowledgeResourcePage() {
   const unlocked =
     hasAccess ||
     isStaff ||
-    tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer") ||
-    (!user &&
-      resource?.min_tier_required === "observer" &&
-      resource.access_price_kobo === null);
+    (Boolean(user) &&
+      tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer"));
 
   const buyAccess = async () => {
     if (!resource || purchasing) return;
@@ -300,7 +283,10 @@ function KnowledgeResourcePage() {
               <span className="rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground/80">
                 {getKnowledgeResourceAccessLabel(resource.min_tier_required)}
               </span>
-              {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
+              {!unlocked &&
+                !hasGuestPurchase &&
+                resource.access_price_kobo != null &&
+                resource.access_price_kobo > 0 && (
                 <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                   One-time access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
                 </span>
@@ -337,14 +323,25 @@ function KnowledgeResourcePage() {
             <section className="mt-8 border-t pt-6">
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
-                  {resource.access_price_kobo != null && resource.access_price_kobo > 0
-                    ? " or one-time purchase."
-                    : "."}
+                  {!user
+                    ? hasGuestPurchase
+                      ? "Your purchase is confirmed. Sign in or create an account to download this resource."
+                      : "Sign in or create an account to download this resource."
+                    : (
+                      <>
+                        Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
+                        {resource.access_price_kobo != null && resource.access_price_kobo > 0
+                          ? " or one-time purchase."
+                          : "."}
+                      </>
+                    )}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
-                {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
+                {!unlocked &&
+                  !hasGuestPurchase &&
+                  resource.access_price_kobo != null &&
+                  resource.access_price_kobo > 0 && (
                   <Button type="button" onClick={() => setTierDialogOpen(true)}>
                     <CreditCard aria-hidden="true" />
                     View access options
@@ -355,14 +352,14 @@ function KnowledgeResourcePage() {
                   variant="outline"
                   onClick={() => void download("summary")}
                 >
-                  <Download aria-hidden="true" /> Download executive summary
+                  <Download aria-hidden="true" /> {user ? "Download executive summary" : "Signup to download"}
                 </Button>
                 <Button
                   type="button"
                   className="bg-[#003302] text-white hover:bg-[#003302]/90"
                   onClick={() => void download("pdf")}
                 >
-                  <FileText aria-hidden="true" /> Download PDF
+                  <FileText aria-hidden="true" /> {user ? "Download PDF" : "Signup to download"}
                 </Button>
               </div>
             </section>

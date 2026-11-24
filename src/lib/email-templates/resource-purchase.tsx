@@ -25,16 +25,18 @@ function ResourcePurchaseEmail({
     >
       <Text style={emailText}>
         Your payment of <strong>{amountLabel}</strong> for <strong>{resourceTitle}</strong> was
-        successful. You can use the link below to view and download your resource.
+        successful. Use the link below to view the resource details. Sign in or create a free NIEC
+        account to download it.
       </Text>
       <Button href={resourceUrl} style={emailButton}>
-        View your resource
+        View resource details
       </Button>
       <Heading as="h2" style={heading}>
-        Keep your purchases together
+        Create an account to download
       </Heading>
       <Text style={emailText}>
-        Create a free NIEC account to keep your resource purchases connected to your profile.
+        Create an account with this email address. After you verify your email, your purchase will
+        be linked to your profile and you can download the resource.
       </Text>
       <Button href={accountUrl} style={emailButton}>
         Create your account

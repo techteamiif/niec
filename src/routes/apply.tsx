@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getCountries, getCountryCallingCode, isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { supabase } from "@/integrations/supabase/client";
-import { initMembershipPayment, linkGuestResourcePurchases } from "@/lib/payments.functions";
+import { linkGuestResourcePurchases } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { useAuth } from "@/lib/auth";
 import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
@@ -109,12 +109,6 @@ const TIERS = [
   },
 ] as const;
 
-const PAYABLE: Record<string, number> = {
-  contributor: 100_000,
-  growth_partner: 500_000,
-  anchor: 1_500_000,
-};
-
 const PERSONAL_TITLES = ["Mr", "Mrs", "Ms", "Miss", "Dr", "Prof", "Engr", "Rev", "Other"];
 const QUALIFICATION_DEPARTMENTS = [
   "Agriculture & Food Systems",
@@ -215,7 +209,6 @@ function ApplyPage({
   initialEmail?: string;
 }) {
   const navigate = useNavigate();
-  const startMembershipPayment = useServerFn(initMembershipPayment);
   const linkGuestPurchases = useServerFn(linkGuestResourcePurchases);
   const { user, profile, loading, refresh, signOut } = useAuth();
   const draftKey = applicationDraftKey(user?.id);
@@ -854,7 +847,7 @@ function ApplyPage({
             avatarUrl,
             tier,
             tierLabel: TIERS.find((t) => t.key === tier)?.label ?? tier,
-            amountNaira: PAYABLE[tier] ?? 0,
+            amountNaira: 0,
             sdgFocus: sdgs,
             sectors,
             goals,
@@ -872,41 +865,6 @@ function ApplyPage({
         if (!res.ok) toast.error(res.error);
       } catch (e) {
         console.error("[apply:record]", e);
-      }
-
-
-      if (PAYABLE[tier]) {
-        toast.success("Application saved — taking you to secure payment…");
-        try {
-          const res = await startMembershipPayment({
-            data: {
-              email,
-              tier,
-              fullName: full_name,
-              callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(full_name)}`,
-            },
-          });
-          if (res.ok) {
-            window.location.href = res.authorizationUrl;
-            return;
-          }
-          toast.error(res.error);
-          navigate({
-            to: "/payment",
-            search: { tier, email, name: full_name, reference: "" },
-          });
-          return;
-        } catch (error) {
-          console.error("[apply:payment]", error);
-          toast.error(
-            error instanceof Error ? error.message : "Could not start the payment.",
-          );
-          navigate({
-            to: "/payment",
-            search: { tier, email, name: full_name, reference: "" },
-          });
-          return;
-        }
       }
 
       setDone(true);
@@ -948,7 +906,22 @@ function ApplyPage({
                 complete your setup.
               </>
             ) : (
-              <>Thank you, {firstName}. Your {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>} has been received. Your account is ready to use — continue to your dashboard to get started.</>
+              <>
+                Thank you, {firstName}. Your{" "}
+                {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>}{" "}
+                has been received. Your account is ready to use.
+                {tier && tier !== "observer" ? (
+                  <>
+                    {" "}
+                    Your {TIERS.find((item) => item.key === tier)?.displayLabel} membership is free
+                    for 3 months, starting now. No payment or card details are required during the
+                    free period; any later upgrade is paid manually through Paystack.
+                  </>
+                ) : (
+                  " Your Observer membership is free."
+                )}{" "}
+                Continue to your dashboard to get started.
+              </>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -1370,8 +1343,15 @@ function ApplyPage({
                         </span>
                       </div>
                       <p className="mt-2 font-display text-xl font-semibold text-primary">
-                        {t.fee}
+                        {t.key === "observer" ? (
+                          t.fee
+                        ) : (
+                          <del className="text-muted-foreground">{t.fee}</del>
+                        )}
                       </p>
+                      {t.key !== "observer" && (
+                        <p className="mt-1 text-sm font-semibold text-primary">Free for 3 months</p>
+                      )}
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                         {t.description}
                       </p>
