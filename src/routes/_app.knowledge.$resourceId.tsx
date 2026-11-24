@@ -49,7 +49,7 @@ type ResourceDetails = Pick<
 };
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
+  "id" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
 const siteUrl = (
@@ -196,7 +196,7 @@ function KnowledgeResourcePage() {
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
           .from("profiles")
-          .select("id, full_name, organisation_name, avatar_url, organisation_type")
+          .select("id, organisation_name, avatar_url, organisation_type")
           .eq("id", data.uploaded_by)
           .maybeSingle();
 
@@ -456,10 +456,14 @@ function KnowledgeResourcePage() {
                 <Link
                   to="/member/$memberId"
                   params={{ memberId: author.id }}
-                  aria-label={`View ${author.organisation_name || author.full_name}'s profile`}
+                  aria-label={
+                    author.organisation_name
+                      ? `View ${author.organisation_name} profile`
+                      : "View resource author profile"
+                  }
                 >
                   <UserAvatar
-                    name={author.organisation_name || author.full_name}
+                    name={author.organisation_name || "NIEC Knowledge Team"}
                     src={author.avatar_url}
                     size={104}
                     className="bg-muted text-foreground"
@@ -472,11 +476,8 @@ function KnowledgeResourcePage() {
               )}
             </div>
             <p className="mt-5 text-lg font-medium">
-              {author?.organisation_name || author?.full_name || "NIeC Knowledge Team"}
+              {author?.organisation_name || "NIeC Knowledge Team"}
             </p>
-            {author?.organisation_name && author.full_name && (
-              <p className="mt-1 text-sm text-muted-foreground">{author.full_name}</p>
-            )}
             <div className="mt-6 border-t pt-5 text-left">
               <h3 className="text-sm font-semibold">About this resource</h3>
               <dl className="mt-3 space-y-3 text-sm">

@@ -4,7 +4,7 @@ import type { Database } from "@/integrations/supabase/types";
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
+  "id" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
 export type PublicKnowledgeResource = Pick<
@@ -49,7 +49,7 @@ export const getPublicKnowledgeResource = createServerFn({ method: "GET" })
     if (resource.uploaded_by) {
       const { data: authorData, error: authorError } = await supabaseAdmin
         .from("profiles")
-        .select("id, full_name, organisation_name, avatar_url, organisation_type")
+        .select("id, organisation_name, avatar_url, organisation_type")
         .eq("id", resource.uploaded_by)
         .maybeSingle();
       if (authorError) throw new Error(`Could not load resource author: ${authorError.message}`);
