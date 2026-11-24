@@ -129,6 +129,9 @@ function KnowledgeResourcePage() {
   const [guestEmail, setGuestEmail] = useState("");
   const startPurchase = useServerFn(initResourcePayment);
   const checkGuestPurchase = useServerFn(hasGuestKnowledgePurchase);
+  const resourceDestination = `/knowledge/${encodeURIComponent(resourceId)}${
+    purchaseReference ? `?purchaseReference=${encodeURIComponent(purchaseReference)}` : ""
+  }`;
 
   useEffect(() => {
     let active = true;
@@ -222,9 +225,6 @@ function KnowledgeResourcePage() {
   const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
     if (!user) {
-      const resourceDestination = `/knowledge/${encodeURIComponent(resourceId)}${
-        purchaseReference ? `?purchaseReference=${encodeURIComponent(purchaseReference)}` : ""
-      }`;
       navigate({ to: "/apply", search: { next: resourceDestination } });
       return;
     }
@@ -429,22 +429,37 @@ function KnowledgeResourcePage() {
                   </Button>
                 )}
                 {resource.has_executive_summary && (
+                  user ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void download("summary")}
+                    >
+                      <Download aria-hidden="true" /> Download executive summary
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline">
+                      <Link to="/apply" search={{ next: resourceDestination }}>
+                        <Download aria-hidden="true" /> Signup to download
+                      </Link>
+                    </Button>
+                  )
+                )}
+                {user ? (
                   <Button
                     type="button"
-                    variant="outline"
-                    onClick={() => void download("summary")}
+                    className="bg-[#003302] text-white hover:bg-[#003302]/90"
+                    onClick={() => void download("pdf")}
                   >
-                    <Download aria-hidden="true" />{" "}
-                    {user ? "Download executive summary" : "Signup to download"}
+                    <FileText aria-hidden="true" /> Download PDF
+                  </Button>
+                ) : (
+                  <Button asChild className="bg-[#003302] text-white hover:bg-[#003302]/90">
+                    <Link to="/apply" search={{ next: resourceDestination }}>
+                      <FileText aria-hidden="true" /> Signup to download
+                    </Link>
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  className="bg-[#003302] text-white hover:bg-[#003302]/90"
-                  onClick={() => void download("pdf")}
-                >
-                  <FileText aria-hidden="true" /> {user ? "Download PDF" : "Signup to download"}
-                </Button>
               </div>
             </section>
           </article>
