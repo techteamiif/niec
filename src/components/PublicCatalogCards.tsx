@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ArrowRight, CalendarDays, FileText } from "lucide-react";
 import { EventImage } from "@/components/EventImage";
-import { useAuth } from "@/lib/auth";
 import { getKnowledgeResourceAccessCategory } from "@/lib/niec";
 import { richTextToPlainText } from "@/lib/rich-text";
 import type { PublicEventPreview, PublicResourcePreview } from "@/lib/public-catalog";
@@ -39,21 +38,12 @@ function EventCardContent({ event }: { event: PublicEventPreview }) {
 }
 
 export function PublicEventCard({ event }: { event: PublicEventPreview }) {
-  const { user } = useAuth();
   const content = <EventCardContent event={event} />;
 
-  return user ? (
+  return (
     <Link
       to="/event/$eventId"
       params={{ eventId: event.id }}
-      className="block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      {content}
-    </Link>
-  ) : (
-    <Link
-      to="/login"
-      search={{ next: `/event/${event.id}` }}
       className="block h-full rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {content}

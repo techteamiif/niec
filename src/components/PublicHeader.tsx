@@ -13,7 +13,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
   });
   const nextPath =
     safeReturnPath(new URLSearchParams(searchStr).get("next")) ??
-    (/^\/knowledge\/[^/]+$/.test(pathname)
+    (/^\/(?:knowledge|event)\/[^/]+$/.test(pathname)
       ? safeInternalPath(`${pathname}${searchStr}`)
       : undefined);
   const returnSearch = nextPath ? { next: nextPath } : {};

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { ArrowLeft, Calendar, CreditCard, MapPin, Video } from "lucide-react";
+import { Calendar, CreditCard, MapPin, Video } from "lucide-react";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EventImage } from "@/components/EventImage";
@@ -13,6 +13,16 @@ import { tierMeets, TIER_LABELS } from "@/lib/niec";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { getPublicEventDetails } from "@/lib/public-event.functions";
+import { z } from "zod";
 
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type EventPreview = Pick<
@@ -52,8 +62,61 @@ type EventAttendee = {
 };
 
 export const Route = createFileRoute("/_app/event/$eventId")({
+  params: {
+    parse: (params) => ({ eventId: z.string().uuid().parse(params.eventId) }),
+  },
+  loader: ({ params }) => getPublicEventDetails({ data: { eventId: params.eventId } }),
+  head: ({ loaderData, params }) => {
+    const event = loaderData;
+    const title = event ? `${event.title} | NIEC Events` : "Event not found | NIEC";
+    const description =
+      event?.description.replace(/\s+/g, " ").trim().slice(0, 200) ||
+      "Explore events from the Nigeria Impact Economy Community.";
+    const imageUrl = getAbsoluteImageUrl(event?.image_url);
+    const canonicalUrl = `${siteUrl}/event/${encodeURIComponent(params.eventId)}`;
+    const socialTitle = event?.title ?? title;
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: socialTitle },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: canonicalUrl },
+        { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
+        { name: "twitter:title", content: socialTitle },
+        { name: "twitter:description", content: description },
+        ...(imageUrl
+          ? [
+              { property: "og:image", content: imageUrl },
+              { property: "og:image:secure_url", content: imageUrl },
+              { property: "og:image:alt", content: socialTitle },
+              { name: "twitter:image", content: imageUrl },
+              { name: "twitter:image:alt", content: socialTitle },
+            ]
+          : []),
+      ],
+    };
+  },
   component: EventDetailPage,
 });
+
+const siteUrl = (
+  (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+  import.meta.env?.VITE_SITE_URL ||
+  "https://niec-connect.dextrus.workers.dev"
+).replace(/\/+$/, "");
+
+function getAbsoluteImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) return undefined;
+  try {
+    const url = new URL(imageUrl, siteUrl);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function formatEventType(eventType: string) {
   const label = eventType.replace(/_/g, " ");
@@ -62,7 +125,8 @@ function formatEventType(eventType: string) {
 
 function EventDetailPage() {
   const { eventId } = Route.useParams();
-  const { user, profile, isStaff } = useAuth();
+  const publicEvent = Route.useLoaderData();
+  const { user, profile, isStaff, loading: authLoading } = useAuth();
   const [event, setEvent] = useState<EventPageRecord | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [attendeeCount, setAttendeeCount] = useState(0);
@@ -80,6 +144,13 @@ function EventDetailPage() {
     setLoading(true);
     setEvent(null);
     setHasAccess(false);
+    if (authLoading) return;
+    if (!user) {
+      setEvent(publicEvent);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("events")
       .select(
@@ -107,8 +178,7 @@ function EventDetailPage() {
 
     const canViewDetails = !!access || isStaff || data.created_by === user?.id;
     if (!canViewDetails) {
-      setEvent(data);
-      setTierDialogOpen(true);
+      setEvent(publicEvent ?? data);
       setLoading(false);
       return;
     }
@@ -171,7 +241,7 @@ function EventDetailPage() {
       setAttendanceResponse(null);
     }
     setLoading(false);
-  }, [eventId, isStaff, user]);
+  }, [authLoading, eventId, isStaff, publicEvent, user]);
 
   useEffect(() => {
     load();
@@ -271,12 +341,25 @@ function EventDetailPage() {
 
   return (
     <div className="p-6 lg:p-10">
-      <Link
-        to="/member/events"
-        className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Events
-      </Link>
+      <Breadcrumb className="mb-5">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/">Home</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/events">Events</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{event?.title ?? "Event"}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {loading ? (
         <div className="rounded-xl border bg-card p-8 text-sm text-muted-foreground">
@@ -287,13 +370,6 @@ function EventDetailPage() {
           <h1 className="font-display text-2xl">Event not found</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             This event may have been removed or is unavailable.
-          </p>
-        </div>
-      ) : !allowed ? (
-        <div className="rounded-xl border bg-card p-8">
-          <h1 className="font-display text-2xl">Event access required</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Choose an access option to view this event.
           </p>
         </div>
       ) : event.description === undefined ? (
@@ -350,69 +426,79 @@ function EventDetailPage() {
                   </span>
                 )}
               </div>
-              <div className="mt-8 flex flex-col items-start gap-2">
-                <p className="text-sm text-muted-foreground">
-                  {isAttending
-                    ? attendeeCount === 1
-                      ? "You will be attending this event"
-                      : `You and ${attendeeCount - 1} ${
-                          attendeeCount === 2 ? "other" : "others"
-                        } will be attending`
-                    : attendeeCount > 0
-                      ? `${attendeeCount} ${attendeeCount === 1 ? "person" : "people"} will be attending.`
-                      : attendanceResponse === "no"
-                        ? "No attendees yet."
-                        : "Be the first to show interest."}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="mr-1 text-sm text-foreground">Will you be attending?</p>
-                  {!ended && (
-                    <>
-                      <button
-                        onClick={() => setAttendance("yes")}
-                        disabled={updatingAttendance}
-                        aria-pressed={isAttending}
-                        title={
-                          allowed
-                            ? ""
-                            : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                        }
-                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
-                          isAttending
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/90"
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => setAttendance("no")}
-                        disabled={updatingAttendance}
-                        aria-pressed={attendanceResponse === "no"}
-                        title={
-                          allowed
-                            ? ""
-                            : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
-                        }
-                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
-                          attendanceResponse === "no"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted hover:bg-muted/90"
-                        }`}
-                      >
-                        No
-                      </button>
-                    </>
-                  )}
+              {user && (
+                <div className="mt-8 flex flex-col items-start gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    {isAttending
+                      ? attendeeCount === 1
+                        ? "You will be attending this event"
+                        : `You and ${attendeeCount - 1} ${
+                            attendeeCount === 2 ? "other" : "others"
+                          } will be attending`
+                      : attendeeCount > 0
+                        ? `${attendeeCount} ${attendeeCount === 1 ? "person" : "people"} will be attending.`
+                        : attendanceResponse === "no"
+                          ? "No attendees yet."
+                          : "Be the first to show interest."}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="mr-1 text-sm text-foreground">Will you be attending?</p>
+                    {!ended && (
+                      <>
+                        <button
+                          onClick={() => setAttendance("yes")}
+                          disabled={updatingAttendance}
+                          aria-pressed={isAttending}
+                          title={
+                            allowed
+                              ? ""
+                              : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                          }
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                            isAttending
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted hover:bg-muted/90"
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          onClick={() => setAttendance("no")}
+                          disabled={updatingAttendance}
+                          aria-pressed={attendanceResponse === "no"}
+                          title={
+                            allowed
+                              ? ""
+                              : `Requires ${TIER_LABELS[event.min_tier_required]} tier or above`
+                          }
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-wait disabled:opacity-60 ${
+                            attendanceResponse === "no"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted hover:bg-muted/90"
+                          }`}
+                        >
+                          No
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               {/* <p className="mt-2 text-sm text-muted-foreground">
                 Convenings, deal rooms, CoP meetings, boot camps and policy roundtables.
               </p> */}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {!ended &&
-                (allowed ? (
+                (!user ? (
+                  <Link
+                    to="/apply"
+                    search={{ next: `/event/${encodeURIComponent(event.id)}` }}
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Signup to register
+                  </Link>
+                ) : allowed ? (
                   event.registration_link?.trim() ? (
                     <a
                       href={event.registration_link.trim()}

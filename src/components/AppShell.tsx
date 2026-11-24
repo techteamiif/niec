@@ -71,19 +71,21 @@ export function AppShell() {
   });
   const returnPath = safeInternalPath(currentPath);
   const isPublicKnowledgeResource = /^\/knowledge\/[^/]+$/.test(path);
+  const isPublicEvent = /^\/event\/[^/]+$/.test(path);
+  const isPublicContentDetail = isPublicKnowledgeResource || isPublicEvent;
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && !isPublicKnowledgeResource) {
+    if (!loading && !user && !isPublicContentDetail) {
       navigate({
         to: "/login",
         search: returnPath ? { next: returnPath } : {},
         replace: true,
       });
     }
-  }, [loading, user, navigate, isPublicKnowledgeResource, returnPath]);
+  }, [loading, user, navigate, isPublicContentDetail, returnPath]);
 
   useEffect(() => {
     if (
@@ -93,7 +95,7 @@ export function AppShell() {
       !isStaff &&
       profile.crm_stage !== "applicant" &&
       path !== "/onboarding" &&
-      !isPublicKnowledgeResource
+      !isPublicContentDetail
     ) {
       const onboardingNext = currentPath === "/dashboard" ? undefined : returnPath;
       navigate({ href: pathWithNext("/onboarding", onboardingNext), replace: true });
@@ -107,7 +109,7 @@ export function AppShell() {
     path,
     currentPath,
     returnPath,
-    isPublicKnowledgeResource,
+    isPublicContentDetail,
   ]);
 
   useEffect(() => {
@@ -139,7 +141,7 @@ export function AppShell() {
     };
   }, [user]);
 
-  if (isPublicKnowledgeResource && !user) {
+  if (isPublicContentDetail && !user) {
     return (
       <div className="min-h-screen bg-background">
         <PublicHeader />
@@ -152,7 +154,7 @@ export function AppShell() {
     loading ||
     !user ||
     !profile ||
-    (!isStaff && profile.crm_stage !== "applicant" && !isPublicKnowledgeResource)
+    (!isStaff && profile.crm_stage !== "applicant" && !isPublicContentDetail)
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
