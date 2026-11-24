@@ -44,7 +44,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
           </a>
           {user ? (
             <Link to="/dashboard" className="transition hover:text-foreground">
-              Home
+              Dashboard
             </Link>
           ) : (
             <Link to="/login" search={returnSearch} className="transition hover:text-foreground">
@@ -65,7 +65,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
               to="/dashboard"
               className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
             >
-              Home
+              Dashboard
             </Link>
           ) : (
             <Link
@@ -132,7 +132,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
                 onClick={() => setMobileNav(false)}
                 className="rounded-md px-3 py-3 hover:bg-muted"
               >
-                Home
+                Dashboard
               </Link>
             ) : (
               <Link
@@ -150,7 +150,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
                 onClick={() => setMobileNav(false)}
                 className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
               >
-                Home
+                Dashboard
               </Link>
             ) : (
               <Link
