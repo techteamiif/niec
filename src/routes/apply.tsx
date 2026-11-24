@@ -914,7 +914,11 @@ function ApplyPage({
             <Check className="h-10 w-10 text-primary" />
           </div>
           <h1 className="mt-6 font-display text-3xl text-primary">
-            {awaitingVerification ? "Confirm your email" : "Application submitted"}
+            {awaitingVerification
+              ? "Confirm your email"
+              : isIndividual && tier === "contributor"
+                ? "Your account is ready!"
+                : "Application submitted"}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {awaitingVerification ? (
@@ -924,9 +928,9 @@ function ApplyPage({
               </>
             ) : isIndividual && tier === "contributor" ? (
               <>
-                Thank you, {firstName}. Your individual membership application has been received.
-                Your account is ready to use. Your Enterprise membership is free for 3 months,
-                starting now.
+                Congratulations, {firstName}.<br />
+                Your individual membership is now active, and your 3-month free Enterprise
+                membership starts today.
               </>
             ) : (
               <>

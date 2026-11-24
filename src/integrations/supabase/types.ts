@@ -1464,6 +1464,12 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["membership_tier"]
       }
+      change_membership_trial_tier: {
+        Args: {
+          _tier: Database["public"]["Enums"]["membership_tier"]
+        }
+        Returns: string
+      }
       get_event_virtual_link: { Args: { _event_id: string }; Returns: string }
       get_event_registration_link: { Args: { _event_id: string }; Returns: string | null }
       get_event_details: {
