@@ -20,7 +20,9 @@ export type PublicKnowledgeResource = Pick<
   | "access_price_kobo"
   | "downloads_count"
   | "uploaded_by"
->;
+> & {
+  has_executive_summary: boolean;
+};
 
 export const getPublicKnowledgeResource = createServerFn({ method: "GET" })
   .inputValidator((input: { resourceId: string }) => {
@@ -34,7 +36,7 @@ export const getPublicKnowledgeResource = createServerFn({ method: "GET" })
     const { data: resource, error } = await supabaseAdmin
       .from("knowledge_resources")
       .select(
-        "id, title, description, resource_type, community_of_practice, min_tier_required, cover_image_url, created_at, access_price_kobo, downloads_count, uploaded_by",
+        "id, title, description, resource_type, community_of_practice, min_tier_required, cover_image_url, created_at, access_price_kobo, downloads_count, uploaded_by, executive_summary_url",
       )
       .eq("id", data.resourceId)
       .maybeSingle();
@@ -42,6 +44,7 @@ export const getPublicKnowledgeResource = createServerFn({ method: "GET" })
     if (error) throw new Error(`Could not load resource: ${error.message}`);
     if (!resource) return { resource: null, author: null };
 
+    const { executive_summary_url: executiveSummaryUrl, ...publicResource } = resource;
     let author: ResourceAuthor | null = null;
     if (resource.uploaded_by) {
       const { data: authorData, error: authorError } = await supabaseAdmin
@@ -53,7 +56,13 @@ export const getPublicKnowledgeResource = createServerFn({ method: "GET" })
       author = authorData;
     }
 
-    return { resource, author };
+    return {
+      resource: {
+        ...publicResource,
+        has_executive_summary: Boolean(executiveSummaryUrl?.trim()),
+      },
+      author,
+    };
   });
 
 export const hasGuestKnowledgePurchase = createServerFn({ method: "POST" })

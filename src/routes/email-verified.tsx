@@ -6,11 +6,11 @@ import { useAuth } from "@/lib/auth";
 import { linkGuestResourcePurchases } from "@/lib/payments.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
+import { pathWithNext, safeReturnPath } from "@/lib/safe-navigation";
 
 export const Route = createFileRoute("/email-verified")({
   validateSearch: (search: Record<string, unknown>) => {
-    const next = safeInternalPath(search.next);
+    const next = safeReturnPath(search.next);
     return next ? { next } : {};
   },
   component: EmailVerifiedPage,

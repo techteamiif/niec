@@ -1,12 +1,22 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
 import { useAuth } from "@/lib/auth";
+import { safeInternalPath, safeReturnPath } from "@/lib/safe-navigation";
 
 export function PublicHeader({ className = "" }: { className?: string }) {
   const [mobileNav, setMobileNav] = useState(false);
   const { user } = useAuth();
+  const { pathname, searchStr } = useRouterState({
+    select: (router) => router.location,
+  });
+  const nextPath =
+    safeReturnPath(new URLSearchParams(searchStr).get("next")) ??
+    (/^\/knowledge\/[^/]+$/.test(pathname)
+      ? safeInternalPath(`${pathname}${searchStr}`)
+      : undefined);
+  const returnSearch = nextPath ? { next: nextPath } : {};
 
   return (
     <header
@@ -37,7 +47,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
               Home
             </Link>
           ) : (
-            <Link to="/login" className="transition hover:text-foreground">
+            <Link to="/login" search={returnSearch} className="transition hover:text-foreground">
               Sign in
             </Link>
           )}
@@ -50,12 +60,22 @@ export function PublicHeader({ className = "" }: { className?: string }) {
           >
             <Menu className="h-6 w-6" />
           </button>
-          <Link
-            to={user ? "/dashboard" : "/apply"}
-            className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
-          >
-            {user ? "Home" : "Join NIEC"}
-          </Link>
+          {user ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
+            >
+              Home
+            </Link>
+          ) : (
+            <Link
+              to="/apply"
+              search={returnSearch}
+              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
+            >
+              Join NIEC
+            </Link>
+          )}
         </div>
       </div>
       {mobileNav && (
@@ -117,19 +137,31 @@ export function PublicHeader({ className = "" }: { className?: string }) {
             ) : (
               <Link
                 to="/login"
+                search={returnSearch}
                 onClick={() => setMobileNav(false)}
                 className="rounded-md px-3 py-3 hover:bg-muted"
               >
                 Sign in
               </Link>
             )}
-            <Link
-              to={user ? "/dashboard" : "/apply"}
-              onClick={() => setMobileNav(false)}
-              className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
-            >
-              {user ? "Home" : "Join NIEC"}
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileNav(false)}
+                className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+              >
+                Home
+              </Link>
+            ) : (
+              <Link
+                to="/apply"
+                search={returnSearch}
+                onClick={() => setMobileNav(false)}
+                className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+              >
+                Join NIEC
+              </Link>
+            )}
           </nav>
         </div>
       )}

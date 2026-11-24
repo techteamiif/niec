@@ -29,7 +29,7 @@ import { toast } from "sonner";
 import { ArrowRight, Check, ChevronDown, Eye, EyeOff, Search, Settings, ShieldCheck, X } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { TierComparisonTable } from "@/components/TierComparisonTable";
-import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
+import { pathWithNext, safeReturnPath } from "@/lib/safe-navigation";
 import type { Database, Json } from "@/integrations/supabase/types";
 import { z } from "zod";
 
@@ -57,7 +57,7 @@ export const Route = createFileRoute("/apply")({
   }),
   validateSearch: z.object({
     email: z.string().optional(),
-    next: z.string().optional().transform(safeInternalPath),
+    next: z.string().optional().transform(safeReturnPath),
   }),
   component: SignupPage,
 });
@@ -919,6 +919,12 @@ function ApplyPage({
                 Your verification link has been sent to {maskEmail(email)}. Click the link to
                 complete your setup.
               </>
+            ) : isIndividual && tier === "contributor" ? (
+              <>
+                Thank you, {firstName}. Your individual membership application has been received.
+                Your account is ready to use. Your Enterprise membership is free for 3 months,
+                starting now.
+              </>
             ) : (
               <>
                 Thank you, {firstName}. Your{" "}
@@ -974,7 +980,7 @@ function ApplyPage({
                   onClick={() => navigate({ href: nextPath ?? "/dashboard" })}
                   className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  {nextPath ? "Return to resource" : "Continue to dashboard"}
+                  Continue
                 </button>
               </>
             )}

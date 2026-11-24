@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ApplyOnboardingPage } from "./apply";
-import { safeInternalPath } from "@/lib/safe-navigation";
+import { safeReturnPath } from "@/lib/safe-navigation";
 
 export const Route = createFileRoute("/onboarding")({
   validateSearch: (search: Record<string, unknown>) => {
-    const next = safeInternalPath(search.next);
+    const next = safeReturnPath(search.next);
     return next ? { next } : {};
   },
   component: OnboardingRoute,

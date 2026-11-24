@@ -36,6 +36,7 @@ type ResourceDetails = Pick<
 > & {
   file_url: string | null;
   executive_summary_url: string | null;
+  has_executive_summary: boolean;
 };
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
@@ -119,7 +120,14 @@ function KnowledgeResourcePage() {
 
       if (!active) return;
       if (error) toast.error(`Could not load resource: ${error.message}`);
-      setResource(data);
+      setResource(
+        data
+          ? {
+              ...data,
+              has_executive_summary: Boolean(data.executive_summary_url?.trim()),
+            }
+          : null,
+      );
       setLoading(false);
 
       const { data: access, error: accessError } = await supabase.rpc("has_resource_access", {
@@ -350,13 +358,16 @@ function KnowledgeResourcePage() {
                     View access options
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void download("summary")}
-                >
-                  <Download aria-hidden="true" /> {user ? "Download executive summary" : "Signup to download"}
-                </Button>
+                {resource.has_executive_summary && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void download("summary")}
+                  >
+                    <Download aria-hidden="true" />{" "}
+                    {user ? "Download executive summary" : "Signup to download"}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   className="bg-[#003302] text-white hover:bg-[#003302]/90"
