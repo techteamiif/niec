@@ -109,26 +109,26 @@ function ImpactLanding() {
       <div className="absolute inset-0 bg-black/40" />
 
       <div className="absolute inset-0 grain opacity-30" />
-      <div className="relative mx-auto max-w-7xl px-6 py-24 md:py-32">
+      <div className="relative mx-auto max-w-7xl px-6 py-14 md:py-16">
         <div className="max-w-4xl">
           {/* <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.22em] text-white/90">
             <Sparkles className="h-3 w-3 text-gold" /> Powered by the Impact Investors Foundation
           </div> */}
-          <h1 className="font-display text-6xl leading-[1.02] tracking-tight text-balance md:text-8xl">
-            Nigeria's <span className="text-gold italic">impact economy</span>,<br className="hidden md:block" /> in one community.
+          <h1 className="font-display text-5xl font-semibold leading-[1.02] tracking-tight text-balance md:text-7xl">
+            Nigeria's <span className="text-gold">impact economy</span>,<br className="hidden md:block" /> in one community.
           </h1>
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-white/85">
             NIEC is the connective tissue for investors, enterprises, DFIs and policymakers
             catalysing measurable capital across all 17 SDGs.
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
-            <Link to="/apply"
+            <Link to="/login"
               className="group inline-flex items-center gap-2 rounded-full bg-gold-gradient px-7 py-3.5 text-sm font-semibold text-foreground shadow-gold-glow transition hover:scale-[1.02]">
-              Apply for membership <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+              Get started <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </Link>
-            <Link to="/login" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
-              Member sign in
-            </Link>
+            <a href="#about" className="inline-flex items-center gap-2 rounded-full border border-white/35 px-7 py-3.5 text-sm font-semibold text-white transition hover:border-white/70 hover:bg-white/10">
+              Learn more
+            </a>
           </div>
         </div>
       </div>
@@ -234,16 +234,16 @@ function ImpactLanding() {
       </section>
 
       {/* About */}
-      <section id="about" className="border-t border-border bg-cream/40">
+      <section id="about" className="border-t border-primary-foreground/20 bg-[#003302]">
         <div className="mx-auto grid max-w-7xl gap-16 px-6 py-24 md:grid-cols-2">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.22em] text-primary">About NIEC</div>
-            <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl text-balance">A trusted, tiered community for serious capital.</h2>
-            <p className="mt-6 leading-relaxed text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-primary-foreground/90">About NIEC</div>
+            <h2 className="mt-3 font-display text-4xl text-primary-foreground md:text-5xl text-balance">A trusted, tiered community for serious capital.</h2>
+            <p className="mt-6 leading-relaxed text-primary-foreground/90">
               Five membership tiers — Observer, Enterprise, Growth Partner, Anchor, Strategic Partner — with a
               private deal room, four Communities of Practice, and flagship convenings including GIIS, AIS and ACII.
             </p>
-            <Link to="/apply" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+            <Link to="/apply" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary-foreground hover:underline">
               Explore membership tiers <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
