@@ -18,6 +18,9 @@ type MembershipCardProfile = Pick<
   | "paid_membership_tier"
   | "membership_status"
   | "membership_expires_at"
+  | "membership_trial_started_at"
+  | "membership_trial_expires_at"
+  | "membership_trial_expired_at"
 >;
 
 const cardQrOptions = {
@@ -74,9 +77,22 @@ export function MembershipCard({ profile }: { profile: MembershipCardProfile }) 
   const memberName = profile.full_name || "NIEC Member";
   const memberTier = profile.paid_membership_tier ?? profile.membership_tier;
   const tier = TIER_LABELS[memberTier] ?? memberTier;
+  const trialActive =
+    profile.membership_trial_started_at !== null &&
+    profile.membership_trial_expires_at !== null &&
+    profile.membership_trial_expired_at === null &&
+    profile.membership_expires_at === null &&
+    new Date(profile.membership_trial_expires_at).getTime() > Date.now();
   const expiryDate = profile.membership_expires_at
     ? formatMembershipExpiryDate(profile.membership_expires_at)
-    : "No expiry date set";
+    : trialActive && profile.membership_trial_expires_at
+      ? new Intl.DateTimeFormat("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: "Africa/Lagos",
+        }).format(new Date(profile.membership_trial_expires_at))
+      : "No expiry date set";
   const validity =
     profile.membership_status === "active"
       ? { label: "EXPIRY DATE", value: expiryDate }

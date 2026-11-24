@@ -211,7 +211,7 @@ function ImpactLanding() {
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mb-12 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-2xl">
-              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Six communities of practice</div>
+              <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Four communities of practice</div>
               <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Where members do the work.</h2>
             </div>
             <p className="max-w-sm text-sm text-muted-foreground">
@@ -225,7 +225,7 @@ function ImpactLanding() {
                 <div className="relative">
                   <span className="inline-block h-2 w-2 rounded-full" />
                   <h3 className="mt-4 font-display text-xl text-foreground">{c.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.description}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{c.mandate}</p>
                 </div>
               </div>
             ))}
@@ -241,7 +241,7 @@ function ImpactLanding() {
             <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl text-balance">A trusted, tiered community for serious capital.</h2>
             <p className="mt-6 leading-relaxed text-muted-foreground">
               Five membership tiers — Observer, Enterprise, Growth Partner, Anchor, Strategic Partner — with a
-              private deal room, six Communities of Practice, and flagship convenings including GIIS, AIS and ACII.
+              private deal room, four Communities of Practice, and flagship convenings including GIIS, AIS and ACII.
             </p>
             <Link to="/apply" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
               Explore membership tiers <ArrowRight className="h-4 w-4" />
@@ -296,7 +296,7 @@ function ImpactLanding() {
 
       <footer className="border-t border-border bg-background">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 py-10 text-xs text-muted-foreground md:flex-row">
-          <NiecLogo variant="horizontal" theme="light" size={28} />
+          <NiecLogo variant="horizontal" theme="light" size={42} />
           <div>© {new Date().getFullYear()} Impact Investors Foundation · Convened in Lagos, Nigeria</div>
         </div>
       </footer>

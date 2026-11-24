@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { UserAvatar } from "@/components/Avatar";
+import { PublicHeader } from "@/components/PublicHeader";
 import { TierBadge } from "@/components/TierBadge";
 import {
   AlertDialog,
@@ -36,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { NiecLogo } from "@/components/brand/NiecLogo";
 import { toast } from "sonner";
+import { pathWithNext, safeInternalPath } from "@/lib/safe-navigation";
 
 type NavItem = {
   to: string;
@@ -64,19 +66,49 @@ export function AppShell() {
   const { user, profile, isStaff, signOut, loading } = useAuth();
   const navigate = useNavigate();
   const path = useRouterState({ select: (r) => r.location.pathname });
+  const currentPath = useRouterState({
+    select: (r) => `${r.location.pathname}${r.location.searchStr}`,
+  });
+  const returnPath = safeInternalPath(currentPath);
+  const isPublicKnowledgeResource = /^\/knowledge\/[^/]+$/.test(path);
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [loading, user, navigate]);
+    if (!loading && !user && !isPublicKnowledgeResource) {
+      navigate({
+        to: "/login",
+        search: returnPath ? { next: returnPath } : {},
+        replace: true,
+      });
+    }
+  }, [loading, user, navigate, isPublicKnowledgeResource, returnPath]);
 
   useEffect(() => {
-    if (!loading && user && profile && !isStaff && profile.crm_stage !== "applicant") {
-      navigate({ to: "/onboarding", replace: true });
+    if (
+      !loading &&
+      user &&
+      profile &&
+      !isStaff &&
+      profile.crm_stage !== "applicant" &&
+      path !== "/onboarding" &&
+      !isPublicKnowledgeResource
+    ) {
+      const onboardingNext = currentPath === "/dashboard" ? undefined : returnPath;
+      navigate({ href: pathWithNext("/onboarding", onboardingNext), replace: true });
     }
-  }, [loading, user, profile, isStaff, navigate]);
+  }, [
+    loading,
+    user,
+    profile,
+    isStaff,
+    navigate,
+    path,
+    currentPath,
+    returnPath,
+    isPublicKnowledgeResource,
+  ]);
 
   useEffect(() => {
     if (!user) return;
@@ -107,7 +139,21 @@ export function AppShell() {
     };
   }, [user]);
 
-  if (loading || !user || !profile || (!isStaff && profile.crm_stage !== "applicant")) {
+  if (isPublicKnowledgeResource && !user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <PublicHeader />
+        <Outlet />
+      </div>
+    );
+  }
+
+  if (
+    loading ||
+    !user ||
+    !profile ||
+    (!isStaff && profile.crm_stage !== "applicant" && !isPublicKnowledgeResource)
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         Loading…
@@ -119,7 +165,7 @@ export function AppShell() {
     <aside className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex shrink-0 items-center justify-between border-b border-sidebar-border px-4 py-4">
         <Link to="/dashboard" className="flex items-center">
-          <NiecLogo variant="horizontal" theme="dark" size={36} withTagline />
+          <NiecLogo variant="horizontal" theme="dark" size={48} withTagline />
         </Link>
         <button className="lg:hidden" onClick={() => setOpen(false)}>
           <X className="h-5 w-5" />
@@ -258,7 +304,10 @@ export function AppShell() {
       <div className="hidden lg:block lg:h-dvh lg:shrink-0">{Sidebar}</div>
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 cursor-pointer bg-black/50" onClick={() => setOpen(false)} />
+          <div
+            className="absolute inset-0 cursor-pointer bg-black/50"
+            onClick={() => setOpen(false)}
+          />
           <div className="absolute inset-y-0 left-0">{Sidebar}</div>
         </div>
       )}

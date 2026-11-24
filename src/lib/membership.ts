@@ -20,6 +20,15 @@ export function formatMembershipExpiryDate(expiryDate: string): string {
   }).format(new Date(`${expiryDate}T00:00:00.000Z`));
 }
 
+export function formatMembershipPaymentDate(paidAt: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Africa/Lagos",
+  }).format(new Date(paidAt));
+}
+
 export function buildMembershipPaymentReceipt({
   tier,
   amountKobo,

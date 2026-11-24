@@ -23,6 +23,9 @@ export function TierAccessDialog({
   accessPriceKobo,
   onPayOnce,
   purchasing = false,
+  requiresEmail = false,
+  emailValue = "",
+  onEmailChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +35,9 @@ export function TierAccessDialog({
   accessPriceKobo?: number | null;
   onPayOnce?: () => void;
   purchasing?: boolean;
+  requiresEmail?: boolean;
+  emailValue?: string;
+  onEmailChange?: (email: string) => void;
 }) {
   const requiredLabel = TIER_LABELS[requiredTier] ?? requiredTier;
   const isPost = itemType === "post";
@@ -50,12 +56,16 @@ export function TierAccessDialog({
             <Lock aria-hidden="true" className="h-5 w-5" />
           </div>
           <DialogTitle>
-            {isPost
+            {requiresEmail && hasIndividualPrice
+              ? "Purchase resource access"
+              : isPost
               ? "Upgrade to create a post"
               : `Upgrade to access ${itemType === "event" ? "this event" : "this resource"}`}
           </DialogTitle>
           <DialogDescription>
-            {isPost
+            {requiresEmail && hasIndividualPrice
+              ? "Purchase one-time access as a guest. Enter your email to receive your receipt and a secure resource link."
+              : isPost
               ? `${itemLabel} is available to ${requiredLabel} members and above. Upgrade your membership to continue.`
               : hasIndividualPrice
                 ? `${itemLabel} is available to ${requiredLabel} members. Upgrade your membership or purchase one-time access below.`
@@ -70,13 +80,39 @@ export function TierAccessDialog({
             </p>
           </div>
         )}
+        {requiresEmail && hasIndividualPrice && onEmailChange && (
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">
+              Email address
+            </span>
+            <input
+              type="email"
+              autoComplete="email"
+              required
+              value={emailValue}
+              onChange={(event) => onEmailChange(event.target.value)}
+              placeholder="name@example.com"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            />
+          </label>
+        )}
         <DialogFooter>
           {hasIndividualPrice ? (
             <>
-              <Button asChild variant="outline">
-                <Link to="/upgrade">Upgrade</Link>
-              </Button>
-              <Button type="button" disabled={purchasing} onClick={onPayOnce}>
+              {!requiresEmail && (
+                <Button asChild variant="outline">
+                  <Link to="/upgrade">Upgrade</Link>
+                </Button>
+              )}
+              <Button
+                type="button"
+                disabled={
+                  purchasing ||
+                  (requiresEmail &&
+                    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue.trim()))
+                }
+                onClick={onPayOnce}
+              >
                 {purchasing ? "Opening checkout…" : "Pay once"}
               </Button>
             </>

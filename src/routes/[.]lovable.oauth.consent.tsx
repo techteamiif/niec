@@ -69,7 +69,7 @@ function Consent() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-md rounded-2xl border bg-card p-8 shadow-soft">
-        <NiecLogo variant="horizontal" theme="light" size={36} />
+        <NiecLogo variant="horizontal" theme="light" size={48} />
         <h1 className="mt-6 font-display text-2xl tracking-tight">
           Connect {clientName} to your NIEC account
         </h1>

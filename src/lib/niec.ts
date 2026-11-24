@@ -39,57 +39,52 @@ export const TIER_STYLE: Record<
 
 export const COPS = [
   {
-    key: "giis-inclusive-impact",
-    name: "GIIS — Gender & Inclusive Impact",
+    key: "icc",
+    name: "ICC - Inclusive Capital Community",
     color: "#E24B99",
-    description:
-      "The community of the Gender Impact Investment Summit (GIIS). We convene investors, enterprises and advocates to close Nigeria's gender financing gap — advancing gender-lens investing, GESI practice and inclusive capital.",
+    manager: ["Ifeoluwa"],
+    mandate:
+      "Closing Nigeria's gender financing gap through gender-lens investing and GESI practice. 60+ member network, institutionalising the GESI Roadmap 2025–2035.",
   },
   {
-    key: "niiric",
-    name: "NIIRIC — Research, Data & Measurement",
+    key: "niric",
+    name: "Nigerian Impact Investing Research Industry Collaborative (NIRIC)",
     color: "#3498DB",
-    description:
-      "The digital home of the Nigerian Impact Investing Research and Industry Collaborative. We drive research and data generation, capacity building, policy advocacy and investor network development for Nigeria's impact economy.",
-  },
-  {
-    key: "policy-acii",
-    name: "Policy, Advocacy & ACII Community",
-    color: "#9B59B6",
-    description:
-      "The year-round community of the Annual Convening on Impact Investing (ACII). We shape the policy agenda, coordinate advocacy, and build toward each Convening — including the launch of NIEC at ACII 2026.",
+    manager: ["Dr. Kingsley", "Dr. Bassey"],
+    subgroups: ["Policy Advocacy", "Research, Data & Measurement"],
+    mandate:
+      "Generating the research, data and capacity that underpin NIEC and the Nigeria Impact Economy Index, and using that evidence to shape a policy agenda that mainstreams impact investing as an investment strategy in Nigeria.",
   },
   {
     key: "capital-deals",
     name: "Capital & Deal Matchmaking",
     color: "#E67E22",
-    description:
-      "Where capital meets pipeline. Home of IIF's Deal Matchmaking programme and the WIIF (Nigeria Wholesale Impact Investment Fund) community — connecting investors, fund managers and investment-ready enterprises through the Deal Room.",
+    manager: ["TBC"],
+    mandate:
+      "Where capital meets pipeline — home of IIF's Deal Matchmaking programme and the WIIF community.",
   },
   {
     key: "eso-collaborative",
     name: "ESO Collaborative",
     color: "#E74C3C",
-    description:
-      "The workspace of the Nigeria ESO Collaborative — enterprise support organizations pooling expertise to build investment-ready MSMEs, share tools, set standards and coordinate the ecosystem.",
-  },
-  {
-    key: "climate-green-finance",
-    name: "Climate & Green Finance",
-    color: "#2ECC71",
-    description:
-      "Mobilising green and climate-aligned capital for Nigeria — renewable energy, climate adaptation and green finance instruments across the impact economy.",
+    manager: ["Ucha"],
+    mandate:
+      "Enterprise support organisations building investment-ready MSMEs across Financial Inclusion, Agriculture, Climate and Women's Economic Empowerment.",
   },
 ] as const;
 
-// Old CoP slugs → new slugs (for redirects from links shared before the rename).
+// Previous CoP slugs redirect to the consolidated workspaces.
 export const COP_SLUG_REDIRECTS: Record<string, string> = {
-  gender_inclusive: "giis-inclusive-impact",
-  data_measurement: "niiric",
-  policy_advocacy: "policy-acii",
+  gender_inclusive: "icc",
+  "giis-inclusive-impact": "icc",
+  data_measurement: "niric",
+  niiric: "niric",
+  policy_advocacy: "niric",
+  "policy-acii": "niric",
   digital_fintech: "capital-deals",
   creative_economy: "eso-collaborative",
-  climate_green: "climate-green-finance",
+  climate_green: "eso-collaborative",
+  "climate-green-finance": "eso-collaborative",
 };
 
 export const POST_TYPE_LABELS: Record<string, string> = {

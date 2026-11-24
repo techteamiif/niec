@@ -13,10 +13,30 @@ export interface Profile {
   organisation_name: string;
   organisation_type: string;
   role_title: string;
-  membership_tier: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
-  paid_membership_tier?: "observer" | "contributor" | "growth_partner" | "anchor" | "strategic_partner";
+  membership_tier:
+    | "observer"
+    | "contributor"
+    | "growth_partner"
+    | "anchor"
+    | "strategic_partner";
+  paid_membership_tier?:
+    | "observer"
+    | "contributor"
+    | "growth_partner"
+    | "anchor"
+    | "strategic_partner";
   membership_status: "pending" | "active" | "lapsed" | "suspended";
   membership_expires_at: string | null;
+  membership_trial_started_at: string | null;
+  membership_trial_expires_at: string | null;
+  membership_trial_expired_at: string | null;
+  membership_trial_tier:
+    | "observer"
+    | "contributor"
+    | "growth_partner"
+    | "anchor"
+    | "strategic_partner"
+    | null;
   application_data: Json;
   avatar_url: string | null;
   cover_image_url: string | null;
@@ -61,11 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const expiryReached =
         profile.membership_expires_at !== null &&
         profile.membership_expires_at < new Date().toISOString().slice(0, 10);
+      const trialExpired =
+        profile.membership_trial_started_at !== null &&
+        profile.membership_trial_expired_at === null &&
+        profile.membership_trial_expires_at !== null &&
+        profile.membership_expires_at === null &&
+        profile.membership_tier === profile.membership_trial_tier &&
+        new Date(profile.membership_trial_expires_at).getTime() <= Date.now();
       const isLapsed = profile.membership_status === "lapsed" || expiryReached;
       setProfile({
         ...profile,
-        paid_membership_tier: profile.membership_tier,
-        membership_tier: isLapsed ? "observer" : profile.membership_tier,
+        paid_membership_tier: isLapsed || trialExpired ? "observer" : profile.membership_tier,
+        membership_tier: isLapsed || trialExpired ? "observer" : profile.membership_tier,
         membership_status: expiryReached ? "lapsed" : profile.membership_status,
       });
     } else {
@@ -94,6 +121,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => subscription.unsubscribe();
   }, [loadProfile]);
+
+  useEffect(() => {
+    const expiresAt = profile?.membership_trial_expires_at;
+    if (
+      !user ||
+      !profile ||
+      !expiresAt ||
+      profile.membership_trial_expired_at ||
+      profile.membership_expires_at ||
+      new Date(expiresAt).getTime() <= Date.now()
+    ) {
+      return;
+    }
+
+    const refreshDelay = new Date(expiresAt).getTime() - Date.now() + 1000;
+    const timeout = window.setTimeout(() => {
+      void loadProfile(user.id);
+    }, refreshDelay);
+    return () => window.clearTimeout(timeout);
+  }, [loadProfile, profile, user]);
 
   const refresh = useCallback(async () => {
     if (user) await loadProfile(user.id);

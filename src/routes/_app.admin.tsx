@@ -8,7 +8,13 @@ import { UserAvatar } from "@/components/Avatar";
 import { TIER_LABELS, ORG_TYPE_LABELS } from "@/lib/niec";
 import { sanitizeRichText } from "@/lib/rich-text";
 import { toast } from "sonner";
-import { format, formatDistanceToNow } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistance,
+  formatDistanceToNow,
+  parseISO,
+} from "date-fns";
 import { formatEventSchedule } from "@/lib/event-schedule";
 import { logAudit, type AuditAction } from "@/lib/audit";
 import {
@@ -42,11 +48,18 @@ const STAGES = [
 
 type Profile = any;
 type Role = { user_id: string; role: "member" | "admin" | "super_admin" };
+type MembershipPaymentSummary = Pick<
+  Database["public"]["Tables"]["membership_payments"]["Row"],
+  "user_id" | "tier" | "created_at" | "paid_at"
+>;
 
 function AdminCRM() {
   const { isStaff, isSuperAdmin, user } = useAuth();
   const [tab, setTab] = useState<"crm" | "applications" | "cops" | "content" | "programs" | "recognition" | "audit" | "analytics">("crm");
+  const [clock, setClock] = useState(Date.now());
   const [members, setMembers] = useState<Profile[]>([]);
+  const [latestPayments, setLatestPayments] = useState<Record<string, MembershipPaymentSummary>>({});
+  const [paymentLoadError, setPaymentLoadError] = useState<string | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
@@ -60,12 +73,65 @@ function AdminCRM() {
       supabase.rpc("admin_list_profiles"),
       supabase.from("user_roles").select("user_id, role"),
     ]);
-    setMembers((m ?? []) as Profile[]);
+    const profiles = (m ?? []) as Profile[];
+    setMembers(profiles);
     setRoles(((r ?? []) as Role[]));
+
+    const memberIds = profiles
+      .filter((profile) => profile.membership_expires_at)
+      .map((profile) => profile.id);
+    if (memberIds.length === 0) {
+      setLatestPayments({});
+      setPaymentLoadError(null);
+      return;
+    }
+
+    const paymentsByMember: Record<string, MembershipPaymentSummary> = {};
+    let rangeStart = 0;
+    while (true) {
+      const { data: payments, error: paymentError } = await supabase
+        .from("membership_payments")
+        .select("user_id, tier, created_at, paid_at")
+        .in("user_id", memberIds)
+        .eq("status", "success")
+        .order("paid_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .range(rangeStart, rangeStart + 999);
+
+      if (paymentError) {
+        console.error("Unable to load paid membership periods", paymentError);
+        setLatestPayments({});
+        setPaymentLoadError(paymentError.message);
+        toast.error(`Could not load paid membership periods: ${paymentError.message}`);
+        return;
+      }
+
+      for (const payment of payments ?? []) {
+        if (payment.user_id && !paymentsByMember[payment.user_id]) {
+          paymentsByMember[payment.user_id] = payment;
+        }
+      }
+
+      if (
+        Object.keys(paymentsByMember).length >= memberIds.length ||
+        (payments ?? []).length < 1000
+      ) {
+        break;
+      }
+      rangeStart += 1000;
+    }
+
+    setLatestPayments(paymentsByMember);
+    setPaymentLoadError(null);
   };
 
 
   useEffect(() => { if (isStaff) load(); }, [isStaff]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setClock(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const allTags = useMemo(() => {
     const s = new Set<string>();
@@ -172,7 +238,7 @@ function AdminCRM() {
                 <BroadcastButton recipientIds={filtered.map((m) => m.id)} label={`Broadcast to ${filtered.length}`} />
               </div>
               <div className="sidebar-scrollbar min-h-0 flex-1 overflow-auto">
-                <table className="w-full min-w-[760px] text-sm">
+                <table className="w-full min-w-[1200px] text-sm">
                   <thead className="sticky top-0 z-10 border-b bg-muted/40 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="p-3">Member</th>
@@ -180,12 +246,21 @@ function AdminCRM() {
                       <th className="p-3">Stage</th>
                       <th className="p-3">Tier</th>
                       <th className="p-3">Status</th>
+                      <th className="p-3">Trial expiry / time left</th>
+                      <th className="p-3">Paid period / upgrade initiated</th>
                       <th className="p-3">Joined</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((m) => {
                       const stage = STAGES.find((s) => s.key === m.crm_stage) ?? STAGES[0];
+                      const trialExpiry = getMembershipTrialExpiry(m, clock);
+                      const paidPeriod = getPaidMembershipPeriod(
+                        m,
+                        latestPayments[m.id] ?? null,
+                        clock,
+                        paymentLoadError,
+                      );
                       return (
                         <tr key={m.id} onClick={() => setSelected(m)}
                           className="cursor-pointer border-b transition hover:bg-muted/40">
@@ -205,12 +280,41 @@ function AdminCRM() {
                           <td className="p-3"><span className={`rounded px-2 py-0.5 text-[11px] ${stage.color}`}>{stage.label}</span></td>
                           <td className="p-3"><TierBadge tier={m.membership_tier} /></td>
                           <td className="p-3"><span className="rounded bg-muted px-2 py-0.5 text-[11px]">{m.membership_status}</span></td>
+                          <td className="p-3 text-xs">
+                            {trialExpiry ? (
+                              <>
+                                <div>{trialExpiry.timestamp}</div>
+                                <div className="text-muted-foreground">{trialExpiry.remaining}</div>
+                              </>
+                            ) : (
+                              <span className="text-muted-foreground">No trial</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-xs">
+                            {paidPeriod ? (
+                              <>
+                                <div>Initiated: {paidPeriod.initiatedAt}</div>
+                                <div>Paid: {paidPeriod.paidAt}</div>
+                                <div>Expires: {paidPeriod.expiryDate}</div>
+                                <div className="text-muted-foreground">{paidPeriod.remaining}</div>
+                                {paymentLoadError && (
+                                  <div className="text-destructive">Payment history unavailable</div>
+                                )}
+                              </>
+                            ) : paymentLoadError ? (
+                              <span className="text-muted-foreground">
+                                Payment history unavailable
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">No paid period</span>
+                            )}
+                          </td>
                           <td className="p-3 text-xs text-muted-foreground">{format(new Date(m.joined_at), "PP")}</td>
                         </tr>
                       );
                     })}
                     {filtered.length === 0 && (
-                      <tr><td colSpan={6} className="p-10 text-center text-sm text-muted-foreground">No members match these filters.</td></tr>
+                      <tr><td colSpan={8} className="p-10 text-center text-sm text-muted-foreground">No members match these filters.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -231,6 +335,9 @@ function AdminCRM() {
       {selected && (
         <MemberDrawer
           member={selected}
+          now={clock}
+          payment={latestPayments[selected.id] ?? null}
+          paymentLoadError={paymentLoadError}
           roles={roles.filter((r) => r.user_id === selected.id).map((r) => r.role)}
           isSuperAdmin={isSuperAdmin}
           actorId={user!.id}
@@ -243,6 +350,107 @@ function AdminCRM() {
 }
 
 /* ---------- helpers ---------- */
+
+const trialExpiryFormatter = new Intl.DateTimeFormat("en-NG", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "Africa/Lagos",
+  timeZoneName: "short",
+});
+const paidExpiryFormatter = new Intl.DateTimeFormat("en-NG", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+});
+
+function formatPaymentTimestamp(value: string | null, memberId: string) {
+  if (!value) return "Not recorded";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    console.error("[admin:membership-payment] invalid timestamp", memberId);
+    return "Invalid timestamp";
+  }
+  return trialExpiryFormatter.format(date);
+}
+
+function getMembershipTrialExpiry(member: Profile, now: number) {
+  if (!member.membership_trial_started_at || !member.membership_trial_expires_at) return null;
+
+  const expiresAt = new Date(member.membership_trial_expires_at);
+  if (Number.isNaN(expiresAt.getTime())) {
+    console.error("[admin:membership-trial] invalid expiry timestamp", member.id);
+    return { timestamp: "Invalid expiry timestamp", remaining: "Unavailable" };
+  }
+
+  const expired = member.membership_trial_expired_at !== null || expiresAt.getTime() <= now;
+  const converted = !expired && member.membership_expires_at !== null;
+  const tierChanged =
+    !expired &&
+    !converted &&
+    member.membership_trial_tier !== null &&
+    member.membership_tier !== member.membership_trial_tier;
+  const remaining = converted
+    ? "Converted to paid"
+    : tierChanged
+      ? "Tier changed"
+      : expired
+        ? `Expired ${formatDistance(expiresAt, new Date(now))} ago`
+        : `Ends ${formatDistance(expiresAt, new Date(now), { addSuffix: true })}`;
+
+  return {
+    timestamp: trialExpiryFormatter.format(expiresAt),
+    remaining,
+  };
+}
+
+function getPaidMembershipPeriod(
+  member: Profile,
+  payment: MembershipPaymentSummary | null,
+  now: number,
+  paymentLoadError: string | null,
+) {
+  const expiryDate = member.membership_expires_at as string | null;
+  if (!payment && !expiryDate) return null;
+
+  let formattedExpiryDate = "Not set";
+  let remaining = "Membership expiry unavailable";
+  if (expiryDate) {
+    const parsedExpiry = parseISO(expiryDate);
+    if (Number.isNaN(parsedExpiry.getTime())) {
+      console.error("[admin:membership-payment] invalid expiry date", member.id);
+      formattedExpiryDate = "Invalid expiry date";
+      remaining = "Unavailable";
+    } else {
+      formattedExpiryDate = paidExpiryFormatter.format(new Date(`${expiryDate}T00:00:00Z`));
+      const todayUtc = new Date(now).toISOString().slice(0, 10);
+      const daysRemaining = differenceInCalendarDays(parsedExpiry, parseISO(todayUtc));
+      remaining =
+        daysRemaining > 0
+          ? `${daysRemaining} days remaining`
+          : daysRemaining === 0
+            ? "Expires today"
+            : `Expired ${Math.abs(daysRemaining)} days ago`;
+    }
+  }
+
+  return {
+    initiatedAt: payment
+      ? formatPaymentTimestamp(payment.created_at, member.id)
+      : paymentLoadError
+        ? "Unavailable (payment history could not be loaded)"
+        : "No successful payment found",
+    paidAt: payment
+      ? formatPaymentTimestamp(payment.paid_at, member.id)
+      : paymentLoadError
+        ? "Unavailable (payment history could not be loaded)"
+        : "Not recorded",
+    expiryDate: formattedExpiryDate,
+    remaining,
+  };
+}
 
 function Stat({ label, value, tone = "bg-muted" }: { label: string; value: number; tone?: string }) {
   return (
@@ -357,9 +565,12 @@ function AnalyticsTab({ members }: { members: Profile[] }) {
 /* ---------- Member detail drawer ---------- */
 
 function MemberDrawer({
-  member, roles, isSuperAdmin, actorId, onClose, onChanged,
+  member, now, payment, paymentLoadError, roles, isSuperAdmin, actorId, onClose, onChanged,
 }: {
   member: Profile;
+  now: number;
+  payment: MembershipPaymentSummary | null;
+  paymentLoadError: string | null;
   roles: ("member" | "admin" | "super_admin")[];
   isSuperAdmin: boolean;
   actorId: string;
@@ -378,6 +589,8 @@ function MemberDrawer({
   const [stage, setStage] = useState<string>(member.crm_stage ?? "lead");
   const [tier, setTier] = useState<string>(member.membership_tier);
   const [status, setStatus] = useState<string>(member.membership_status);
+  const trialExpiry = getMembershipTrialExpiry(member, now);
+  const paidPeriod = getPaidMembershipPeriod(member, payment, now, paymentLoadError);
 
   const reloadBadges = async () => {
     const { data } = await supabase.from("member_badges").select("*").eq("user_id", member.id).order("awarded_at", { ascending: false });
@@ -487,6 +700,29 @@ function MemberDrawer({
           </div>
           <button onClick={onClose} className="rounded-md p-1.5 hover:bg-muted"><X className="h-4 w-4" /></button>
         </div>
+
+        {trialExpiry && (
+          <div className="border-b px-5 py-3 text-sm">
+            <div className="text-xs font-medium text-muted-foreground">Trial expiry</div>
+            <div>{trialExpiry.timestamp}</div>
+            <div className="text-xs text-muted-foreground">{trialExpiry.remaining}</div>
+          </div>
+        )}
+
+        {paidPeriod && (
+          <div className="border-b px-5 py-3 text-sm">
+            <div className="text-xs font-medium text-muted-foreground">Paid membership period</div>
+            <div>Upgrade initiated: {paidPeriod.initiatedAt}</div>
+            <div>Payment completed: {paidPeriod.paidAt}</div>
+            <div>Expires: {paidPeriod.expiryDate}</div>
+            <div className="text-xs text-muted-foreground">{paidPeriod.remaining}</div>
+          </div>
+        )}
+        {paymentLoadError && (
+          <div className="border-b px-5 py-3 text-xs text-destructive">
+            Payment history unavailable: {paymentLoadError}
+          </div>
+        )}
 
         <div className="grid gap-3 border-b p-5 sm:grid-cols-3">
           <Pick label="Stage" value={stage} onChange={saveStage}

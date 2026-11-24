@@ -5,9 +5,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
+import { pathWithNext, safeReturnPath } from "@/lib/safe-navigation";
 
-function safeNext(v: unknown): string | undefined {
-  return typeof v === "string" && v.startsWith("/") && !v.startsWith("//") ? v : undefined;
+function getPostLoginPath(next: string, requiresOnboarding: boolean) {
+  if (!requiresOnboarding) return next;
+  return next === "/dashboard" || next === "/onboarding"
+    ? "/onboarding"
+    : pathWithNext("/onboarding", next);
 }
 
 export const Route = createFileRoute("/login")({
@@ -21,7 +25,9 @@ export const Route = createFileRoute("/login")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): { next?: string } => ({ next: safeNext(s.next) }),
+  validateSearch: (s: Record<string, unknown>): { next?: string } => ({
+    next: safeReturnPath(s.next),
+  }),
   component: LoginPage,
 });
 
@@ -39,8 +45,8 @@ function LoginPage() {
   useEffect(() => {
     if (loading || !user || !profile || navigationStarted.current) return;
     navigationStarted.current = true;
-    const destination = !isStaff && profile.crm_stage !== "applicant" ? "/onboarding" : next;
-    navigate({ href: destination });
+    const destination = getPostLoginPath(next, !isStaff && profile.crm_stage !== "applicant");
+    void navigate({ href: destination, replace: true });
   }, [loading, user, profile, isStaff, navigate, next]);
 
   const handle = async (e: React.FormEvent) => {
@@ -58,8 +64,11 @@ function LoginPage() {
         if (rolesError) throw rolesError;
         navigationStarted.current = true;
         const staff = (roles ?? []).some(({ role }) => role === "admin" || role === "super_admin");
-        const destination = !staff && memberProfile?.crm_stage !== "applicant" ? "/onboarding" : next;
-        navigate({ href: destination });
+        const destination = getPostLoginPath(
+          next,
+          !staff && memberProfile?.crm_stage !== "applicant",
+        );
+        await navigate({ href: destination, replace: true });
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           email,
@@ -104,7 +113,11 @@ function LoginPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-medium tracking-wider text-muted-foreground">Password *</label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                  <Link
+                    to="/forgot-password"
+                    search={next !== "/dashboard" ? { next } : {}}
+                    className="text-xs text-primary hover:underline"
+                  >
                     Forgot password?
                   </Link>
                 </div>
@@ -151,7 +164,11 @@ function LoginPage() {
 
         <p className="text-center text-sm text-muted-foreground">
           New to NIEC?{" "}
-          <Link to="/apply" className="font-semibold text-primary hover:underline">
+          <Link
+            to="/apply"
+            search={next !== "/dashboard" ? { next } : {}}
+            className="font-semibold text-primary hover:underline"
+          >
             Sign up
           </Link>
         </p>

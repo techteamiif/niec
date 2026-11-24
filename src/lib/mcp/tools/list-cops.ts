@@ -8,7 +8,7 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: () => {
-    const items = COPS.map((c) => ({ slug: c.key, name: c.name, description: c.description }));
+    const items = COPS.map((c) => ({ slug: c.key, name: c.name, description: c.mandate }));
     return {
       content: [{ type: "text", text: JSON.stringify(items, null, 2) }],
       structuredContent: { items },

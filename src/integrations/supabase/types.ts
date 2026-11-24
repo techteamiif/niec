@@ -794,6 +794,7 @@ export type Database = {
           amount_kobo: number
           created_at: string
           currency: string
+          guest_email: string | null
           id: string
           metadata: Json
           paid_at: string | null
@@ -801,12 +802,13 @@ export type Database = {
           resource_id: string
           resource_type: string
           status: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           amount_kobo: number
           created_at?: string
           currency?: string
+          guest_email?: string | null
           id?: string
           metadata?: Json
           paid_at?: string | null
@@ -814,12 +816,13 @@ export type Database = {
           resource_id: string
           resource_type: string
           status?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           amount_kobo?: number
           created_at?: string
           currency?: string
+          guest_email?: string | null
           id?: string
           metadata?: Json
           paid_at?: string | null
@@ -827,7 +830,7 @@ export type Database = {
           resource_id?: string
           resource_type?: string
           status?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1063,6 +1066,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1091,6 +1098,10 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           membership_expires_at?: string | null
+          membership_trial_expired_at?: string | null
+          membership_trial_expires_at?: string | null
+          membership_trial_started_at?: string | null
+          membership_trial_tier?: Database["public"]["Enums"]["membership_tier"] | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1119,6 +1130,10 @@ export type Database = {
           linkedin_url?: string | null
           location?: string | null
           membership_expires_at?: string | null
+          membership_trial_expired_at?: string | null
+          membership_trial_expires_at?: string | null
+          membership_trial_started_at?: string | null
+          membership_trial_tier?: Database["public"]["Enums"]["membership_tier"] | null
           membership_status?: Database["public"]["Enums"]["membership_status"]
           membership_tier?: Database["public"]["Enums"]["membership_tier"]
           organisation_name?: string | null
@@ -1370,6 +1385,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1407,6 +1426,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1495,6 +1518,10 @@ export type Database = {
           linkedin_url: string | null
           location: string | null
           membership_expires_at: string | null
+          membership_trial_expired_at: string | null
+          membership_trial_expires_at: string | null
+          membership_trial_started_at: string | null
+          membership_trial_tier: Database["public"]["Enums"]["membership_tier"] | null
           membership_status: Database["public"]["Enums"]["membership_status"]
           membership_tier: Database["public"]["Enums"]["membership_tier"]
           organisation_name: string | null
@@ -1564,6 +1591,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_membership_trial: {
+        Args: {
+          _tier: Database["public"]["Enums"]["membership_tier"]
+        }
+        Returns: string
+      }
       tier_meets: {
         Args: {
           _required: Database["public"]["Enums"]["membership_tier"]
@@ -1580,9 +1613,9 @@ export type Database = {
       app_role: "member" | "admin" | "super_admin"
       cop_role: "chair" | "co_chair" | "steward"
       cop_type:
-        | "giis-inclusive-impact"
+        | "icc"
         | "climate-green-finance"
-        | "niiric"
+        | "niric"
         | "policy-acii"
         | "capital-deals"
         | "eso-collaborative"
@@ -1788,9 +1821,9 @@ export const Constants = {
       app_role: ["member", "admin", "super_admin"],
       cop_role: ["chair", "co_chair", "steward"],
       cop_type: [
-        "giis-inclusive-impact",
+        "icc",
         "climate-green-finance",
-        "niiric",
+        "niric",
         "policy-acii",
         "capital-deals",
         "eso-collaborative",

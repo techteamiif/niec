@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { ArrowLeft, CreditCard, Download, FileText, Share2 } from "lucide-react";
+import { CreditCard, Download, FileText, Share2 } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -13,56 +13,193 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { initResourcePayment } from "@/lib/payments.functions";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  getPublicKnowledgeResource,
+  hasGuestKnowledgePurchase,
+} from "@/lib/public-resource.functions";
+import { richTextToPlainText } from "@/lib/rich-text";
+import { z } from "zod";
 
 type KnowledgeResource = Database["public"]["Tables"]["knowledge_resources"]["Row"];
+type ResourceDetails = Pick<
+  KnowledgeResource,
+  | "id"
+  | "title"
+  | "description"
+  | "resource_type"
+  | "community_of_practice"
+  | "min_tier_required"
+  | "cover_image_url"
+  | "created_at"
+  | "access_price_kobo"
+  | "downloads_count"
+  | "uploaded_by"
+> & {
+  file_url: string | null;
+  executive_summary_url: string | null;
+  has_executive_summary: boolean;
+};
 type ResourceAuthor = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
-  "id" | "full_name" | "organisation_name" | "avatar_url" | "organisation_type"
+  "id" | "organisation_name" | "avatar_url" | "organisation_type"
 >;
 
+const siteUrl = (
+  (typeof process !== "undefined" && process.env?.VITE_SITE_URL) ||
+  import.meta.env?.VITE_SITE_URL ||
+  "https://niec-connect.dextrus.workers.dev"
+).replace(/\/+$/, "");
+
+function getAbsoluteImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) return undefined;
+  try {
+    const url = new URL(imageUrl, siteUrl);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const Route = createFileRoute("/_app/knowledge/$resourceId")({
+  validateSearch: z.object({
+    purchaseReference: z.string().optional(),
+  }),
+  loader: ({ params }) =>
+    /^[0-9a-f-]{36}$/i.test(params.resourceId)
+      ? getPublicKnowledgeResource({ data: { resourceId: params.resourceId } })
+      : { resource: null, author: null },
+  head: ({ loaderData, params }) => {
+    const resource = loaderData?.resource;
+    const title = resource ? `${resource.title} | NIEC Knowledge Hub` : "Resource not found | NIEC";
+    const description =
+      (resource?.description
+        ? richTextToPlainText(resource.description).replace(/\s+/g, " ").trim().slice(0, 200)
+        : "") || "Explore resources from the NIEC Knowledge Hub.";
+    const imageUrl = getAbsoluteImageUrl(resource?.cover_image_url);
+    const canonicalUrl = `${siteUrl}/knowledge/${encodeURIComponent(params.resourceId)}`;
+    const socialTitle = resource?.title ?? title;
+
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: socialTitle },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "article" },
+        { property: "og:url", content: canonicalUrl },
+        { name: "twitter:card", content: imageUrl ? "summary_large_image" : "summary" },
+        { name: "twitter:title", content: socialTitle },
+        { name: "twitter:description", content: description },
+        ...(imageUrl
+          ? [
+              { property: "og:image", content: imageUrl },
+              { property: "og:image:secure_url", content: imageUrl },
+              { property: "og:image:alt", content: socialTitle },
+              { name: "twitter:image", content: imageUrl },
+              { name: "twitter:image:alt", content: socialTitle },
+            ]
+          : []),
+      ],
+    };
+  },
   component: KnowledgeResourcePage,
 });
 
 function KnowledgeResourcePage() {
   const { resourceId } = Route.useParams();
-  const { profile, isStaff } = useAuth();
-  const [resource, setResource] = useState<KnowledgeResource | null>(null);
+  const purchaseReference = Route.useSearch().purchaseReference ?? "";
+  const { resource: publicResource, author: publicAuthor } = Route.useLoaderData();
+  const { user, profile, isStaff, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [resource, setResource] = useState<ResourceDetails | null>(null);
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
   const [tierDialogOpen, setTierDialogOpen] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [hasGuestPurchase, setHasGuestPurchase] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [guestEmail, setGuestEmail] = useState("");
   const startPurchase = useServerFn(initResourcePayment);
+  const checkGuestPurchase = useServerFn(hasGuestKnowledgePurchase);
+  const resourceDestination = `/knowledge/${encodeURIComponent(resourceId)}${
+    purchaseReference ? `?purchaseReference=${encodeURIComponent(purchaseReference)}` : ""
+  }`;
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setResource(null);
     setAuthor(null);
+    setHasAccess(false);
+    setHasGuestPurchase(false);
+
+    if (authLoading) return;
 
     void (async () => {
+      if (!user) {
+        if (!publicResource) {
+          setResource(null);
+          setLoading(false);
+          return;
+        }
+        setResource({ ...publicResource, file_url: null, executive_summary_url: null });
+        setAuthor(publicAuthor);
+        try {
+          if (purchaseReference) {
+            const purchased = await checkGuestPurchase({
+              data: { resourceId, purchaseReference },
+            });
+            if (active) setHasGuestPurchase(purchased);
+          }
+        } catch (error) {
+          if (active) {
+            toast.error(error instanceof Error ? error.message : "Could not load this resource.");
+          }
+        } finally {
+          if (active) setLoading(false);
+        }
+        return;
+      }
+
       const { data, error } = await supabase
         .from("knowledge_resources")
-        .select("*")
+        .select(
+          "id, title, description, resource_type, community_of_practice, min_tier_required, cover_image_url, created_at, access_price_kobo, downloads_count, uploaded_by, file_url, executive_summary_url",
+        )
         .eq("id", resourceId)
         .maybeSingle();
 
       if (!active) return;
       if (error) toast.error(`Could not load resource: ${error.message}`);
-      setResource(data);
+      setResource(
+        data
+          ? {
+              ...data,
+              has_executive_summary: Boolean(data.executive_summary_url?.trim()),
+            }
+          : null,
+      );
       setLoading(false);
 
-      const { data: access } = await supabase.rpc("has_resource_access", {
+      const { data: access, error: accessError } = await supabase.rpc("has_resource_access", {
         _resource_type: "knowledge",
         _resource_id: resourceId,
       });
+      if (accessError) toast.error(`Could not verify resource access: ${accessError.message}`);
       if (active) setHasAccess(access ?? false);
 
       if (data?.uploaded_by) {
         const { data: authorData, error: authorError } = await supabase
           .from("profiles")
-          .select("id, full_name, organisation_name, avatar_url, organisation_type")
+          .select("id, organisation_name, avatar_url, organisation_type")
           .eq("id", data.uploaded_by)
           .maybeSingle();
 
@@ -75,14 +212,28 @@ function KnowledgeResourcePage() {
     return () => {
       active = false;
     };
-  }, [resourceId]);
+  }, [
+    authLoading,
+    checkGuestPurchase,
+    publicAuthor,
+    publicResource,
+    purchaseReference,
+    resourceId,
+    user,
+  ]);
 
-  const download = async (url: string | null) => {
+  const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
+    if (!user) {
+      navigate({ to: "/apply", search: { next: resourceDestination } });
+      return;
+    }
     if (!unlocked) {
       setTierDialogOpen(true);
       return;
     }
+
+    const url = fileType === "pdf" ? resource.file_url : resource.executive_summary_url;
     if (!url) {
       toast.info("No file attached yet.");
       return;
@@ -123,14 +274,21 @@ function KnowledgeResourcePage() {
   };
 
   const unlocked =
-    hasAccess || isStaff || tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer");
+    hasAccess ||
+    isStaff ||
+    (Boolean(user) &&
+      tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer"));
 
   const buyAccess = async () => {
     if (!resource || purchasing) return;
     setPurchasing(true);
     try {
       const result = await startPurchase({
-        data: { resourceType: "knowledge", resourceId: resource.id },
+        data: {
+          resourceType: "knowledge",
+          resourceId: resource.id,
+          email: user ? undefined : guestEmail,
+        },
       });
       if (!result.ok) throw new Error(result.error);
       window.location.href = result.authorizationUrl;
@@ -157,12 +315,25 @@ function KnowledgeResourcePage() {
 
   return (
     <div className="p-6 lg:p-10">
-      <Link
-        to="/knowledge"
-        className="mb-5 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> Knowledge Hub
-      </Link>
+      <Breadcrumb className="mb-5">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/">Home</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/resources">Resources</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{resource?.title ?? "Resource"}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       {loading ? (
         <div className="rounded-xl border bg-card p-8 text-sm text-muted-foreground">
@@ -193,7 +364,10 @@ function KnowledgeResourcePage() {
               <span className="rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground/80">
                 {getKnowledgeResourceAccessLabel(resource.min_tier_required)}
               </span>
-              {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
+              {!unlocked &&
+                !hasGuestPurchase &&
+                resource.access_price_kobo != null &&
+                resource.access_price_kobo > 0 && (
                 <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                   One-time access: ₦{(resource.access_price_kobo / 100).toLocaleString("en-NG")}
                 </span>
@@ -201,11 +375,6 @@ function KnowledgeResourcePage() {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3 border-b pb-5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-3 py-1 text-xs font-medium text-muted-foreground">
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                {resource.downloads_count ?? 0}{" "}
-                {(resource.downloads_count ?? 0) === 1 ? "download" : "downloads"}
-              </span>
               <Button type="button" variant="ghost" size="sm" onClick={() => void share()}>
                 <Share2 aria-hidden="true" /> Share
               </Button>
@@ -235,33 +404,62 @@ function KnowledgeResourcePage() {
             <section className="mt-8 border-t pt-6">
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-                  Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
-                  {resource.access_price_kobo != null && resource.access_price_kobo > 0
-                    ? " or one-time purchase."
-                    : "."}
+                  {!user
+                    ? hasGuestPurchase
+                      ? "Your purchase is confirmed. Sign in or create an account to download this resource."
+                      : "Sign in or create an account to download this resource."
+                    : (
+                      <>
+                        Downloads require <strong>{TIER_LABELS[resource.min_tier_required]}</strong> tier
+                        {resource.access_price_kobo != null && resource.access_price_kobo > 0
+                          ? " or one-time purchase."
+                          : "."}
+                      </>
+                    )}
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
-                {!unlocked && resource.access_price_kobo != null && resource.access_price_kobo > 0 && (
+                {!unlocked &&
+                  !hasGuestPurchase &&
+                  resource.access_price_kobo != null &&
+                  resource.access_price_kobo > 0 && (
                   <Button type="button" onClick={() => setTierDialogOpen(true)}>
                     <CreditCard aria-hidden="true" />
                     View access options
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void download(resource.executive_summary_url)}
-                >
-                  <Download aria-hidden="true" /> Download executive summary
-                </Button>
-                <Button
-                  type="button"
-                  className="bg-[#003302] text-white hover:bg-[#003302]/90"
-                  onClick={() => void download(resource.file_url)}
-                >
-                  <FileText aria-hidden="true" /> Download PDF
-                </Button>
+                {resource.has_executive_summary && (
+                  user ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void download("summary")}
+                    >
+                      <Download aria-hidden="true" /> Download executive summary
+                    </Button>
+                  ) : (
+                    <Button asChild variant="outline">
+                      <Link to="/apply" search={{ next: resourceDestination }}>
+                        <Download aria-hidden="true" /> Signup to download
+                      </Link>
+                    </Button>
+                  )
+                )}
+                {user ? (
+                  <Button
+                    type="button"
+                    className="bg-[#003302] text-white hover:bg-[#003302]/90"
+                    onClick={() => void download("pdf")}
+                  >
+                    <FileText aria-hidden="true" /> Download PDF
+                  </Button>
+                ) : (
+                  <Button asChild className="bg-[#003302] text-white hover:bg-[#003302]/90">
+                    <Link to="/apply" search={{ next: resourceDestination }}>
+                      <FileText aria-hidden="true" /> Signup to download
+                    </Link>
+                  </Button>
+                )}
               </div>
             </section>
           </article>
@@ -273,10 +471,14 @@ function KnowledgeResourcePage() {
                 <Link
                   to="/member/$memberId"
                   params={{ memberId: author.id }}
-                  aria-label={`View ${author.organisation_name || author.full_name}'s profile`}
+                  aria-label={
+                    author.organisation_name
+                      ? `View ${author.organisation_name} profile`
+                      : "View resource author profile"
+                  }
                 >
                   <UserAvatar
-                    name={author.organisation_name || author.full_name}
+                    name={author.organisation_name || "NIEC Knowledge Team"}
                     src={author.avatar_url}
                     size={104}
                     className="bg-muted text-foreground"
@@ -289,11 +491,8 @@ function KnowledgeResourcePage() {
               )}
             </div>
             <p className="mt-5 text-lg font-medium">
-              {author?.organisation_name || author?.full_name || "NIeC Knowledge Team"}
+              {author?.organisation_name || "NIeC Knowledge Team"}
             </p>
-            {author?.organisation_name && author.full_name && (
-              <p className="mt-1 text-sm text-muted-foreground">{author.full_name}</p>
-            )}
             <div className="mt-6 border-t pt-5 text-left">
               <h3 className="text-sm font-semibold">About this resource</h3>
               <dl className="mt-3 space-y-3 text-sm">
@@ -323,6 +522,9 @@ function KnowledgeResourcePage() {
         accessPriceKobo={unlocked ? null : resource?.access_price_kobo}
         onPayOnce={() => void buyAccess()}
         purchasing={purchasing}
+        requiresEmail={!user}
+        emailValue={guestEmail}
+        onEmailChange={setGuestEmail}
       />
     </div>
   );

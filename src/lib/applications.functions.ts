@@ -125,7 +125,10 @@ export const submitJoinApplication = createServerFn({ method: "POST" })
 
     if (error) {
       console.error("[application:insert]", error.message);
-      return { ok: false as const, error: "We could not save your application. Please try again." };
+      return {
+        ok: false as const,
+        error: "The application was submitted, but its CRM record could not be created.",
+      };
     }
 
     const applicationId = (inserted as { id: string }).id;

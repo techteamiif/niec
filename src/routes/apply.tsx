@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getCountries, getCountryCallingCode, isValidPhoneNumber, type CountryCode } from "libphonenumber-js";
 import { supabase } from "@/integrations/supabase/client";
-import { initMembershipPayment } from "@/lib/payments.functions";
+import { linkGuestResourcePurchases } from "@/lib/payments.functions";
 import { submitJoinApplication } from "@/lib/applications.functions";
 import { useAuth } from "@/lib/auth";
 import { NIGERIA_LOCATIONS, NIGERIAN_STATES, type NigerianState } from "@/lib/nigeriaLocations";
@@ -26,10 +26,12 @@ import {
   SECTOR_OPTIONS as SECTORS,
 } from "@/lib/onboarding-options";
 import { toast } from "sonner";
-import { ArrowRight, Building2, Check, CheckCircle, ChevronDown, Eye, EyeOff, GraduationCap, Search, Settings, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Eye, EyeOff, Search, Settings, ShieldCheck, X } from "lucide-react";
 import { PublicHeader } from "@/components/PublicHeader";
 import { TierComparisonTable } from "@/components/TierComparisonTable";
+import { pathWithNext, safeReturnPath } from "@/lib/safe-navigation";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { z } from "zod";
 
 const countryNames = new Intl.DisplayNames(["en"], { type: "region" });
 const COUNTRY_OPTIONS = getCountries()
@@ -53,11 +55,20 @@ export const Route = createFileRoute("/apply")({
       { name: "description", content: "Apply to join the Nigeria Impact Economy Community — a members' network for impact investors, social enterprises and ecosystem partners." },
     ],
   }),
-  component: () => <ApplyPage mode="signup" />,
+  validateSearch: z.object({
+    email: z.string().optional(),
+    next: z.string().optional().transform(safeReturnPath),
+  }),
+  component: SignupPage,
 });
 
-export function ApplyOnboardingPage() {
-  return <ApplyPage mode="onboarding" />;
+function SignupPage() {
+  const { email, next } = Route.useSearch();
+  return <ApplyPage mode="signup" initialEmail={email ?? ""} nextPath={next} />;
+}
+
+export function ApplyOnboardingPage({ nextPath }: { nextPath?: string }) {
+  return <ApplyPage mode="onboarding" nextPath={nextPath} />;
 }
 
 // const [password, setPassword] = useState();
@@ -68,43 +79,37 @@ const TIERS = [
     label: "Observer",
     displayLabel: "Observer",
     fee: "Free",
-    description: "Explore the ecosystem and read what's happening.",
+    description: "Govt, Regulators, Students, Researchers.",
   },
   {
     key: "contributor",
     label: "Enterprise",
     displayLabel: "Enterprise",
     fee: "₦100,000 / yr",
-    description: "Join conversations, one CoP, and start booking mentorship.",
+    description: "ESOs, Incubators, Advisors, and Emerging enterprises.",
   },
   {
     key: "growth_partner",
     label: "Growth Partner",
     displayLabel: "Growth Partner",
     fee: "₦500k / yr",
-    description: "Full Deal Room access, propose RFCs, mentor others.",
+    description: "Large ESOs, NGOs, consulting firms and active practitioners in the ecosystem.",
   },
   {
     key: "anchor",
     label: "Anchor Partner",
     displayLabel: "Anchor",
     fee: "₦1.5M / yr",
-    description: "Shape the agenda — create working groups and see analytics.",
+    description: "Corporates, Banks, Investors, Family offices.",
   },
   {
     key: "strategic_partner",
     label: "Strategic Partner",
     displayLabel: "Strategic Partner",
     fee: "Negotiated",
-    description: "Everything, plus priority support and staff intros.",
+    description: "DFIs, multilateral organisations and global networks.",
   },
 ] as const;
-
-const PAYABLE: Record<string, number> = {
-  contributor: 100_000,
-  growth_partner: 500_000,
-  anchor: 1_500_000,
-};
 
 const PERSONAL_TITLES = ["Mr", "Mrs", "Ms", "Miss", "Dr", "Prof", "Engr", "Rev", "Other"];
 const QUALIFICATION_DEPARTMENTS = [
@@ -168,12 +173,12 @@ function formatResearchInterests(interests: string[]): string {
 }
 
 const CONSENTS = [
-  "I confirm that the information provided is accurate and I am authorised to represent my organisation.",
+  "I confirm that the information provided is accurate.",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
 const INDIVIDUAL_CONSENTS = [
-  "I confirm that the information provided is accurate and belongs to me.",
+  "I confirm that the information provided is accurate.",
   "I consent to IIF / NIEC storing and using this data for membership processing, community matching, and event communications.",
   "I understand that my membership profile may be shared within the NIEC CRM for ecosystem matchmaking purposes.",
 ];
@@ -198,9 +203,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
+function ApplyPage({
+  mode,
+  initialEmail = "",
+  nextPath,
+}: {
+  mode: "signup" | "onboarding";
+  initialEmail?: string;
+  nextPath?: string;
+}) {
   const navigate = useNavigate();
-  const startMembershipPayment = useServerFn(initMembershipPayment);
+  const linkGuestPurchases = useServerFn(linkGuestResourcePurchases);
   const { user, profile, loading, refresh, signOut } = useAuth();
   const draftKey = applicationDraftKey(user?.id);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
@@ -235,7 +248,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [researchArea, setResearchArea] = useState("");
   const [individualBio, setIndividualBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [phone, setPhone] = useState("");
   const [phoneCountry, setPhoneCountry] = useState<CountryCode>("NG");
   const [password, setPassword] = useState("");
@@ -256,27 +269,34 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   const [done, setDone] = useState(false);
   const [accountCreated, setAccountCreated] = useState(false);
   const [step, setStep] = useState(mode === "onboarding" ? 2 : 1);
+  useEffect(() => {
+    if (initialEmail) setEmail(initialEmail);
+  }, [initialEmail]);
   const isIndividual = mode === "onboarding" && accountType === "individual";
-  const wizardSteps = [
-    { label: "Profile", Icon: GraduationCap },
-    { label: "Membership", Icon: Building2 },
-    { label: "Application", Icon: CheckCircle },
-  ];
-  const wizardProgress = ((step - 2) / (wizardSteps.length - 1)) * 100;
   const screenTitle = step === 1
     ? "Create your account"
     : step === 2
-      ? "Complete your profile"
+      ? accountType === "organisation"
+        ? "Complete your organisation profile"
+        : "Complete your profile"
       : step === 3
         ? "Choose your membership tier"
-        : "Complete your application";
+        : isIndividual
+          ? "Complete your application"
+          : "Complete your organisation's application";
   const screenDescription = step === 1
     ? "Create a secure account to continue with your application."
     : step === 2
-      ? "Choose an account type and provide your profile details."
+      ? accountType === "organisation"
+        ? "Provide your organisation and contact person details."
+        : accountType === "individual"
+          ? "Provide your personal and professional details."
+          : "Choose an account type and provide your profile details."
       : step === 3
         ? `Select the tier that best reflects your ${isIndividual ? "capacity and engagement level" : "organisation's capacity and engagement level"}.`
-        : "Share your focus areas, engagement goals, and declaration to complete your application.";
+        : isIndividual
+          ? "Share your focus areas, engagement goals, and declaration to complete your application."
+          : "Share your organisation's focus areas, engagement goals, and declaration to complete the application.";
 
   useEffect(() => {
     if (!user) return;
@@ -541,11 +561,19 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
   useEffect(() => {
     if (loading) return;
     if (mode === "onboarding" && !user) {
-      navigate({ to: "/login", search: { next: "/onboarding" }, replace: true });
+      navigate({
+        to: "/login",
+        search: { next: nextPath ?? "/onboarding" },
+        replace: true,
+      });
     } else if (mode === "signup" && user && profile) {
-      navigate({ href: profile.crm_stage === "applicant" ? "/dashboard" : "/onboarding", replace: true });
+      const destination =
+        profile.crm_stage === "applicant"
+          ? nextPath ?? "/dashboard"
+          : pathWithNext("/onboarding", nextPath);
+      navigate({ href: destination, replace: true });
     }
-  }, [loading, mode, user, profile, navigate]);
+  }, [loading, mode, user, profile, navigate, nextPath]);
 
   const handlePhoneChange = (value: string) => {
     let digits = value.replace(/\D/g, "");
@@ -587,7 +615,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+          emailRedirectTo: new URL(
+            pathWithNext("/email-verified", nextPath),
+            window.location.origin,
+          ).toString(),
           data: {
             account_type: "",
           },
@@ -612,8 +643,19 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       }
 
       if (data.session) {
+        try {
+          await linkGuestPurchases({ data: {} });
+        } catch (linkError) {
+          console.error(
+            "[apply:link-guest-resource-purchases]",
+            linkError instanceof Error ? linkError.message : "Unknown linking error",
+          );
+          toast.error(
+            "Your account was created, but resource purchases could not be linked yet. Check your purchase email for the secure resource link.",
+          );
+        }
         toast.success("Account created. Continue with your onboarding.");
-        navigate({ to: "/onboarding", replace: true });
+        navigate({ href: pathWithNext("/onboarding", nextPath), replace: true });
       } else {
         setAccountCreated(true);
         toast.success("Account created. Verify your email to continue.");
@@ -632,7 +674,10 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         type: "signup",
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/email-verified`,
+          emailRedirectTo: new URL(
+            pathWithNext("/email-verified", nextPath),
+            window.location.origin,
+          ).toString(),
         },
       });
       if (error) throw error;
@@ -655,10 +700,6 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             !firstName && "first name",
             !lastName && "last name",
             !personalTitle && "title",
-            !qualificationDepartment && "qualification department",
-            !qualificationPosition && "qualification position",
-            !qualificationInstitution && "institution or organisation",
-            researchInterests.length === 0 && "research interests",
             ...(isInNigeria
               ? [!state && "state", !lga && "local government area"]
               : [!country.trim() && "country"]),
@@ -711,7 +752,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
       ? !state || !lga
       : !country.trim();
     if (!accountType || !tier || locationMissing || (!isIndividual && (!orgName || !orgType || !contactPersonFirstName || !contactPersonLastName || !contactPersonRole || !contactPersonEmail)) || (isIndividual && (!firstName || !lastName)) ||
-      (isIndividual && (!personalTitle || !qualificationDepartment || !qualificationPosition || !qualificationInstitution || researchInterests.length === 0)) || !email) {
+      (isIndividual && !personalTitle) || !email) {
       toast.error("Please complete all required fields and pick a tier.");
       return;
     }
@@ -818,7 +859,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             avatarUrl,
             tier,
             tierLabel: TIERS.find((t) => t.key === tier)?.label ?? tier,
-            amountNaira: PAYABLE[tier] ?? 0,
+            amountNaira: 0,
             sdgFocus: sdgs,
             sectors,
             goals,
@@ -833,44 +874,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             statement,
           },
         });
-        if (!res.ok) toast.error(res.error);
+        if (!res.ok) {
+          console.error("[apply:record] CRM record failed after application submission", res.error);
+        }
       } catch (e) {
         console.error("[apply:record]", e);
-      }
-
-
-      if (PAYABLE[tier]) {
-        toast.success("Application saved — taking you to secure payment…");
-        try {
-          const res = await startMembershipPayment({
-            data: {
-              email,
-              tier,
-              fullName: full_name,
-              callbackUrl: `${window.location.origin}/payment?tier=${tier}&email=${encodeURIComponent(email)}&name=${encodeURIComponent(full_name)}`,
-            },
-          });
-          if (res.ok) {
-            window.location.href = res.authorizationUrl;
-            return;
-          }
-          toast.error(res.error);
-          navigate({
-            to: "/payment",
-            search: { tier, email, name: full_name, reference: "" },
-          });
-          return;
-        } catch (error) {
-          console.error("[apply:payment]", error);
-          toast.error(
-            error instanceof Error ? error.message : "Could not start the payment.",
-          );
-          navigate({
-            to: "/payment",
-            search: { tier, email, name: full_name, reference: "" },
-          });
-          return;
-        }
       }
 
       setDone(true);
@@ -911,8 +919,31 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 Your verification link has been sent to {maskEmail(email)}. Click the link to
                 complete your setup.
               </>
+            ) : isIndividual && tier === "contributor" ? (
+              <>
+                Thank you, {firstName}. Your individual membership application has been received.
+                Your account is ready to use. Your Enterprise membership is free for 3 months,
+                starting now.
+              </>
             ) : (
-              <>Thank you, {firstName}. Your {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>} has been received. Your account is ready to use — continue to your dashboard to get started.</>
+              <>
+                Thank you, {firstName}. Your{" "}
+                {isIndividual ? "individual membership application" : <>application for <strong>{orgName}</strong></>}{" "}
+                has been received. Your account is ready to use.
+                {tier && tier !== "observer" ? (
+                  <>
+                    {" "}
+                    Your {TIERS.find((item) => item.key === tier)?.displayLabel} membership is free
+                    for 3 months, starting now. No payment or card details are required during the
+                    free period; any later upgrade is paid manually through Paystack.
+                  </>
+                ) : (
+                  " Your Observer membership is free."
+                )}{" "}
+                {nextPath
+                  ? "Continue back to the resource you wanted to download."
+                  : "Continue to your dashboard to get started."}
+              </>
             )}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -944,9 +975,13 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
             ) : (
               <>
                 <Link to="/" className="rounded-md border px-5 py-2.5 text-sm hover:bg-muted">Go home</Link>
-                <Link to="/dashboard" className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                  Continue to dashboard
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => navigate({ href: nextPath ?? "/dashboard" })}
+                  className="rounded-md bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  Continue
+                </button>
               </>
             )}
           </div>
@@ -959,6 +994,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
     <div className="min-h-screen bg-[#F7FBFA]">
       <PublicHeader />
 
+      {/*
       {mode === "onboarding" && (
         <div className="py-6">
           <div
@@ -1003,14 +1039,43 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           </div>
         </div>
       )}
+      */}
 
       <main className={`mx-auto ${step === 3 ? "max-w-6xl" : step === 1 ? "max-w-lg" : "max-w-3xl"} space-y-6 px-6 py-10`}>
         {step !== 1 && (
           <section aria-labelledby="application-step-title" className="space-y-1">
-            <h1 id="application-step-title" className="font-display text-xl text-primary">
-              {screenTitle}
-            </h1>
-            <p className="text-sm text-muted-foreground">{screenDescription}</p>
+            <div
+              className={
+                step === 3
+                  ? "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                  : ""
+              }
+            >
+              <div className="space-y-1">
+                <h1 id="application-step-title" className="font-display text-xl text-primary">
+                  {screenTitle}
+                </h1>
+                <p className="text-sm text-muted-foreground">{screenDescription}</p>
+              </div>
+              {step === 3 && (
+                <div className="flex shrink-0 justify-end gap-3">
+                  <button
+                    onClick={prevStep}
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={nextStep}
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                  >
+                    Next <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -1052,14 +1117,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                     options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
                   />
                 </Field>
-                <Field label="Professional Role">
+                <Field label="Professional Role (Optional)">
                   <SearchableOptionDropdown
                     selectedKey={individualRole}
                     onChange={setIndividualRole}
                     onClear={() => setIndividualRole("")}
                     options={JOB_TITLE_DROPDOWN_OPTIONS}
-                    placeholder="Select professional role"
-                    searchPlaceholder="Search professional roles"
+                    placeholder="Select or add a professional role"
+                    searchPlaceholder="Search or add a professional role"
                     ariaLabel="Professional role"
                     allowCustom
                     onCustomValue={setIndividualRole}
@@ -1083,22 +1148,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
               <Row>
-                <Field label="Department *">
+                <Field label="Department (Optional)">
                   <Select
                     value={qualificationDepartment}
                     onChange={setQualificationDepartment}
                     options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
                   />
                 </Field>
-                <Field label="Position *">
+                <Field label="Department Role (Optional)">
                   <Select
                     value={qualificationPosition}
                     onChange={setQualificationPosition}
-                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                    options={[{ key: "", label: "Select department role" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
                   />
                 </Field>
               </Row>
-              <Field label="Institution or Organisation *">
+              <Field label="Institution or Organisation (Optional)">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
               <Field label="Current Research Area (Optional)">
@@ -1110,7 +1175,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </Field>
-              <Field label="Research Interests *">
+              <Field label="Research Interests (Optional)">
                 <SearchableMultiSelectField
                   values={researchInterests}
                   onChange={setResearchInterests}
@@ -1334,8 +1399,15 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                         </span>
                       </div>
                       <p className="mt-2 font-display text-xl font-semibold text-primary">
-                        {t.fee}
+                        {t.key === "observer" ? (
+                          t.fee
+                        ) : (
+                          <del className="text-muted-foreground">{t.fee}</del>
+                        )}
                       </p>
+                      {t.key !== "observer" && (
+                        <p className="mt-1 text-sm font-semibold text-primary">Free for 3 months</p>
+                      )}
                       <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                         {t.description}
                       </p>
@@ -1362,14 +1434,14 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                     options={[{ key: "", label: "Select title" }, ...PERSONAL_TITLES.map((title) => ({ key: title, label: title }))]}
                   />
                 </Field>
-                <Field label="Professional Role">
+                <Field label="Professional Role (Optional)">
                   <SearchableOptionDropdown
                     selectedKey={individualRole}
                     onChange={setIndividualRole}
                     onClear={() => setIndividualRole("")}
                     options={JOB_TITLE_DROPDOWN_OPTIONS}
-                    placeholder="Select professional role"
-                    searchPlaceholder="Search professional roles"
+                    placeholder="Select or add a professional role"
+                    searchPlaceholder="Search or add a professional role"
                     ariaLabel="Professional role"
                     allowCustom
                     onCustomValue={setIndividualRole}
@@ -1382,22 +1454,22 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
               </Field>
               <Row>
-                <Field label="Department *">
+                <Field label="Department (Optional)">
                   <Select
                     value={qualificationDepartment}
                     onChange={setQualificationDepartment}
                     options={[{ key: "", label: "Select department" }, ...QUALIFICATION_DEPARTMENTS.map((department) => ({ key: department, label: department }))]}
                   />
                 </Field>
-                <Field label="Position *">
+                <Field label="Department Role (Optional)">
                   <Select
                     value={qualificationPosition}
                     onChange={setQualificationPosition}
-                    options={[{ key: "", label: "Select position" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
+                    options={[{ key: "", label: "Select department role" }, ...QUALIFICATION_POSITIONS.map((position) => ({ key: position, label: position }))]}
                   />
                 </Field>
               </Row>
-              <Field label="Institution or Organisation *">
+              <Field label="Institution or Organisation (Optional)">
                 <Input value={qualificationInstitution} onChange={setQualificationInstitution} placeholder="Enter name" />
               </Field>
               <Field label="Current Research Area (Optional)">
@@ -1409,7 +1481,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                 />
               </Field>
-              <Field label="Research Interests *">
+              <Field label="Research Interests (Optional)">
                 <SearchableMultiSelectField
                   values={researchInterests}
                   onChange={setResearchInterests}
@@ -1452,7 +1524,7 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
           <Field label="Email Address *"><Input value={email} onChange={setEmail} type="email" placeholder="name@example.com" /></Field>
           </>
           )}
-          <Field label="Create Password * (Min 8 Characters)">
+          <Field label="Create Password *">
             <div className="relative">
               <Input
                 value={password}
@@ -1474,6 +1546,9 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
                 )}
               </button>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Password must be at least 8 characters.
+            </p>
           </Field>
           <Field label="Confirm Password">
             <div className="relative">
@@ -1504,14 +1579,21 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
 
         {step === 4 && (
           <>
-        <Section title="SDG focus areas" desc={`Select all Sustainable Development Goals ${isIndividual ? "you" : "your organisation"} actively work on.`}>
+        <Section
+          title="SDG focus areas"
+          desc={`Select all Sustainable Development Goals ${isIndividual ? "you actively work on" : "your organisation actively works on"}.`}
+        >
           <CheckGrid options={SDGS} selected={sdgs} onToggle={(v) => setSdgs(toggle(sdgs, v))} />
-          <Divider>Investment sectors</Divider>
+          <Divider>Investment sectors (if applicable)</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
 
         <Section title="Ecosystem engagement">
-          <Divider noTop>What do you hope to gain from NIEC?</Divider>
+          <Divider noTop>
+            {isIndividual
+              ? "What do you hope to gain from NIEC?"
+              : "What does your organisation hope to gain from NIEC?"}
+          </Divider>
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
           <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
@@ -1529,7 +1611,11 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         </Section>
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
-              <p className="mb-3 text-xs text-gold-foreground/80">By submitting this application you confirm the following — please tick each item:</p>
+              <p className="mb-3 text-xs text-gold-foreground/80">
+                {isIndividual
+                  ? "By submitting this application you confirm the following — please tick each item:"
+                  : "By submitting on behalf of your organisation, you confirm the following — please tick each item:"}
+              </p>
               {(isIndividual ? INDIVIDUAL_CONSENTS : CONSENTS).map((c, i) => (
                 <label key={i} className="flex cursor-pointer items-start gap-3 py-2 text-sm">
                   <input type="checkbox" checked={consents[i]} onChange={() => {
@@ -1544,47 +1630,59 @@ function ApplyPage({ mode }: { mode: "signup" | "onboarding" }) {
         )}
 
       
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          {step > (mode === "onboarding" ? 2 : 1) && (
-            <button onClick={prevStep} type="button"
-              className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
-              Previous
-            </button>
-          )}
-          
-          {step === 1 && mode === "signup" ? (
-            <button onClick={createAccount} disabled={busy} type="button"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-              {busy ? "Creating account…" : "Create account"} <ArrowRight className="h-4 w-4" />
-            </button>
-          ) : step < 4 ? (
-            mode === "onboarding" && step === 2 && !accountType ? null : (
-              <button onClick={nextStep} type="button"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
-                Next <ArrowRight className="h-4 w-4" />
-              </button>
-            )
-          ) : (
-            <button onClick={submit} disabled={busy} type="button"
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
-              {busy ? "Submitting…" : "Submit application"} <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
+        {(step !== 3 || mode === "signup") && (
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            {step !== 3 && (
+              <>
+                {step > (mode === "onboarding" ? 2 : 1) && (
+                  <button onClick={prevStep} type="button"
+                    className="inline-flex items-center gap-2 rounded-md border bg-white px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-muted">
+                    Previous
+                  </button>
+                )}
 
-          {mode === "signup" && (
-            user ? (
-              <button
-                type="button"
-                onClick={() => void signOut()}
-                className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
-              >
-                Sign out
-              </button>
-            ) : (
-              <Link to="/login" className="text-sm text-muted-foreground hover:text-primary ml-3">Already a member? Sign in</Link>
-            )
-          )}
-        </div>
+                {step === 1 && mode === "signup" ? (
+                  <button onClick={createAccount} disabled={busy} type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                    {busy ? "Creating account…" : "Create account"} <ArrowRight className="h-4 w-4" />
+                  </button>
+                ) : step < 4 ? (
+                  mode === "onboarding" && step === 2 && !accountType ? null : (
+                    <button onClick={nextStep} type="button"
+                      className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
+                      Next <ArrowRight className="h-4 w-4" />
+                    </button>
+                  )
+                ) : (
+                  <button onClick={submit} disabled={busy} type="button"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60">
+                    {busy ? "Submitting…" : "Submit application"} <ArrowRight className="h-4 w-4" />
+                  </button>
+                )}
+              </>
+            )}
+
+            {mode === "signup" && (
+              user ? (
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
+                >
+                  Sign out
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  search={nextPath ? { next: nextPath } : {}}
+                  className="text-sm text-muted-foreground hover:text-primary ml-3"
+                >
+                  Already a member? Sign in
+                </Link>
+              )
+            )}
+          </div>
+        )}
         {/* <div className="flex justify-center pt-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" /> Reviewed by IIF within 5 business days
@@ -1781,7 +1879,7 @@ function ProfileLocationFields({
               }}
               className="accent-primary"
             />
-            Not in Nigeria
+            Outside Nigeria
           </label>
         </div>
       </fieldset>
@@ -1814,7 +1912,14 @@ function ProfileLocationFields({
             selectedKey={country}
             options={COUNTRY_LOCATION_OPTIONS}
             placeholder="Select country"
-            onChange={setCountry}
+            onChange={(value) => {
+              if (value === "Nigeria") {
+                setIsInNigeria(true);
+                setCountry("");
+                return;
+              }
+              setCountry(value);
+            }}
           />
         </Field>
       )}
