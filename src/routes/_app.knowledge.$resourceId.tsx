@@ -285,6 +285,7 @@ function KnowledgeResourcePage() {
       isStaff ||
       (Boolean(user) &&
         tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer")));
+  const resourceTypeLabel = resource?.resource_type.replace(/_/g, " ") ?? "resource";
 
   const buyAccess = async () => {
     if (needsOnboarding) {
@@ -439,7 +440,7 @@ function KnowledgeResourcePage() {
                 {needsOnboarding ? (
                   <Button asChild className="bg-[#003302] text-white hover:bg-[#003302]/90">
                     <Link to="/onboarding" search={{ next: resourceDestination }}>
-                      Complete onboarding to download
+                      Complete onboarding to download {resourceTypeLabel}
                     </Link>
                   </Button>
                 ) : (
@@ -476,12 +477,12 @@ function KnowledgeResourcePage() {
                     className="bg-[#003302] text-white hover:bg-[#003302]/90"
                     onClick={() => void download("pdf")}
                   >
-                    <FileText aria-hidden="true" /> Download PDF
+                    <FileText aria-hidden="true" /> Download {resourceTypeLabel}
                   </Button>
                 ) : (
                   <Button asChild className="bg-[#003302] text-white hover:bg-[#003302]/90">
                     <Link to="/apply" search={{ next: resourceDestination }}>
-                      <FileText aria-hidden="true" /> Signup to download
+                      <FileText aria-hidden="true" /> Sign up to download {resourceTypeLabel}
                     </Link>
                   </Button>
                 )}
@@ -534,6 +535,10 @@ function KnowledgeResourcePage() {
                   <dd className="text-right capitalize">
                     {resource.community_of_practice.replace(/_/g, " ")}
                   </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-muted-foreground">Downloads</dt>
+                  <dd className="text-right">{(resource.downloads_count ?? 0).toLocaleString()}</dd>
                 </div>
               </dl>
             </div>
