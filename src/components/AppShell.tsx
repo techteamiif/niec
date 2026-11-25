@@ -74,7 +74,8 @@ export function AppShell() {
   const isPublicEvent = /^\/event\/[^/]+$/.test(path);
   const isPublicContentDetail = isPublicKnowledgeResource || isPublicEvent;
   const isPublicCatalogPage = path === "/resources" || path === "/events";
-  const isPublicPage = isPublicContentDetail || isPublicCatalogPage;
+  const isPublicSignupPage = path === "/apply";
+  const isPublicPage = isPublicContentDetail || isPublicCatalogPage || isPublicSignupPage;
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
