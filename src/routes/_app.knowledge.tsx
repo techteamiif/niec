@@ -183,7 +183,9 @@ function KnowledgeIndex() {
           <option value="all">All types</option>
           {["report", "case_study", "policy_brief", "dataset", "presentation", "toolkit"].map(
             (t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {t.replace(/_/g, " ")}
+              </option>
             ),
           )}
         </CustomSelect>
