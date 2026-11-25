@@ -29,7 +29,15 @@ function hasValidSecret(received: string | null, expected: string) {
 
 function isEmailWorthy(type: string, title: string) {
   if (type === "post_reply") return title !== "Someone liked your post";
-  return ["event_reminder", "admin_message", "tier_upgrade", "membership_expiry"].includes(type);
+  return [
+    "event_reminder",
+    "admin_message",
+    "tier_upgrade",
+    "membership_expiry",
+    "email_verified",
+    "onboarding_complete",
+    "membership_tier_changed",
+  ].includes(type);
 }
 
 function escapeHtml(value: string) {
