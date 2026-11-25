@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Calendar, MapPin, Video, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
 import { EventImage } from "@/components/EventImage";
+import { CustomSelect } from "@/components/ui/custom-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -209,37 +210,37 @@ function EventsPage() {
           className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm"
         />
 
-        <select
+        <CustomSelect
           value={eventTypeFilter}
-          onChange={(e) => setEventTypeFilter(e.target.value as typeof eventTypeFilter)}
+          onValueChange={(value) => setEventTypeFilter(value as typeof eventTypeFilter)}
           className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
         >
           <option value="all">All types</option>
           <option value="onsite">Onsite</option>
           <option value="online">Online</option>
           <option value="hybrid">Hybrid</option>
-        </select>
+        </CustomSelect>
 
-        <select
+        <CustomSelect
           value={priceFilter}
-          onChange={(e) => setPriceFilter(e.target.value as typeof priceFilter)}
+          onValueChange={(value) => setPriceFilter(value as typeof priceFilter)}
           className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
         >
           <option value="all">All pricing</option>
           <option value="free">Free</option>
           <option value="paid">Paid</option>
-        </select>
+        </CustomSelect>
 
-        <select
+        <CustomSelect
           value={tierFilter}
-          onChange={(e) => setTierFilter(e.target.value as typeof tierFilter)}
+          onValueChange={setTierFilter}
           className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
         >
           <option value="all">All tiers</option>
           {Object.entries(TIER_LABELS).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
-        </select>
+        </CustomSelect>
 
         {(search || eventTypeFilter !== "all" || priceFilter !== "all" || tierFilter !== "all") && (
           <button
@@ -803,15 +804,15 @@ function CreateEvent({
           <label htmlFor="event-schedule-mode" className="block text-sm font-medium">
             Schedule
           </label>
-          <select
+          <CustomSelect
             id="event-schedule-mode"
             value={scheduleMode}
-            onChange={(e) => setScheduleMode(e.target.value as "daily" | "custom")}
+            onValueChange={(value) => setScheduleMode(value as "daily" | "custom")}
             className="h-10 w-full rounded-md border bg-background px-2 text-sm"
           >
             <option value="daily">Same time each day</option>
             <option value="custom">Set individual sessions</option>
-          </select>
+          </CustomSelect>
           {scheduleMode === "daily" ? (
             <>
               <div className="grid grid-cols-2 gap-3">
@@ -942,26 +943,26 @@ function CreateEvent({
             <label htmlFor="event-type" className="block text-sm font-medium">
               Event type
             </label>
-            <select
+            <CustomSelect
               id="event-type"
               value={form.event_type}
-              onChange={(e) => set("event_type", e.target.value as EventFormState["event_type"])}
+              onValueChange={(value) => set("event_type", value as EventFormState["event_type"])}
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
               <option value="onsite">Onsite</option>
               <option value="online">Online</option>
               <option value="hybrid">Hybrid</option>
-            </select>
+            </CustomSelect>
           </div>
           <div className="space-y-1.5">
             <label htmlFor="event-min-tier" className="block text-sm font-medium">
               Membership tier
             </label>
-            <select
+            <CustomSelect
               id="event-min-tier"
               value={form.min_tier_required}
-              onChange={(e) =>
-                set("min_tier_required", e.target.value as EventFormState["min_tier_required"])
+              onValueChange={(value) =>
+                set("min_tier_required", value as EventFormState["min_tier_required"])
               }
               className="h-10 w-full rounded-md border bg-background px-2 text-sm"
             >
@@ -970,7 +971,7 @@ function CreateEvent({
                   {v}
                 </option>
               ))}
-            </select>
+            </CustomSelect>
           </div>
         </div>
         {form.event_type === "online" || form.event_type === "hybrid" ? (

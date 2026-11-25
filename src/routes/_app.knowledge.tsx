@@ -17,6 +17,7 @@ import {
 import { richTextToPlainText } from "@/lib/rich-text";
 import { ArrowRight, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CustomSelect } from "@/components/ui/custom-select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -167,28 +168,30 @@ function KnowledgeIndex() {
           </button>
         )}
       </div>
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+      <div className="mb-5 grid grid-cols-1 items-center gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(0,1fr))]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search title or description…"
-          className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm"
+          className="h-9 min-w-0 rounded-md border bg-background px-3 text-sm"
         />
-        <select
+        <CustomSelect
           value={type}
-          onChange={(e) => setType(e.target.value)}
+          onValueChange={setType}
           className="h-9 rounded-md border bg-background px-2 text-sm"
         >
           <option value="all">All types</option>
           {["report", "case_study", "policy_brief", "dataset", "presentation", "toolkit"].map(
             (t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {t.replace(/_/g, " ")}
+              </option>
             ),
           )}
-        </select>
-        <select
+        </CustomSelect>
+        <CustomSelect
           value={cop}
-          onChange={(e) => setCop(e.target.value)}
+          onValueChange={setCop}
           className="h-9 rounded-md border bg-background px-2 text-sm"
         >
           <option value="all">All CoPs</option>
@@ -198,17 +201,16 @@ function KnowledgeIndex() {
               {c.name}
             </option>
           ))}
-        </select>
-        <select
+        </CustomSelect>
+        <CustomSelect
           value={access}
-          onChange={(e) => setAccess(e.target.value)}
+          onValueChange={setAccess}
           className="h-9 rounded-md border bg-background px-2 text-sm"
         >
           <option value="all">All access types</option>
           <option value="free">Free</option>
-          <option value="paid-membership">Paid + membership</option>
           <option value="paid">Paid</option>
-        </select>
+        </CustomSelect>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

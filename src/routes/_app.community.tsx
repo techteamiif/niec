@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Pin, Plus, Heart, MessageCircle, Lock, Image as ImageIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 const SORT_OPTIONS = ["latest", "liked"] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];
@@ -157,9 +158,9 @@ function CommunityPage() {
           {posts.length === 0 && (
             <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
               No posts match your filters. Try clearing them — or{" "}
-              <a href="/community" className="text-primary hover:underline">
+              <button type="button" onClick={openPostComposer} className="text-primary hover:underline">
                 start the conversation
-              </a>{" "}
+              </button>{" "}
               with your first post.
             </div>
           )}
@@ -285,9 +286,9 @@ function CommunityPage() {
           <div className="space-y-3">
             <label className="block space-y-1">
               <span className="text-xs font-medium text-muted-foreground">Post type</span>
-              <select
+              <CustomSelect
                 value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
+                onValueChange={setTypeFilter}
                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
               >
                 <option value="all">All types</option>
@@ -296,15 +297,15 @@ function CommunityPage() {
                     {v}
                   </option>
                 ))}
-              </select>
+              </CustomSelect>
             </label>
             <label className="block space-y-1">
               <span className="text-xs font-medium text-muted-foreground">
                 Community of Practice
               </span>
-              <select
+              <CustomSelect
                 value={copFilter}
-                onChange={(e) => setCopFilter(e.target.value)}
+                onValueChange={setCopFilter}
                 className="h-9 w-full rounded-md border bg-background px-2 text-sm"
               >
                 <option value="all">All CoPs</option>
@@ -314,7 +315,7 @@ function CommunityPage() {
                   </option>
                 ))}
                 <option value="general">General</option>
-              </select>
+              </CustomSelect>
             </label>
             <div className="space-y-1">
               <span className="block text-xs font-medium text-muted-foreground">Sort by</span>
@@ -567,10 +568,10 @@ function Composer({
                 <label htmlFor="post-type" className="block text-sm font-medium">
                   Post type
                 </label>
-                <select
+                <CustomSelect
                   id="post-type"
                   value={postType}
-                  onChange={(e) => setPostType(e.target.value)}
+                  onValueChange={setPostType}
                   className="h-10 w-full rounded-md border bg-background px-2 text-sm"
                 >
                   {Object.entries(POST_TYPE_LABELS).map(([k, v]) => (
@@ -578,16 +579,16 @@ function Composer({
                       {v}
                     </option>
                   ))}
-                </select>
+                </CustomSelect>
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="post-cop" className="block text-sm font-medium">
                   Community of Practice
                 </label>
-                <select
+                <CustomSelect
                   id="post-cop"
                   value={cop}
-                  onChange={(e) => setCop(e.target.value)}
+                  onValueChange={setCop}
                   className="h-10 w-full rounded-md border bg-background px-2 text-sm"
                 >
                   <option value="general">General</option>
@@ -596,7 +597,7 @@ function Composer({
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </CustomSelect>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -615,17 +616,17 @@ function Composer({
               <label htmlFor="post-visibility" className="block text-sm font-medium">
                 Visibility
               </label>
-              <select
+              <CustomSelect
                 id="post-visibility"
                 value={visibility}
-                onChange={(e) => setVisibility(e.target.value)}
+                onValueChange={setVisibility}
                 className="h-10 w-full rounded-md border bg-background px-2 text-sm"
               >
                 <option value="all_members">All members</option>
                 <option value="contributor_plus">Enterprise and above</option>
                 <option value="growth_partner_plus">Growth Partner and above</option>
                 <option value="anchor_plus">Anchor and above</option>
-              </select>
+              </CustomSelect>
             </div>
           </div>
         </div>

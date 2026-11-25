@@ -34,6 +34,7 @@ import {
   SECTOR_OPTIONS,
 } from "@/lib/onboarding-options";
 import type { Database, Json } from "@/integrations/supabase/types";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 export const Route = createFileRoute("/_app/profile/edit")({
   component: ProfilePage,
@@ -292,31 +293,31 @@ function ProfilePage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Organisation"><input value={form.organisation_name} onChange={(e) => update("organisation_name", e.target.value)} className="input" /></Field>
               <Field label="Organisation type">
-                <select value={form.organisation_type} onChange={(e) => update("organisation_type", e.target.value)} className="input">
+                <CustomSelect value={form.organisation_type} onValueChange={(value) => update("organisation_type", value)} className="input">
                   <option value="">Select organisation type</option>
                   {ORG_TYPES.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
               <Field label="Job title">
-                <select value={form.role_title} onChange={(e) => update("role_title", e.target.value)} className="input">
+                <CustomSelect value={form.role_title} onValueChange={(value) => update("role_title", value)} className="input">
                   {!JOB_TITLES.includes(form.role_title) && form.role_title && <option value={form.role_title}>{form.role_title}</option>}
                   <option value="">Select job title</option>
                   {JOB_TITLES.map((title) => <option key={title} value={title}>{title}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
               <Field label="LinkedIn"><input value={form.linkedin_url} onChange={(e) => update("linkedin_url", e.target.value)} className="input" /></Field>
               <Field label="Website"><input value={form.website_url} onChange={(e) => update("website_url", e.target.value)} className="input" /></Field>
               <Field label="State">
-                <select value={form.state} onChange={(e) => setForm((current) => current ? { ...current, state: e.target.value, lga: "" } : current)} className="input">
+                <CustomSelect value={form.state} onValueChange={(value) => setForm((current) => current ? { ...current, state: value, lga: "" } : current)} className="input">
                   <option value="">Select state</option>
                   {NIGERIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
               <Field label="Local Government Area">
-                <select value={form.lga} disabled={!form.state} onChange={(e) => update("lga", e.target.value)} className="input disabled:opacity-70">
+                <CustomSelect value={form.lga} disabled={!form.state} onValueChange={(value) => update("lga", value)} className="input disabled:opacity-70">
                   <option value="">Select LGA</option>
                   {form.state && NIGERIA_LOCATIONS[form.state as NigerianState].map((lga) => <option key={lga} value={lga}>{lga}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
             </div>
             <SaveButton busy={busy.organisation} />
@@ -326,16 +327,16 @@ function ProfilePage() {
             <h3 className="font-medium">Investment profile</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Investment stage focus">
-                <select value={form.investment_stage} onChange={(e) => update("investment_stage", e.target.value)} className="input">
+                <CustomSelect value={form.investment_stage} onValueChange={(value) => update("investment_stage", value)} className="input">
                   <option value="">Select stage</option>
                   {INVESTMENT_STAGE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
               <Field label="AUM / annual budget">
-                <select value={form.aum_range} onChange={(e) => update("aum_range", e.target.value)} className="input">
+                <CustomSelect value={form.aum_range} onValueChange={(value) => update("aum_range", value)} className="input">
                   <option value="">Select range</option>
                   {AUM_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
-                </select>
+                </CustomSelect>
               </Field>
             </div>
             <MultiSelect label="SDG focus areas" options={SDG_OPTIONS} values={form.sdg_focus} onChange={(values) => update("sdg_focus", values)} />

@@ -1664,6 +1664,9 @@ export type Database = {
         | "deal_match"
         | "admin_message"
         | "tier_upgrade"
+        | "email_verified"
+        | "onboarding_complete"
+        | "membership_tier_changed"
         | "membership_expiry"
       org_type:
         | "investor"
@@ -1877,6 +1880,10 @@ export const Constants = {
         "deal_match",
         "admin_message",
         "tier_upgrade",
+        "email_verified",
+        "onboarding_complete",
+        "membership_tier_changed",
+        "membership_expiry",
       ],
       org_type: [
         "investor",

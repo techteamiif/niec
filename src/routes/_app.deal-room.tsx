@@ -10,6 +10,7 @@ import { initResourcePayment } from "@/lib/payments.functions";
 import { TierAccessDialog } from "@/components/TierAccessDialog";
 import { PriceInput } from "@/components/PriceInput";
 import { parsePriceInput } from "@/lib/price-input";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 export const Route = createFileRoute("/_app/deal-room")({
   component: DealRoom,
@@ -237,15 +238,15 @@ function CreateDeal({ onClose, onCreated, userId }: { onClose: () => void; onCre
           <input placeholder="Currency" value={f.currency} onChange={(e) => s("currency", e.target.value)} className="h-10 rounded-md border bg-background px-3 text-sm" />
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <select value={f.instrument_type} onChange={(e) => s("instrument_type", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {["equity","debt","grant","blended","convertible_note","revenue_share"].map((x) => <option key={x}>{x}</option>)}
-          </select>
-          <select value={f.min_tier_required} onChange={(e) => s("min_tier_required", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm">
-            {["growth_partner","anchor","strategic_partner"].map((x) => <option key={x}>{TIER_LABELS[x]}</option>)}
-          </select>
-          <select value={f.category} onChange={(e) => s("category", e.target.value)} className="h-10 rounded-md border bg-background px-2 text-sm" title="Programme category">
+          <CustomSelect value={f.instrument_type} onValueChange={(value) => s("instrument_type", value)} className="h-10 rounded-md border bg-background px-2 text-sm">
+            {["equity","debt","grant","blended","convertible_note","revenue_share"].map((x) => <option key={x} value={x}>{x}</option>)}
+          </CustomSelect>
+          <CustomSelect value={f.min_tier_required} onValueChange={(value) => s("min_tier_required", value)} className="h-10 rounded-md border bg-background px-2 text-sm">
+            {["growth_partner","anchor","strategic_partner"].map((x) => <option key={x} value={x}>{TIER_LABELS[x]}</option>)}
+          </CustomSelect>
+          <CustomSelect value={f.category} onValueChange={(value) => s("category", value)} className="h-10 rounded-md border bg-background px-2 text-sm" title="Programme category">
             {DEAL_CATEGORIES.filter((c) => c.key !== "all").map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-          </select>
+          </CustomSelect>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="deal-access-price" className="block text-sm font-medium">

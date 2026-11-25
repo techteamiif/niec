@@ -119,6 +119,7 @@ function KnowledgeResourcePage() {
   const { resource: publicResource, author: publicAuthor } = Route.useLoaderData();
   const { user, profile, isStaff, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const needsOnboarding = Boolean(user && profile?.membership_status === "pending");
   const [resource, setResource] = useState<ResourceDetails | null>(null);
   const [author, setAuthor] = useState<ResourceAuthor | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +145,7 @@ function KnowledgeResourcePage() {
     if (authLoading) return;
 
     void (async () => {
-      if (!user) {
+      if (!user || needsOnboarding) {
         if (!publicResource) {
           setResource(null);
           setLoading(false);
@@ -215,6 +216,7 @@ function KnowledgeResourcePage() {
   }, [
     authLoading,
     checkGuestPurchase,
+    needsOnboarding,
     publicAuthor,
     publicResource,
     purchaseReference,
@@ -224,6 +226,10 @@ function KnowledgeResourcePage() {
 
   const download = async (fileType: "pdf" | "summary") => {
     if (!resource) return;
+    if (needsOnboarding) {
+      navigate({ to: "/onboarding", search: { next: resourceDestination } });
+      return;
+    }
     if (!user) {
       navigate({ to: "/apply", search: { next: resourceDestination } });
       return;
@@ -274,12 +280,17 @@ function KnowledgeResourcePage() {
   };
 
   const unlocked =
-    hasAccess ||
-    isStaff ||
-    (Boolean(user) &&
-      tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer"));
+    !needsOnboarding &&
+    (hasAccess ||
+      isStaff ||
+      (Boolean(user) &&
+        tierMeets(profile?.membership_tier, resource?.min_tier_required ?? "observer")));
 
   const buyAccess = async () => {
+    if (needsOnboarding) {
+      navigate({ to: "/onboarding", search: { next: resourceDestination } });
+      return;
+    }
     if (!resource || purchasing) return;
     setPurchasing(true);
     try {
@@ -319,13 +330,15 @@ function KnowledgeResourcePage() {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/">Home</Link>
+              <Link to={user ? "/dashboard" : "/"}>Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/resources">Resources</Link>
+              <Link to={user ? "/knowledge" : "/resources"}>
+                {user ? "Knowledge Hub" : "Resources"}
+              </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -404,7 +417,11 @@ function KnowledgeResourcePage() {
             <section className="mt-8 border-t pt-6">
               {!unlocked && (
                 <p className="mb-4 rounded-md border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground">
-                  {!user
+                  {needsOnboarding
+                    ? hasGuestPurchase
+                      ? "Your purchase is confirmed. Complete onboarding to download this resource."
+                      : "Complete onboarding to download this resource."
+                    : !user
                     ? hasGuestPurchase
                       ? "Your purchase is confirmed. Sign in or create an account to download this resource."
                       : "Sign in or create an account to download this resource."
@@ -419,6 +436,14 @@ function KnowledgeResourcePage() {
                 </p>
               )}
               <div className="flex flex-wrap gap-3">
+                {needsOnboarding ? (
+                  <Button asChild className="bg-[#003302] text-white hover:bg-[#003302]/90">
+                    <Link to="/onboarding" search={{ next: resourceDestination }}>
+                      Complete onboarding to download
+                    </Link>
+                  </Button>
+                ) : (
+                  <>
                 {!unlocked &&
                   !hasGuestPurchase &&
                   resource.access_price_kobo != null &&
@@ -459,6 +484,8 @@ function KnowledgeResourcePage() {
                       <FileText aria-hidden="true" /> Signup to download
                     </Link>
                   </Button>
+                )}
+                  </>
                 )}
               </div>
             </section>

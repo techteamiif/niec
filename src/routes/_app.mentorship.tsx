@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, GraduationCap, Search, Sparkles, CalendarCheck, X, Check } from "lucide-react";
 import { format } from "date-fns";
 import { requireEnterpriseForWrite } from "@/lib/member-write-access";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 export const Route = createFileRoute("/_app/mentorship")({
   beforeLoad: () => {
@@ -169,9 +170,9 @@ function MentorshipPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <select
+            <CustomSelect
               value={filterCop}
-              onChange={(e) => setFilterCop(e.target.value)}
+              onValueChange={setFilterCop}
               className="h-9 rounded-md border bg-background px-3 text-sm"
             >
               <option value="">All CoPs</option>
@@ -180,7 +181,7 @@ function MentorshipPage() {
                   {c.name}
                 </option>
               ))}
-            </select>
+            </CustomSelect>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {filtered.map((o) => (

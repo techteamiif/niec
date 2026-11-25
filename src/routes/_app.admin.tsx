@@ -31,6 +31,7 @@ import { RichTextEditor } from "@/components/admin/RichTextEditor";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 export const Route = createFileRoute("/_app/admin")({
   component: AdminCRM,
@@ -900,9 +901,9 @@ function Pick({ label, value, onChange, options }: { label: string; value: strin
   return (
     <label className="block text-xs">
       <div className="mb-1 font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="h-9 w-full rounded-md border bg-background px-2 capitalize">
+      <CustomSelect value={value} onValueChange={onChange} className="h-9 w-full rounded-md border bg-background px-2 capitalize">
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      </CustomSelect>
     </label>
   );
 }
@@ -1070,13 +1071,13 @@ function ContentTab({ actor }: { actor: string }) {
                 <div className="font-medium truncate">{r.title}</div>
                 <div className="text-[11px] text-muted-foreground">{authors[r.author_id]?.full_name ?? "—"} · {COPS.find((c) => c.key === r.cop)?.name ?? r.cop} · <span className="uppercase">{r.status}</span></div>
               </div>
-              <select value={r.status} onChange={(e) => setRfcStatus(r, e.target.value)} className="h-7 rounded border bg-background px-2 text-xs">
+              <CustomSelect value={r.status} onValueChange={(value) => setRfcStatus(r, value)} className="h-7 rounded border bg-background px-2 text-xs">
                 <option value="open">open</option>
                 <option value="under_review">under_review</option>
                 <option value="accepted">accepted</option>
                 <option value="rejected">rejected</option>
                 <option value="archived">archived</option>
-              </select>
+              </CustomSelect>
               <button onClick={() => setEditRfc(r)} className="rounded p-1 hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
               <button onClick={() => removeRfc(r)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
               <a href={`/cops/${r.cop}`} className="inline-flex items-center gap-1 text-xs text-primary hover:underline">Open <ArrowRight className="h-3 w-3" /></a>
@@ -1190,9 +1191,9 @@ function ProgramsTab() {
                 </div>
               </div>
               <button onClick={() => toggleField("events", e.id, "is_featured", !e.is_featured)} title="Feature" className="rounded p-1 hover:bg-muted"><Star className={`h-3.5 w-3.5 ${e.is_featured ? "fill-gold text-gold" : ""}`} /></button>
-              <select value={e.status} onChange={(ev) => toggleField("events", e.id, "status", ev.target.value)} className="h-7 rounded border bg-background px-2 text-xs">
+              <CustomSelect value={e.status} onValueChange={(value) => toggleField("events", e.id, "status", value)} className="h-7 rounded border bg-background px-2 text-xs">
                 <option value="draft">draft</option><option value="published">published</option><option value="cancelled">cancelled</option><option value="completed">completed</option>
-              </select>
+              </CustomSelect>
               <button onClick={() => setEditEvent(e)} className="rounded p-1 hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
               <button onClick={() => del("events", e.id, e.title)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
@@ -1210,9 +1211,9 @@ function ProgramsTab() {
                 <div className="truncate font-medium">{b.topic}</div>
                 <div className="text-[11px] text-muted-foreground">{formatDistanceToNow(new Date(b.created_at), { addSuffix: true })}</div>
               </div>
-              <select value={b.status} onChange={(ev) => toggleField("mentorship_bookings", b.id, "status", ev.target.value)} className="h-7 rounded border bg-background px-2 text-xs">
+              <CustomSelect value={b.status} onValueChange={(value) => toggleField("mentorship_bookings", b.id, "status", value)} className="h-7 rounded border bg-background px-2 text-xs">
                 <option value="requested">requested</option><option value="confirmed">confirmed</option><option value="declined">declined</option><option value="completed">completed</option><option value="cancelled">cancelled</option>
-              </select>
+              </CustomSelect>
               <button onClick={() => del("mentorship_bookings", b.id, b.topic)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>
           ))}
@@ -1258,9 +1259,9 @@ function ProgramsTab() {
                 <div className="truncate font-medium">{d.title} <span className="text-muted-foreground">· {d.enterprise_name}</span></div>
                 <div className="text-[11px] text-muted-foreground">{d.deal_type} · min tier {d.min_tier_required}</div>
               </div>
-              <select value={d.status} onChange={(ev) => toggleField("deal_opportunities", d.id, "status", ev.target.value)} className="h-7 rounded border bg-background px-2 text-xs">
+              <CustomSelect value={d.status} onValueChange={(value) => toggleField("deal_opportunities", d.id, "status", value)} className="h-7 rounded border bg-background px-2 text-xs">
                 <option value="draft">draft</option><option value="open">open</option><option value="matched">matched</option><option value="closed">closed</option>
-              </select>
+              </CustomSelect>
               <button onClick={() => setEditDeal(d)} className="rounded p-1 hover:bg-muted"><Pencil className="h-3.5 w-3.5" /></button>
               <button onClick={() => del("deal_opportunities", d.id, d.title)} className="rounded p-1 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></button>
             </div>

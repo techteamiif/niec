@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 type PublicationInsert = Database["public"]["Tables"]["knowledge_resources"]["Insert"];
 type ResourceType = Database["public"]["Enums"]["resource_type"];
@@ -275,10 +276,10 @@ export function CreatePublicationDialog({
             </div>
             <div className="space-y-1">
               <Label htmlFor="publication-type">Publication type</Label>
-              <select
+              <CustomSelect
                 id="publication-type"
                 value={resourceType}
-                onChange={(event) => setResourceType(event.target.value as ResourceType)}
+                onValueChange={(value) => setResourceType(value as ResourceType)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 <option value="report">Report</option>
@@ -287,14 +288,14 @@ export function CreatePublicationDialog({
                 <option value="dataset">Dataset</option>
                 <option value="presentation">Presentation</option>
                 <option value="toolkit">Toolkit</option>
-              </select>
+              </CustomSelect>
             </div>
             <div className="space-y-1">
               <Label htmlFor="publication-community">Community of practice</Label>
-              <select
+              <CustomSelect
                 id="publication-community"
                 value={community}
-                onChange={(event) => setCommunity(event.target.value as CommunityOfPractice)}
+                onValueChange={(value) => setCommunity(value as CommunityOfPractice)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 <option value="general">General</option>
@@ -303,14 +304,14 @@ export function CreatePublicationDialog({
                     {cop.name}
                   </option>
                 ))}
-              </select>
+              </CustomSelect>
             </div>
             <div className="space-y-1">
               <Label htmlFor="publication-tier">Membership tier</Label>
-              <select
+              <CustomSelect
                 id="publication-tier"
                 value={minTier}
-                onChange={(event) => setMinTier(event.target.value as MembershipTier)}
+                onValueChange={(value) => setMinTier(value as MembershipTier)}
                 className="h-10 w-full rounded-md border bg-background px-3 text-sm"
               >
                 {Object.entries(TIER_LABELS).map(([tier, label]) => (
@@ -318,7 +319,7 @@ export function CreatePublicationDialog({
                     {label}
                   </option>
                 ))}
-              </select>
+              </CustomSelect>
               <p className="text-xs text-muted-foreground">
                 Members at this tier or above can access the publication.
               </p>

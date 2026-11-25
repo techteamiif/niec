@@ -13,6 +13,8 @@ type MembershipCardProfile = Pick<
   Profile,
   | "id"
   | "full_name"
+  | "organisation_name"
+  | "application_data"
   | "avatar_url"
   | "membership_tier"
   | "paid_membership_tier"
@@ -74,7 +76,15 @@ export function MembershipCard({ profile }: { profile: MembershipCardProfile }) 
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [qrCodeError, setQrCodeError] = useState(false);
   const membershipNumber = `NIEC-${profile.id.slice(0, 8).toUpperCase()}`;
-  const memberName = profile.full_name || "NIEC Member";
+  const organisationName = profile.organisation_name?.trim() ?? "";
+  const fullName = profile.full_name?.trim() ?? "";
+  const isIndividual =
+    (typeof profile.application_data === "object" &&
+      profile.application_data !== null &&
+      !Array.isArray(profile.application_data) &&
+      profile.application_data.account_type === "individual") ||
+    organisationName.toLowerCase() === "individual member";
+  const memberName = (isIndividual ? fullName : organisationName) || fullName || "NIEC Member";
   const memberTier = profile.paid_membership_tier ?? profile.membership_tier;
   const tier = TIER_LABELS[memberTier] ?? memberTier;
   const trialActive =

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { NiecLogo } from "@/components/brand/NiecLogo";
@@ -7,7 +8,7 @@ import { safeInternalPath, safeReturnPath } from "@/lib/safe-navigation";
 
 export function PublicHeader({ className = "" }: { className?: string }) {
   const [mobileNav, setMobileNav] = useState(false);
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const { pathname, searchStr } = useRouterState({
     select: (router) => router.location,
   });
@@ -17,126 +18,59 @@ export function PublicHeader({ className = "" }: { className?: string }) {
       ? safeInternalPath(`${pathname}${searchStr}`)
       : undefined);
   const returnSearch = nextPath ? { next: nextPath } : {};
+  const needsOnboarding = Boolean(user && !isStaff && profile?.membership_status === "pending");
 
   return (
-    <header
-      className={`sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur-lg ${className}`}
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/" aria-label="NIEC Home">
-          <NiecLogo variant="horizontal" theme="light" size={50} withTagline />
-        </Link>
-        <nav className="hidden gap-8 text-sm text-foreground md:flex">
-          <a href="/#about" className="transition hover:text-primary">
-            About
-          </a>
-          <a href="/#cops" className="transition hover:text-primary">
-            Communities
-          </a>
-          <Link to="/events" className="transition hover:text-primary">
-            Events
+    <>
+      <header
+        className={`sticky top-0 z-30 border-b border-border bg-white/95 backdrop-blur-lg ${className}`}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <Link to="/" aria-label="NIEC Home">
+            <NiecLogo variant="horizontal" theme="light" size={50} withTagline />
           </Link>
-          <Link to="/resources" className="transition hover:text-primary">
-            Resources
-          </Link>
-          <a href="/#impact" className="transition hover:text-primary">
-            Impact
-          </a>
-          {!user && (
-            <Link to="/login" search={returnSearch} className="transition hover:text-primary">
-              Sign in
-            </Link>
-          )}
-        </nav>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setMobileNav(true)}
-            className="text-muted-foreground hover:text-foreground md:hidden"
-            aria-label="Open menu"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          {user ? (
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
-            >
-              Dashboard
-            </Link>
-          ) : (
-            <Link
-              to="/apply"
-              search={returnSearch}
-              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
-            >
-              Join NIEC
-            </Link>
-          )}
-        </div>
-      </div>
-      {mobileNav && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-lg md:hidden">
-          <div className="flex items-center justify-between border-b border-border px-6 py-4">
-            <span className="text-sm uppercase tracking-widest text-muted-foreground">Menu</span>
-            <button
-              onClick={() => setMobileNav(false)}
-              aria-label="Close menu"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-6 w-6" />
-            </button>
-          </div>
-          <nav className="flex flex-col gap-1 p-6 text-lg">
-            <a
-              href="/#about"
-              onClick={() => setMobileNav(false)}
-              className="rounded-md px-3 py-3 hover:bg-muted"
-            >
+          <nav className="hidden gap-8 text-sm text-foreground md:flex">
+            <a href="/#about" className="transition hover:text-primary">
               About
             </a>
-            <a
-              href="/#cops"
-              onClick={() => setMobileNav(false)}
-              className="rounded-md px-3 py-3 hover:bg-muted"
-            >
+            <a href="/#cops" className="transition hover:text-primary">
               Communities
             </a>
-            <Link
-              to="/events"
-              onClick={() => setMobileNav(false)}
-              className="rounded-md px-3 py-3 hover:bg-muted"
-            >
+            <Link to="/events" className="transition hover:text-primary">
               Events
             </Link>
-            <Link
-              to="/resources"
-              onClick={() => setMobileNav(false)}
-              className="rounded-md px-3 py-3 hover:bg-muted"
-            >
+            <Link to="/resources" className="transition hover:text-primary">
               Resources
             </Link>
-            <a
-              href="/#impact"
-              onClick={() => setMobileNav(false)}
-              className="rounded-md px-3 py-3 hover:bg-muted"
-            >
+            <a href="/#impact" className="transition hover:text-primary">
               Impact
             </a>
             {!user && (
-              <Link
-                to="/login"
-                search={returnSearch}
-                onClick={() => setMobileNav(false)}
-                className="rounded-md px-3 py-3 hover:bg-muted"
-              >
+              <Link to="/login" search={returnSearch} className="transition hover:text-primary">
                 Sign in
               </Link>
             )}
-            {user ? (
+          </nav>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMobileNav(true)}
+              className="text-muted-foreground hover:text-foreground md:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            {user && needsOnboarding ? (
+              <Link
+                to="/onboarding"
+                search={returnSearch}
+                className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
+              >
+                Complete onboarding
+              </Link>
+            ) : user ? (
               <Link
                 to="/dashboard"
-                onClick={() => setMobileNav(false)}
-                className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
               >
                 Dashboard
               </Link>
@@ -144,15 +78,104 @@ export function PublicHeader({ className = "" }: { className?: string }) {
               <Link
                 to="/apply"
                 search={returnSearch}
-                onClick={() => setMobileNav(false)}
-                className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
               >
                 Join NIEC
               </Link>
             )}
-          </nav>
+          </div>
         </div>
-      )}
-    </header>
+      </header>
+      {mobileNav &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] min-h-dvh overflow-y-auto bg-background md:hidden">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <span className="text-sm uppercase tracking-widest text-muted-foreground">Menu</span>
+              <button
+                onClick={() => setMobileNav(false)}
+                aria-label="Close menu"
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <nav className="flex flex-col gap-1 p-6 text-lg">
+              <a
+                href="/#about"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                About
+              </a>
+              <a
+                href="/#cops"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Communities
+              </a>
+              <Link
+                to="/events"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Events
+              </Link>
+              <Link
+                to="/resources"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Resources
+              </Link>
+              <a
+                href="/#impact"
+                onClick={() => setMobileNav(false)}
+                className="rounded-md px-3 py-3 hover:bg-muted"
+              >
+                Impact
+              </a>
+              {!user && (
+                <Link
+                  to="/login"
+                  search={returnSearch}
+                  onClick={() => setMobileNav(false)}
+                  className="rounded-md px-3 py-3 hover:bg-muted"
+                >
+                  Sign in
+                </Link>
+              )}
+              {user && needsOnboarding ? (
+                <Link
+                  to="/onboarding"
+                  search={returnSearch}
+                  onClick={() => setMobileNav(false)}
+                  className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                >
+                  Complete onboarding
+                </Link>
+              ) : user ? (
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileNav(false)}
+                  className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/apply"
+                  search={returnSearch}
+                  onClick={() => setMobileNav(false)}
+                  className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+                >
+                  Join NIEC
+                </Link>
+              )}
+            </nav>
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }

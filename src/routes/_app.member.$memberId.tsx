@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { format } from "date-fns";
-import { ArrowLeft, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
+import { ArrowLeft, Building2, Globe, Linkedin, MapPin, MessageCircle } from "lucide-react";
 import { UserAvatar } from "@/components/Avatar";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -81,6 +81,8 @@ function MemberDetailPage() {
 
   const linkedinUrl = externalUrl(member?.linkedin_url ?? null);
   const websiteUrl = externalUrl(member?.website_url ?? null);
+  const isOrganisation =
+    Boolean(member?.organisation_name) && member?.organisation_name !== "Individual member";
 
   return (
     <div className="p-6 lg:p-10">
@@ -122,7 +124,7 @@ function MemberDetailPage() {
           <div className="px-6 pb-7 md:px-9">
             <div className="-mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <UserAvatar
-                name={member.full_name}
+                name={isOrganisation ? member.organisation_name ?? "Organisation" : member.full_name}
                 src={member.avatar_url}
                 size={96}
                 className="border-4 border-card"
@@ -139,19 +141,30 @@ function MemberDetailPage() {
             </div>
 
             <div className="mt-4">
-              <h1 className="font-display text-3xl">{member.full_name || "Member"}</h1>
-              {member.organisation_name &&
-                member.organisation_name !== "Individual member" &&
-                member.organisation_name !== member.full_name && (
-                  <p className="mt-1 text-muted-foreground">
+              {isOrganisation ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Building2 className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <h1 className="font-display text-3xl font-semibold">
                     {member.organisation_name}
-                    {member.organisation_type && member.organisation_type !== "other"
-                      ? ` · ${ORG_TYPE_LABELS[member.organisation_type]}`
-                      : ""}
-                  </p>
-                )}
-              {member.role_title && (
-                <p className="mt-1 text-muted-foreground">{member.role_title}</p>
+                  </h1>
+                </div>
+              ) : (
+                <>
+                  <h1 className="font-display text-3xl">{member.full_name || "Member"}</h1>
+                  {member.organisation_name &&
+                    member.organisation_name !== "Individual member" &&
+                    member.organisation_name !== member.full_name && (
+                      <p className="mt-1 text-muted-foreground">
+                        {member.organisation_name}
+                        {member.organisation_type && member.organisation_type !== "other"
+                          ? ` · ${ORG_TYPE_LABELS[member.organisation_type]}`
+                          : ""}
+                      </p>
+                    )}
+                  {member.role_title && (
+                    <p className="mt-1 text-muted-foreground">{member.role_title}</p>
+                  )}
+                </>
               )}
               {member.location && (
                 <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
