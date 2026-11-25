@@ -164,7 +164,7 @@ function UpgradePage() {
                 )}
                 {activeTrial && trialEnd && t !== "observer" && (
                   <p className="mt-1 text-sm font-semibold text-primary">
-                    Free until {formatTrialEnd(trialEnd)}
+                    Free for 3 months
                   </p>
                 )}
               </div>
@@ -183,7 +183,7 @@ function UpgradePage() {
                   disabled={trialStartingTier !== null}
                   className="mt-auto w-full rounded-full bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {trialStartingTier === t ? "Changing tier…" : `Switch to ${TIER_LABELS[t]}`}
+                  {trialStartingTier === t ? "Changing tier…" : "Select"}
                 </button>
               ) : rankDiff > 0 ? (
                 trialAvailable ? (
