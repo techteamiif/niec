@@ -73,19 +73,21 @@ export function AppShell() {
   const isPublicKnowledgeResource = /^\/knowledge\/[^/]+$/.test(path);
   const isPublicEvent = /^\/event\/[^/]+$/.test(path);
   const isPublicContentDetail = isPublicKnowledgeResource || isPublicEvent;
+  const isPublicCatalogPage = path === "/resources" || path === "/events";
+  const isPublicPage = isPublicContentDetail || isPublicCatalogPage;
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && !isPublicContentDetail) {
+    if (!loading && !user && !isPublicPage) {
       navigate({
         to: "/login",
         search: returnPath ? { next: returnPath } : {},
         replace: true,
       });
     }
-  }, [loading, user, navigate, isPublicContentDetail, returnPath]);
+  }, [loading, user, navigate, isPublicPage, returnPath]);
 
   useEffect(() => {
     if (
@@ -95,7 +97,7 @@ export function AppShell() {
       !isStaff &&
       profile.crm_stage !== "applicant" &&
       path !== "/onboarding" &&
-      !isPublicContentDetail
+      !isPublicPage
     ) {
       const onboardingNext = currentPath === "/dashboard" ? undefined : returnPath;
       navigate({ href: pathWithNext("/onboarding", onboardingNext), replace: true });
@@ -109,7 +111,7 @@ export function AppShell() {
     path,
     currentPath,
     returnPath,
-    isPublicContentDetail,
+    isPublicPage,
   ]);
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function AppShell() {
     };
   }, [user]);
 
-  if (isPublicContentDetail && (!user || (!isStaff && profile?.membership_status === "pending"))) {
+  if (isPublicPage && (!user || (!isStaff && profile?.membership_status === "pending"))) {
     return (
       <div className="min-h-screen bg-background">
         <PublicHeader />
@@ -154,7 +156,7 @@ export function AppShell() {
     loading ||
     !user ||
     !profile ||
-    (!isStaff && profile.crm_stage !== "applicant" && !isPublicContentDetail)
+    (!isStaff && profile.crm_stage !== "applicant" && !isPublicPage)
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
@@ -358,7 +360,7 @@ export function AppShell() {
           </div>
         </header>
         <div className="flex-1">
-          {profile.membership_status === "pending" && !isPublicContentDetail ? (
+          {profile.membership_status === "pending" && !isPublicPage ? (
             <div className="p-6 lg:p-10">
               <div className="mx-auto max-w-2xl rounded-2xl border bg-card p-8 text-center shadow-sm">
                 <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20 text-gold-foreground">
