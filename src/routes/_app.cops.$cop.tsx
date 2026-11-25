@@ -40,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 const SHOW_COP_POLLS_AND_PROPOSALS = false;
 
@@ -1228,15 +1229,15 @@ function DecideRfcDialog({
         <div className="space-y-3">
           <div>
             <Label>Status</Label>
-            <select
+            <CustomSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
+              onValueChange={(value) => setStatus(value as "accepted" | "parked" | "rejected")}
               className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
             >
               <option value="accepted">Accepted</option>
               <option value="parked">Parked</option>
               <option value="rejected">Rejected</option>
-            </select>
+            </CustomSelect>
           </div>
           <div>
             <Label>Note</Label>

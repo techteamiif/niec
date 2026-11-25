@@ -7,6 +7,7 @@ import { ORG_TYPE_LABELS } from "@/lib/niec";
 import { useAuth } from "@/lib/auth";
 import { Building2, MapPin, Search, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 export const Route = createFileRoute("/_app/members")({
   validateSearch: z.object({ q: z.string().optional() }),
@@ -110,9 +111,9 @@ function MembersPage() {
             className="h-9 w-full rounded-md border bg-background pl-9 pr-3 text-sm"
           />
         </div>
-        <select
+        <CustomSelect
           value={tier}
-          onChange={(e) => setTier(e.target.value)}
+          onValueChange={setTier}
           className="h-9 rounded-md border bg-background px-2 text-sm"
         >
           <option value="all">All tiers</option>
@@ -120,11 +121,11 @@ function MembersPage() {
           <option value="growth_partner">Growth Partner</option>
           <option value="anchor">Anchor</option>
           <option value="strategic_partner">Strategic Partner</option>
-        </select>
+        </CustomSelect>
         {accountTab === "organisation" && (
-          <select
+          <CustomSelect
             value={org}
-            onChange={(e) => setOrg(e.target.value)}
+            onValueChange={setOrg}
             className="h-9 rounded-md border bg-background px-2 text-sm"
           >
             <option value="all">All organisations</option>
@@ -133,7 +134,7 @@ function MembersPage() {
                 {v}
               </option>
             ))}
-          </select>
+          </CustomSelect>
         )}
       </div>
 

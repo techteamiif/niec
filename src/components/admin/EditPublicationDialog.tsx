@@ -37,21 +37,25 @@ export function EditPublicationDialog({
   const [description, setDescription] = useState("");
   const [executiveSummaryUrl, setExecutiveSummaryUrl] = useState("");
   const [fileUrl, setFileUrl] = useState("");
+  const [publicationPdf, setPublicationPdf] = useState<File | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const [removeCurrentCover, setRemoveCurrentCover] = useState(false);
   const [saving, setSaving] = useState(false);
   const coverImageInput = useRef<HTMLInputElement>(null);
+  const publicationPdfInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!record || !open) return;
     setTitle(record.title);
     setDescription(sanitizeRichText(record.description));
     setExecutiveSummaryUrl(record.executive_summary_url ?? "");
-    setFileUrl(record.file_url);
+    setFileUrl(/^https?:\/\//i.test(record.file_url) ? record.file_url : "");
+    setPublicationPdf(null);
     setCoverImage(null);
     setRemoveCurrentCover(false);
     if (coverImageInput.current) coverImageInput.current.value = "";
+    if (publicationPdfInput.current) publicationPdfInput.current.value = "";
   }, [record, open]);
 
   useEffect(() => {
@@ -80,6 +84,22 @@ export function EditPublicationDialog({
     setCoverImage(file);
   };
 
+  const selectPublicationPdf = (file: File | null) => {
+    if (!file) return;
+    if (file.type !== "application/pdf" || !file.name.toLowerCase().endsWith(".pdf")) {
+      setPublicationPdf(null);
+      toast.error("Choose a valid PDF file.");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      setPublicationPdf(null);
+      toast.error("PDF publications must be 50 MB or smaller.");
+      return;
+    }
+    setFileUrl("");
+    setPublicationPdf(file);
+  };
+
   const save = async () => {
     if (!record || saving) return;
     if (!user) {
@@ -87,11 +107,45 @@ export function EditPublicationDialog({
       return;
     }
 
+    const normalizedFileUrl = fileUrl.trim();
+    if (normalizedFileUrl) {
+      try {
+        const url = new URL(normalizedFileUrl);
+        if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
+      } catch {
+        toast.error("Enter a valid publication URL.");
+        return;
+      }
+    }
+    if (normalizedFileUrl && publicationPdf) {
+      toast.error("Choose either a PDF upload or a publication URL, not both.");
+      return;
+    }
+    if (!normalizedFileUrl && !publicationPdf && /^https?:\/\//i.test(record.file_url)) {
+      toast.error("Enter a publication URL or upload a PDF.");
+      return;
+    }
+
     setSaving(true);
+    let uploadedPdfPath: string | null = null;
     let uploadedImagePath: string | null = null;
     let resourceSaved = false;
     try {
       let coverImageUrl = removeCurrentCover ? null : record.cover_image_url;
+      let updatedFileUrl = record.file_url;
+      if (normalizedFileUrl) updatedFileUrl = normalizedFileUrl;
+      if (publicationPdf) {
+        uploadedPdfPath = `${user.id}/${crypto.randomUUID()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from("knowledge-resource-pdfs")
+          .upload(uploadedPdfPath, publicationPdf, { contentType: "application/pdf" });
+        if (uploadError) {
+          uploadedPdfPath = null;
+          throw new Error(`Could not upload publication PDF: ${uploadError.message}`);
+        }
+        updatedFileUrl = uploadedPdfPath;
+      }
+
       if (coverImage) {
         const extensionByType: Record<string, string> = {
           "image/jpeg": "jpg",
@@ -122,16 +176,40 @@ export function EditPublicationDialog({
           description: sanitizeRichText(description.trim()),
           cover_image_url: coverImageUrl,
           executive_summary_url: executiveSummaryUrl.trim() || null,
-          file_url: fileUrl.trim(),
+          file_url: updatedFileUrl,
         })
         .eq("id", record.id);
       if (error) throw new Error(`Could not save publication: ${error.message}`);
 
       resourceSaved = true;
+      const currentPdfPath =
+        record.file_url && !/^https?:\/\//i.test(record.file_url) ? record.file_url : null;
+      if (
+        currentPdfPath &&
+        currentPdfPath !== updatedFileUrl &&
+        currentPdfPath.startsWith(`${user.id}/`)
+      ) {
+        const { error: removeError } = await supabase.storage
+          .from("knowledge-resource-pdfs")
+          .remove([currentPdfPath]);
+        if (removeError) {
+          toast.error(
+            `Publication updated, but the replaced PDF could not be removed: ${removeError.message}`,
+          );
+        }
+      }
       toast.success("Publication updated.");
       onClose();
       await onSaved();
     } catch (error) {
+      if (uploadedPdfPath && !resourceSaved) {
+        const { error: cleanupError } = await supabase.storage
+          .from("knowledge-resource-pdfs")
+          .remove([uploadedPdfPath]);
+        if (cleanupError) {
+          toast.error(`Could not remove unused publication PDF: ${cleanupError.message}`);
+        }
+      }
       if (uploadedImagePath && !resourceSaved) {
         const { error: cleanupError } = await supabase.storage
           .from("knowledge-resource-images")
@@ -220,11 +298,56 @@ export function EditPublicationDialog({
               )}
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="edit-publication-file">Full report/publication URL</Label>
+              <Label htmlFor="edit-publication-pdf">Replace with PDF (optional, max 50 MB)</Label>
+              <Input
+                ref={publicationPdfInput}
+                id="edit-publication-pdf"
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={(event) => {
+                  selectPublicationPdf(event.currentTarget.files?.[0] ?? null);
+                  event.currentTarget.value = "";
+                }}
+              />
+              {publicationPdf ? (
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="truncate text-muted-foreground">{publicationPdf.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPublicationPdf(null);
+                      if (/^https?:\/\//i.test(record.file_url)) setFileUrl(record.file_url);
+                    }}
+                    className="shrink-0 text-muted-foreground underline hover:text-foreground"
+                  >
+                    Remove replacement
+                  </button>
+                </div>
+              ) : (
+                record.file_url &&
+                !/^https?:\/\//i.test(record.file_url) && (
+                  <p className="text-xs text-muted-foreground">
+                    An uploaded PDF is currently attached. Choose a replacement or enter a URL
+                    below.
+                  </p>
+                )
+              )}
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="edit-publication-file">Or external publication URL</Label>
               <Input
                 id="edit-publication-file"
+                type="url"
                 value={fileUrl}
-                onChange={(event) => setFileUrl(event.target.value)}
+                onChange={(event) => {
+                  const nextUrl = event.target.value;
+                  setFileUrl(nextUrl);
+                  if (nextUrl.trim()) {
+                    setPublicationPdf(null);
+                    if (publicationPdfInput.current) publicationPdfInput.current.value = "";
+                  }
+                }}
+                placeholder="https://…"
               />
             </div>
             <div className="space-y-1 sm:col-span-2">
