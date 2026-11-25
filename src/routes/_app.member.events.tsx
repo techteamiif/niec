@@ -202,12 +202,12 @@ function EventsPage() {
         ))}
       </div>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border bg-card p-3">
+      <div className="mb-5 grid grid-cols-1 items-center gap-2 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_repeat(3,minmax(0,1fr))_auto]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search events, locations, keywords…"
-          className="h-9 min-w-[220px] flex-1 rounded-md border bg-background px-3 text-sm"
+          className="h-9 min-w-0 rounded-md border bg-background px-3 text-sm"
         />
 
         <CustomSelect
