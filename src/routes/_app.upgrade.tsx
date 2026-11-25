@@ -57,6 +57,7 @@ function UpgradePage() {
     profile &&
     profile.membership_trial_started_at &&
     trialEnd &&
+    profile.membership_tier === profile.membership_trial_tier &&
     profile.membership_trial_expired_at === null &&
     profile.membership_expires_at === null &&
     new Date(trialEnd).getTime() > Date.now(),
@@ -83,6 +84,27 @@ function UpgradePage() {
     }
   };
 
+  const changeTrialTier = async (tier: Tier) => {
+    setTrialStartingTier(tier);
+    try {
+      const { data: expiresAt, error } = await supabase.rpc("change_membership_trial_tier", {
+        _tier: tier,
+      });
+      if (error) throw error;
+      await refresh();
+      toast.success(
+        `Your membership tier is now ${TIER_LABELS[tier]}. Your free trial still ends ${formatTrialEnd(expiresAt)}.`,
+      );
+    } catch (error) {
+      console.error("[membership:trial:tier-change]", error);
+      toast.error(
+        error instanceof Error ? error.message : "Could not change your membership tier.",
+      );
+    } finally {
+      setTrialStartingTier(null);
+    }
+  };
+
   return (
     <div className="p-6 lg:p-10">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -100,8 +122,9 @@ function UpgradePage() {
 
       {activeTrial && trialEnd && (
         <p className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm">
-          Your free membership trial is active until <strong>{formatTrialEnd(trialEnd)}</strong>. No
-          automatic payment will be taken.
+          Your free membership trial is active until <strong>{formatTrialEnd(trialEnd)}</strong>.
+          You can switch to any tier, including Observer, at no extra cost; your original end date
+          will not change. No automatic payment will be taken.
         </p>
       )}
 
@@ -121,7 +144,7 @@ function UpgradePage() {
               key={t}
               className={`flex h-full min-h-50 flex-col rounded-xl border bg-card p-5 transition ${
                 isCurrent ? "border-primary ring-1 ring-primary" : "border-border"
-              } ${rankDiff < 0 ? "opacity-70" : ""}`}
+              } ${rankDiff < 0 && !activeTrial ? "opacity-70" : ""}`}
             >
               <div className="flex-1 text-left">
                 <TierBadge tier={t} />
@@ -129,7 +152,7 @@ function UpgradePage() {
                 <p className="mt-1 min-h-12 text-xs text-muted-foreground">{TIER_BLURB[t]}</p>
                 {t !== "observer" && TIER_PRICES[t] && (
                   <p className="mt-2 text-sm font-semibold text-primary">
-                    {trialAvailable ? (
+                    {trialAvailable || activeTrial ? (
                       <del className="text-muted-foreground">{TIER_PRICES[t]}</del>
                     ) : (
                       TIER_PRICES[t]
@@ -139,6 +162,11 @@ function UpgradePage() {
                 {trialAvailable && t !== "observer" && (
                   <p className="mt-1 text-sm font-semibold text-primary">Free for 3 months</p>
                 )}
+                {activeTrial && trialEnd && t !== "observer" && (
+                  <p className="mt-1 text-sm font-semibold text-primary">
+                    Free for 3 months
+                  </p>
+                )}
               </div>
               {isCurrent ? (
                 <button
@@ -147,6 +175,15 @@ function UpgradePage() {
                   className="mt-auto w-full rounded-full border px-3 py-2 text-xs font-medium text-muted-foreground"
                 >
                   Your current plan
+                </button>
+              ) : activeTrial ? (
+                <button
+                  type="button"
+                  onClick={() => void changeTrialTier(t)}
+                  disabled={trialStartingTier !== null}
+                  className="mt-auto w-full rounded-full bg-primary px-3 py-2 text-center text-xs font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {trialStartingTier === t ? "Changing tier…" : "Select"}
                 </button>
               ) : rankDiff > 0 ? (
                 trialAvailable ? (

@@ -56,7 +56,9 @@ function MembersPage() {
     <div className="p-6 lg:p-10">
       <div className="mb-6">
         <h1 className="font-display text-3xl">Member directory</h1>
-        <p className="text-sm text-muted-foreground">{filtered.length} active members in NIEC.</p>
+        <p className="text-sm text-muted-foreground">
+          {filtered.length} active {filtered.length === 1 ? "member" : "members"} in NIEC.
+        </p>
       </div>
 
       <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">

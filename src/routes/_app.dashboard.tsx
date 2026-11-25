@@ -202,7 +202,7 @@ function Dashboard() {
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 font-display text-xl">
               <Layers className="h-5 w-5 text-primary" />
-              COPs
+              Communities of Practice
             </h2>
             <Link to="/cops" className="shrink-0 text-sm text-primary hover:underline">
               View all

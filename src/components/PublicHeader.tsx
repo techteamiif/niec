@@ -13,7 +13,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
   });
   const nextPath =
     safeReturnPath(new URLSearchParams(searchStr).get("next")) ??
-    (/^\/knowledge\/[^/]+$/.test(pathname)
+    (/^\/(?:knowledge|event)\/[^/]+$/.test(pathname)
       ? safeInternalPath(`${pathname}${searchStr}`)
       : undefined);
   const returnSearch = nextPath ? { next: nextPath } : {};
@@ -26,24 +26,24 @@ export function PublicHeader({ className = "" }: { className?: string }) {
         <Link to="/" aria-label="NIEC Home">
           <NiecLogo variant="horizontal" theme="light" size={50} withTagline />
         </Link>
-        <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
-          <a href="/#about" className="transition hover:text-foreground">
+        <nav className="hidden gap-8 text-sm text-foreground md:flex">
+          <a href="/#about" className="transition hover:text-primary">
             About
           </a>
-          <a href="/#cops" className="transition hover:text-foreground">
+          <a href="/#cops" className="transition hover:text-primary">
             Communities
           </a>
-          <Link to="/events" className="transition hover:text-foreground">
+          <Link to="/events" className="transition hover:text-primary">
             Events
           </Link>
-          <Link to="/resources" className="transition hover:text-foreground">
+          <Link to="/resources" className="transition hover:text-primary">
             Resources
           </Link>
-          <a href="/#impact" className="transition hover:text-foreground">
+          <a href="/#impact" className="transition hover:text-primary">
             Impact
           </a>
           {!user && (
-            <Link to="/login" search={returnSearch} className="transition hover:text-foreground">
+            <Link to="/login" search={returnSearch} className="transition hover:text-primary">
               Sign in
             </Link>
           )}

@@ -60,7 +60,7 @@ function PublicResourcesPage() {
             NIEC Knowledge Hub
           </div>
           <h1 className="mt-3 font-display text-4xl md:text-5xl">
-            Resources for the impact economy
+            Intelligence for the impact economy
           </h1>
           <p className="mt-4 text-muted-foreground">
             Explore reports, case studies, policy briefs, datasets, and toolkits from across the

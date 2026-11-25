@@ -313,7 +313,9 @@ function ApplyPage({
     setLastName(typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" "));
     const savedJobTitle = typeof metadata.role_title === "string" ? metadata.role_title : profile?.role_title ?? "";
     setJobTitle(JOB_TITLES.includes(savedJobTitle) ? savedJobTitle : "");
-    setPersonalTitle(typeof metadata.personal_title === "string" ? metadata.personal_title : "");
+    setPersonalTitle((currentTitle) =>
+      currentTitle || (typeof metadata.personal_title === "string" ? metadata.personal_title : ""),
+    );
     setIndividualRole(typeof metadata.professional_role === "string" ? metadata.professional_role : savedJobTitle);
     setContactPersonFirstName(typeof metadata.contact_person_first_name === "string" ? metadata.contact_person_first_name : (typeof metadata.first_name === "string" ? metadata.first_name : metadataFirstName));
     setContactPersonLastName(typeof metadata.contact_person_last_name === "string" ? metadata.contact_person_last_name : (typeof metadata.last_name === "string" ? metadata.last_name : lastNameParts.join(" ")));
@@ -348,6 +350,7 @@ function ApplyPage({
 
   useEffect(() => {
     if (loading || (mode === "onboarding" && !user)) return;
+    if (hydratedDraftKey === draftKey) return;
 
     let draft: Record<string, unknown> | null = null;
     try {
@@ -911,7 +914,11 @@ function ApplyPage({
             <Check className="h-10 w-10 text-primary" />
           </div>
           <h1 className="mt-6 font-display text-3xl text-primary">
-            {awaitingVerification ? "Confirm your email" : "Application submitted"}
+            {awaitingVerification
+              ? "Confirm your email"
+              : isIndividual && tier === "contributor"
+                ? "Your account is ready!"
+                : "Application submitted"}
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             {awaitingVerification ? (
@@ -921,9 +928,9 @@ function ApplyPage({
               </>
             ) : isIndividual && tier === "contributor" ? (
               <>
-                Thank you, {firstName}. Your individual membership application has been received.
-                Your account is ready to use. Your Enterprise membership is free for 3 months,
-                starting now.
+                Congratulations, {firstName}.<br />
+                Your individual membership is now active, and your 3-month free Enterprise
+                membership starts today.
               </>
             ) : (
               <>
@@ -1579,6 +1586,7 @@ function ApplyPage({
 
         {step === 4 && (
           <>
+        {/*
         <Section
           title="SDG focus areas"
           desc={`Select all Sustainable Development Goals ${isIndividual ? "you actively work on" : "your organisation actively works on"}.`}
@@ -1587,7 +1595,8 @@ function ApplyPage({
           <Divider>Investment sectors (if applicable)</Divider>
           <CheckGrid options={SECTORS} selected={sectors} onToggle={(v) => setSectors(toggle(sectors, v))} />
         </Section>
-
+        */}
+        {/*
         <Section title="Ecosystem engagement">
           <Divider noTop>
             {isIndividual
@@ -1597,18 +1606,19 @@ function ApplyPage({
           <CheckGrid options={GOALS} selected={goals} onToggle={(v) => setGoals(toggle(goals, v))} />
           <Divider>What can {isIndividual ? "you" : "your organisation"} contribute?</Divider>
           <CheckGrid options={CONTRIBUTIONS} selected={contributions} onToggle={(v) => setContributions(toggle(contributions, v))} />
-          {/*
-          <Divider>How did you hear about NIEC?</Divider>
-          <PillRow options={HEARD} value={heard} onChange={setHeard} />
-          <Field label="Statement of Intent">
-            <p className="mb-2 text-xs text-muted-foreground">
-              In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
-            </p>
-            <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
-          </Field>
-          */}
         </Section>
+        */}
+        {/*
+        <Divider>How did you hear about NIEC?</Divider>
+        <PillRow options={HEARD} value={heard} onChange={setHeard} />
+        <Field label="Statement of Intent">
+          <p className="mb-2 text-xs text-muted-foreground">
+            In 2–3 sentences, describe why {isIndividual ? "you" : "your organisation"} want{isIndividual ? "" : "s"} to join NIEC and what impact you aim to make.
+          </p>
+          <textarea value={statement} onChange={(e) => setStatement(e.target.value)} rows={4}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+        </Field>
+        */}
           <Section title="Declaration & consent">
             <div className="rounded-xl border border-gold/40 bg-gold/10 p-5">
               <p className="mb-3 text-xs text-gold-foreground/80">
