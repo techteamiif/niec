@@ -114,7 +114,7 @@ function MembersPage() {
         <CustomSelect
           value={tier}
           onValueChange={setTier}
-          className="h-9 rounded-md border bg-background px-2 text-sm"
+          className="h-9 w-full rounded-md border bg-background px-2 text-sm sm:w-40 sm:flex-none"
         >
           <option value="all">All tiers</option>
           <option value="contributor">Enterprise</option>
@@ -126,7 +126,7 @@ function MembersPage() {
           <CustomSelect
             value={org}
             onValueChange={setOrg}
-            className="h-9 rounded-md border bg-background px-2 text-sm"
+            className="h-9 w-full rounded-md border bg-background px-2 text-sm sm:w-40 sm:flex-none"
           >
             <option value="all">All organisations</option>
             {Object.entries(ORG_TYPE_LABELS).map(([k, v]) => (
