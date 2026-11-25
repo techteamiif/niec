@@ -7,7 +7,7 @@ import { safeInternalPath, safeReturnPath } from "@/lib/safe-navigation";
 
 export function PublicHeader({ className = "" }: { className?: string }) {
   const [mobileNav, setMobileNav] = useState(false);
-  const { user } = useAuth();
+  const { user, profile, isStaff } = useAuth();
   const { pathname, searchStr } = useRouterState({
     select: (router) => router.location,
   });
@@ -17,6 +17,7 @@ export function PublicHeader({ className = "" }: { className?: string }) {
       ? safeInternalPath(`${pathname}${searchStr}`)
       : undefined);
   const returnSearch = nextPath ? { next: nextPath } : {};
+  const needsOnboarding = Boolean(user && !isStaff && profile?.membership_status === "pending");
 
   return (
     <header
@@ -56,7 +57,15 @@ export function PublicHeader({ className = "" }: { className?: string }) {
           >
             <Menu className="h-6 w-6" />
           </button>
-          {user ? (
+          {user && needsOnboarding ? (
+            <Link
+              to="/onboarding"
+              search={returnSearch}
+              className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
+            >
+              Complete onboarding
+            </Link>
+          ) : user ? (
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-2 rounded-full bg-[#003302] px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition hover:scale-[1.02]"
@@ -132,7 +141,16 @@ export function PublicHeader({ className = "" }: { className?: string }) {
                 Sign in
               </Link>
             )}
-            {user ? (
+            {user && needsOnboarding ? (
+              <Link
+                to="/onboarding"
+                search={returnSearch}
+                onClick={() => setMobileNav(false)}
+                className="mt-2 rounded-full bg-primary px-5 py-3 text-center text-sm font-semibold text-primary-foreground"
+              >
+                Complete onboarding
+              </Link>
+            ) : user ? (
               <Link
                 to="/dashboard"
                 onClick={() => setMobileNav(false)}

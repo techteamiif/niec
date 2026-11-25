@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -127,6 +127,9 @@ function EventDetailPage() {
   const { eventId } = Route.useParams();
   const publicEvent = Route.useLoaderData();
   const { user, profile, isStaff, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const needsOnboarding = Boolean(user && profile?.membership_status === "pending");
+  const eventDestination = `/event/${encodeURIComponent(eventId)}`;
   const [event, setEvent] = useState<EventPageRecord | null>(null);
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
   const [attendeeCount, setAttendeeCount] = useState(0);
@@ -145,7 +148,7 @@ function EventDetailPage() {
     setEvent(null);
     setHasAccess(false);
     if (authLoading) return;
-    if (!user) {
+    if (!user || needsOnboarding) {
       setEvent(publicEvent);
       setLoading(false);
       return;
@@ -241,7 +244,7 @@ function EventDetailPage() {
       setAttendanceResponse(null);
     }
     setLoading(false);
-  }, [authLoading, eventId, isStaff, publicEvent, user]);
+  }, [authLoading, eventId, isStaff, needsOnboarding, publicEvent, user]);
 
   useEffect(() => {
     load();
@@ -252,6 +255,10 @@ function EventDetailPage() {
   }, [canViewAttendees, tab]);
 
   const register = () => {
+    if (needsOnboarding) {
+      navigate({ to: "/onboarding", search: { next: eventDestination } });
+      return;
+    }
     if (event && !allowed) {
       setTierDialogOpen(true);
       return;
@@ -262,6 +269,10 @@ function EventDetailPage() {
   };
 
   const buyAccess = async () => {
+    if (needsOnboarding) {
+      navigate({ to: "/onboarding", search: { next: eventDestination } });
+      return;
+    }
     if (!event || purchasing) return;
     setPurchasing(true);
     try {
@@ -277,6 +288,10 @@ function EventDetailPage() {
   };
 
   const setAttendance = async (response: Exclude<AttendanceResponse, null>) => {
+    if (needsOnboarding) {
+      navigate({ to: "/onboarding", search: { next: eventDestination } });
+      return;
+    }
     if (!user || !event || updatingAttendance) return;
     if (!allowed) {
       setTierDialogOpen(true);
@@ -336,7 +351,8 @@ function EventDetailPage() {
   };
 
   const ended = event ? new Date(event.end_date ?? event.start_date).getTime() < Date.now() : false;
-  const allowed = hasAccess || isStaff || event?.created_by === user?.id;
+  const allowed =
+    !needsOnboarding && (hasAccess || isStaff || event?.created_by === user?.id);
   const isAttending = attendanceResponse === "yes";
 
   return (
@@ -345,13 +361,13 @@ function EventDetailPage() {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/">Home</Link>
+              <Link to={user ? "/dashboard" : "/"}>Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link to="/events">Events</Link>
+              <Link to={user ? "/member/events" : "/events"}>Events</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -426,7 +442,7 @@ function EventDetailPage() {
                   </span>
                 )}
               </div>
-              {user && (
+              {user && !needsOnboarding && (
                 <div className="mt-8 flex flex-col items-start gap-2">
                   <p className="text-sm text-muted-foreground">
                     {isAttending
@@ -490,7 +506,15 @@ function EventDetailPage() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {!ended &&
-                (!user ? (
+                (needsOnboarding ? (
+                  <Link
+                    to="/onboarding"
+                    search={{ next: eventDestination }}
+                    className="rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  >
+                    Complete onboarding to register
+                  </Link>
+                ) : !user ? (
                   <Link
                     to="/apply"
                     search={{ next: `/event/${encodeURIComponent(event.id)}` }}

@@ -916,7 +916,7 @@ function ApplyPage({
           <h1 className="mt-6 font-display text-3xl text-primary">
             {awaitingVerification
               ? "Confirm your email"
-              : isIndividual && tier === "contributor"
+              : tier && tier !== "observer"
                 ? "Your account is ready!"
                 : "Application submitted"}
           </h1>
@@ -926,11 +926,12 @@ function ApplyPage({
                 Your verification link has been sent to {maskEmail(email)}. Click the link to
                 complete your setup.
               </>
-            ) : isIndividual && tier === "contributor" ? (
+            ) : tier && tier !== "observer" ? (
               <>
                 Congratulations, {firstName}.<br />
-                Your individual membership is now active, and your 3-month free Enterprise
-                membership starts today.
+                Your {isIndividual ? "individual" : "organisation"} membership is now active, and
+                your 3-month free {TIERS.find((item) => item.key === tier)?.displayLabel} membership
+                starts today.
               </>
             ) : (
               <>
@@ -948,7 +949,7 @@ function ApplyPage({
                   " Your Observer membership is free."
                 )}{" "}
                 {nextPath
-                  ? "Continue back to the resource you wanted to download."
+                  ? "Continue back to the event or resource you wanted."
                   : "Continue to your dashboard to get started."}
               </>
             )}

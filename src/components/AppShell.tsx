@@ -141,7 +141,7 @@ export function AppShell() {
     };
   }, [user]);
 
-  if (isPublicContentDetail && !user) {
+  if (isPublicContentDetail && (!user || (!isStaff && profile?.membership_status === "pending"))) {
     return (
       <div className="min-h-screen bg-background">
         <PublicHeader />
@@ -358,7 +358,7 @@ export function AppShell() {
           </div>
         </header>
         <div className="flex-1">
-          {profile.membership_status === "pending" ? (
+          {profile.membership_status === "pending" && !isPublicContentDetail ? (
             <div className="p-6 lg:p-10">
               <div className="mx-auto max-w-2xl rounded-2xl border bg-card p-8 text-center shadow-sm">
                 <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-gold/20 text-gold-foreground">
