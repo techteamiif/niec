@@ -157,9 +157,9 @@ function CommunityPage() {
           {posts.length === 0 && (
             <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
               No posts match your filters. Try clearing them — or{" "}
-              <a href="/community" className="text-primary hover:underline">
+              <button type="button" onClick={openPostComposer} className="text-primary hover:underline">
                 start the conversation
-              </a>{" "}
+              </button>{" "}
               with your first post.
             </div>
           )}
