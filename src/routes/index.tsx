@@ -241,7 +241,8 @@ function ImpactLanding() {
             <h2 className="mt-3 font-display text-4xl text-primary-foreground md:text-5xl text-balance">A trusted, tiered community for serious capital.</h2>
             <p className="mt-6 leading-relaxed text-primary-foreground/90">
               Five membership tiers — Observer, Enterprise, Growth Partner, Anchor, Strategic Partner — with a
-              private deal room, four Communities of Practice, and flagship convenings including GIIS, AIS and ACII.
+              private deal room, four Communities of Practice, and national and regional flagship
+              convenings.
             </p>
             <Link to="/apply" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-primary-foreground hover:underline">
               Explore membership tiers <ArrowRight className="h-4 w-4" />
@@ -250,11 +251,11 @@ function ImpactLanding() {
           <div className="grid grid-cols-2 gap-3">
             {[
               { icon: Users, label: "Member directory", sub: "280+ profiles" },
-              { icon: Calendar, label: "Convenings & boot camps", sub: "GIIS · AIS · ACII" },
+              { icon: Calendar, label: "Convenings & boot camps", sub: "National and regional flagship convenings" },
               { icon: TrendingUp, label: "Private deal room", sub: "Tier-gated access" },
               { icon: Globe, label: "SDG-aligned knowledge", sub: "Reports & playbooks" },
             ].map(({ icon: Icon, label, sub }) => (
-              <div key={label} className="rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:border-primary/40">
+              <div key={label} className="rounded-2xl border border-border bg-white/85 p-5 shadow-soft transition hover:border-primary/40">
                 <Icon className="h-5 w-5 text-primary" />
                 <div className="mt-4 text-sm font-medium text-foreground">{label}</div>
                 <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
