@@ -18,6 +18,19 @@ import gsgLogo from "@/assets/gsg-logo.png";
 import nabiiLogo from "@/assets/nabii-logo.png";
 import landingHeroImage from "@/assets/landing_hero_image.png";
 
+function PillarCard({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col justify-center rounded-2xl border border-border/80 bg-white px-7 py-8 shadow-xs transition-shadow hover:shadow-sm">
+      <div className="font-display text-4xl tracking-tight text-primary">
+        {title}
+      </div>
+      <div className="mt-2.5 text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {subtitle}
+      </div>
+    </div>
+  );
+}
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -135,20 +148,25 @@ function ImpactLanding() {
       </section>
 
       {/* Impact stats */}
-      <section id="impact" className="border-t border-border bg-cream/40">
-        <div className="mx-auto max-w-7xl px-6 py-20">
-          <div className="mb-12 max-w-2xl">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-primary">Aggregate impact</div>
-            <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">Measurable. Mobilised. Multiplied.</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Stat label="Members convened" value="280" suffix="+" />
-            <Stat label="Capital mobilised (₦bn)" value="42" />
-            <Stat label="Deals facilitated" value="67" />
-            <Stat label="Convenings hosted" value="35" />
-          </div>
-        </div>
-      </section>
+   <section id="impact" className="border-t border-border bg-cream/40">
+  <div className="mx-auto max-w-7xl px-6 py-20">
+    <div className="mb-12 max-w-2xl">
+      <div className="text-[10px] uppercase tracking-[0.22em] text-primary">
+        ECOSYSTEM ARCHITECTURE
+      </div>
+      <h2 className="mt-3 font-display text-4xl text-foreground md:text-5xl">
+        Connected. Catalytic. Credible.
+      </h2>
+    </div>
+
+    <div className="grid gap-4 md:grid-cols-4">
+      <PillarCard title="Capital" subtitle="DEBT & BLENDED FINANCE" />
+      <PillarCard title="Policy" subtitle="REGULATORY REFORM" />
+      <PillarCard title="Evidence" subtitle="DATA & MARKET INTELLIGENCE" />
+      <PillarCard title="Network" subtitle="CROSS-SECTOR CONVENINGS" />
+    </div>
+  </div>
+</section>
 
       <section id="events" className="border-t border-border bg-background">
         <div className="mx-auto max-w-7xl px-6 py-20">
@@ -250,7 +268,7 @@ function ImpactLanding() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: Users, label: "Member directory", sub: "280+ profiles" },
+              { icon: Users, label: "Member directory", sub: "Network. Collaborate. Partner" },
               { icon: Calendar, label: "Convenings & boot camps", sub: "National and regional flagship convenings" },
               { icon: TrendingUp, label: "Private deal room", sub: "Tier-gated access" },
               { icon: Globe, label: "SDG-aligned knowledge", sub: "Reports & playbooks" },
