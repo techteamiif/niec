@@ -48,7 +48,7 @@ export const COPS = [
   },
   {
     key: "niric",
-    name: "Nigerian Impact Investing Research Industry Collaborative (NIRIC)",
+    name: "Nigerian Impact Investing Research Industry Collaborative (NIIRIC)",
     color: "#3498DB",
     manager: ["Dr. Kingsley", "Dr. Bassey"],
     subgroups: ["Policy Advocacy", "Research, Data & Measurement"],
