@@ -300,12 +300,14 @@ function ApplyPage({
 
   useEffect(() => {
     if (!user) return;
+    if (hydratedDraftKey === draftKey) return;
     const savedAccountType = user.user_metadata.account_type;
     setAccountType(savedAccountType === "individual" || savedAccountType === "organisation" ? savedAccountType : "");
-  }, [user]);
+  }, [draftKey, hydratedDraftKey, user]);
 
   useEffect(() => {
     if (!user) return;
+    if (hydratedDraftKey === draftKey) return;
     const metadata = user.user_metadata;
     const fullName = typeof metadata.full_name === "string" ? metadata.full_name : profile?.full_name ?? "";
     const [metadataFirstName = "", ...lastNameParts] = fullName.split(" ");
@@ -346,7 +348,7 @@ function ApplyPage({
       setIsInNigeria(false);
       setCountry(savedLocation[savedLocation.length - 1] || profile.location);
     }
-  }, [user, profile]);
+  }, [draftKey, hydratedDraftKey, user, profile]);
 
   useEffect(() => {
     if (loading || (mode === "onboarding" && !user)) return;
@@ -402,6 +404,11 @@ function ApplyPage({
       }
       if (draft.researchInterests !== undefined) {
         setResearchInterests(parseResearchInterests(draft.researchInterests));
+      }
+      if (Array.isArray(draft.consents)) {
+        setConsents(CONSENTS.map((_, index) =>
+          typeof draft.consents?.[index] === "boolean" ? Boolean(draft.consents[index]) : false,
+        ));
       }
       const stringSetters: [string, (value: string) => void][] = [
         ["orgName", setOrgName],
@@ -506,6 +513,7 @@ function ApplyPage({
         eventRole,
         heard,
         statement,
+        consents,
         step,
         savedAt: Date.now(),
       }));
@@ -558,6 +566,7 @@ function ApplyPage({
     eventRole,
     heard,
     statement,
+    consents,
     step,
   ]);
 
